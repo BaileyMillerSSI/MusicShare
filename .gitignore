@@ -406,5 +406,4 @@ FodyWeavers.xsd
 .claude/
 
 # Project-specific ignores
-/MusicShare.Api/appsettings.Development.json
-/MusicShare.Worker/appsettings.Development.json
+**/appsettings.Development.json

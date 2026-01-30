@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-MusicShare.Worker-4102b699-654d-4ad2-87f0-cb8c830375a4</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MassTransit" Version="9.0.0" />
+    <PackageReference Include="MassTransit.RabbitMQ" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.2" />
+	<PackageReference Include="Microsoft.Extensions.Http" Version="10.0.1" />
+	<PackageReference Include="Microsoft.Extensions.Options" Version="10.0.2" />
+	<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MusicShare.Contracts\MusicShare.Contracts.csproj" />
+    <ProjectReference Include="..\MusicShare.Persistence\MusicShare.Persistence.csproj" />
+  </ItemGroup>
+</Project>

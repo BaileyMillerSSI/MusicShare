@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="MusicShare.Api/MusicShare.Api.csproj" />
+  <Project Path="MusicShare.AppHost/MusicShare.AppHost.csproj" />
+  <Project Path="MusicShare.Contracts/MusicShare.Contracts.csproj" />
+  <Project Path="MusicShare.Persistence/MusicShare.Persistence.csproj" />
+  <Project Path="MusicShare.Worker/MusicShare.Worker.csproj" />
+</Solution>
