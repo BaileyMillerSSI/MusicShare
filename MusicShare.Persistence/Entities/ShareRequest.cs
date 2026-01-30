@@ -23,6 +23,9 @@ public class ShareRequest
     [BsonRequired]
     public ServiceType SourceService { get; set; }
 
+    [BsonElement("serviceTrackId")]
+    public string? ServiceTrackId { get; set; }
+
     [BsonElement("songId")]
     [BsonRepresentation(BsonType.ObjectId)]
     public string? SongId { get; set; }

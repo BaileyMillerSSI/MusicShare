@@ -1,7 +1,9 @@
-using System.ComponentModel.DataAnnotations;
 using MediatR;
 using MusicShare.Api.Services;
 using MusicShare.Contracts;
+using MusicShare.MusicAdapters;
+using MusicShare.MusicAdapters.Services;
+using System.ComponentModel.DataAnnotations;
 
 namespace MusicShare.Api.Commands;
 
@@ -20,19 +22,19 @@ public record SubmitShareCommandResponse(bool Success, string? ShareId, string? 
 
 public class SubmitShareCommandHandler(
     IShareRequestService shareRequestService,
-    UrlNormalizer urlNormalizer) : IRequestHandler<SubmitShareRequest, SubmitShareCommandResponse>
+    IMusicServiceResolver musicResolver) : IRequestHandler<SubmitShareRequest, SubmitShareCommandResponse>
 {
     public async Task<SubmitShareCommandResponse> Handle(SubmitShareRequest request, CancellationToken cancellationToken)
     {
-        var serviceType = urlNormalizer.DetectServiceType(request.Url);
-        if (serviceType == ServiceType.Unknown)
+        var serviceType = musicResolver.DetectServiceType(request.Url);
+        if (serviceType == null || serviceType == ServiceType.Unknown)
         {
             return SubmitShareCommandResponse.AsFailure("Unsupported music service URL");
         }
 
         var shareId = await shareRequestService.Create(
             request.Url,
-            serviceType,
+            serviceType.Value,
             cancellationToken);
 
         return SubmitShareCommandResponse.AsSuccess(shareId, ShareStatus.Pending);

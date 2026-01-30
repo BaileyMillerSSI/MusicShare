@@ -3,7 +3,7 @@ using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
 using MusicShare.Persistence.Entities;
 using MusicShare.Persistence.Repositories;
-using MusicShare.Worker.Services;
+using MusicShare.MusicAdapters.Services;
 
 namespace MusicShare.Worker.Sagas;
 
@@ -29,7 +29,7 @@ public class ShareRequestSaga : MassTransitStateMachine<ShareRequestSagaState>
     public Event<ServiceLinkFailed> LinkFailed { get; private set; } = null!;
 
     public ShareRequestSaga(
-        MusicServiceResolver serviceResolver,
+        IMusicServiceResolver serviceResolver,
         ILogger<ShareRequestSaga> logger)
     {
         _logger = logger;

@@ -1,8 +1,9 @@
 ﻿using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
+using MusicShare.MusicAdapters.Services;
 using System.Net.Http.Json;
 
-namespace MusicShare.Worker.Services.Music.Spotify
+namespace MusicShare.MusicAdapters.Services.Music.Spotify
 {
     public class SpotifyMusicService(HttpClient spotifyClient): IMusicServiceAdapter
     {

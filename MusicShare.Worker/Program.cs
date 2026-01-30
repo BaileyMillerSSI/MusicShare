@@ -1,10 +1,9 @@
 using MassTransit;
 using MongoDB.Driver;
 using MusicShare.Contracts;
+using MusicShare.MusicAdapters.Services.Extensions;
 using MusicShare.Persistence;
 using MusicShare.Worker.Sagas;
-using MusicShare.Worker.Services;
-using MusicShare.Worker.Services.Extensions;
 
 var builder = Host.CreateApplicationBuilder(args);
 
@@ -15,10 +14,7 @@ var builder = Host.CreateApplicationBuilder(args);
 builder.AddPersistence();
 
 // Register music service adapters
-builder.AddSpotifyAccess();
-builder.Services.AddSingleton<IMusicServiceAdapter, AppleMusicMockAdapter>();
-builder.Services.AddSingleton<IMusicServiceAdapter, YouTubeMusicMockAdapter>();
-builder.Services.AddSingleton<MusicServiceResolver>();
+builder.AddMusicServices();
 
 // Configure MassTransit with saga support and MongoDB outbox
 builder.AddMessageAccess(

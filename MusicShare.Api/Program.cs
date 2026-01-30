@@ -1,5 +1,6 @@
 using MusicShare.Api.Services;
 using MusicShare.Contracts;
+using MusicShare.MusicAdapters.Services.Extensions;
 using MusicShare.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -26,8 +27,8 @@ builder.Services.AddCors(options =>
 builder.AddPersistence();
 
 // Add services
-builder.Services.AddSingleton<UrlNormalizer>();
 builder.Services.AddScoped<IShareRequestService, ShareRequestService>();
+builder.AddMusicServices();
 
 // Configure MassTransit with RabbitMQ
 builder.AddMessageAccess(typeof(Program).Assembly);

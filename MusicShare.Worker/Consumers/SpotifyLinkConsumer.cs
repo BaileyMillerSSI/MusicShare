@@ -1,6 +1,7 @@
 using MusicShare.Contracts;
+using MusicShare.MusicAdapters;
+using MusicShare.MusicAdapters.Services;
 using MusicShare.Persistence.Repositories;
-using MusicShare.Worker.Services;
 
 namespace MusicShare.Worker.Consumers;
 
@@ -8,7 +9,7 @@ namespace MusicShare.Worker.Consumers;
 /// Consumer that resolves songs on Spotify.
 /// </summary>
 public class SpotifyLinkConsumer(
-    MusicServiceResolver serviceResolver,
+    IMusicServiceResolver serviceResolver,
     ISongServiceLinkRepository linkRepository,
     ILogger<SpotifyLinkConsumer> logger)
     : ServiceLinkConsumerBase(linkRepository, logger)

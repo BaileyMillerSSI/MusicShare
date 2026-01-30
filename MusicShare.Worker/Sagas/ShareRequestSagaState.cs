@@ -1,6 +1,7 @@
 using MassTransit;
 using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
+using MusicShare.MusicAdapters;
 
 namespace MusicShare.Worker.Sagas;
 

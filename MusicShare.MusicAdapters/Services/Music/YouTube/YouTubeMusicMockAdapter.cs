@@ -1,7 +1,7 @@
 using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
 
-namespace MusicShare.Worker.Services;
+namespace MusicShare.MusicAdapters.Services.Music.YouTube;
 
 /// <summary>
 /// Mock YouTube Music adapter that returns deterministic fake data.

@@ -1,7 +1,8 @@
 using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
+using MusicShare.MusicAdapters.Services;
 
-namespace MusicShare.Worker.Services;
+namespace MusicShare.MusicAdapters.Services.Music.Apple;
 
 /// <summary>
 /// Mock Apple Music adapter that returns deterministic fake data.

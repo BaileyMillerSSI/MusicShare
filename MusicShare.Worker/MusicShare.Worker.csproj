@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MusicShare.Contracts\MusicShare.Contracts.csproj" />
+    <ProjectReference Include="..\MusicShare.MusicAdapters\MusicShare.MusicAdapters.csproj" />
     <ProjectReference Include="..\MusicShare.Persistence\MusicShare.Persistence.csproj" />
   </ItemGroup>
 </Project>

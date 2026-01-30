@@ -2,6 +2,7 @@ using MassTransit;
 using MusicShare.Api.Models;
 using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
+using MusicShare.MusicAdapters.Services;
 using MusicShare.Persistence.Entities;
 using MusicShare.Persistence.Repositories;
 
@@ -24,21 +25,40 @@ public class ShareRequestService(
     IShareRequestRepository shareRequestRepository,
     ISongRepository songRepository,
     ISongServiceLinkRepository linkRepository,
-    UrlNormalizer urlNormalizer) : IShareRequestService
+    IMusicServiceResolver musicServiceResolver) : IShareRequestService
 {
+   
     public async Task<string> Create(
         string sourceUrl,
         ServiceType serviceType,
         CancellationToken cancellationToken)
     {
-        var shareId = urlNormalizer.GenerateShareId();
+        var adapter = musicServiceResolver.GetAdapter(serviceType);
+
+        // Extract canonical track ID for duplicate detection
+        var serviceTrackId = adapter!.ExtractSongId(sourceUrl);
+
+        // Check for existing ShareRequest with same track
+        if (!string.IsNullOrEmpty(serviceTrackId))
+        {
+            var existing = await shareRequestRepository.GetByServiceTrackIdAsync(
+                serviceType, serviceTrackId, cancellationToken);
+
+            if (existing != null)
+            {
+                return existing.ShareId;
+            }
+        }
+
         var correlationId = Guid.NewGuid();
+        var shareId = correlationId.ToString("N")[..12];
 
         await shareRequestRepository.InsertAsync(new ShareRequest
         {
             ShareId = shareId,
-            SourceUrl = sourceUrl,
+            SourceUrl = adapter!.NormalizeUrl(sourceUrl),
             SourceService = serviceType,
+            ServiceTrackId = serviceTrackId,
             Status = ShareStatus.Pending,
             CorrelationId = correlationId,
             CreatedAt = DateTime.UtcNow
@@ -47,7 +67,7 @@ public class ShareRequestService(
         await publishEndpoint.Publish(new SongShareSubmitted
         {
             ShareId = shareId,
-            SourceUrl = sourceUrl,
+            SourceUrl = adapter!.NormalizeUrl(sourceUrl),
             SourceService = serviceType,
             CorrelationId = correlationId
         }, cancellationToken);

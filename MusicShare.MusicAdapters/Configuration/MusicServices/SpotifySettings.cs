@@ -1,4 +1,4 @@
-﻿namespace MusicShare.Worker.Configuration.MusicServices
+﻿namespace MusicShare.MusicAdapters.Configuration.MusicServices
 {
     public class SpotifyConfiguration
     {

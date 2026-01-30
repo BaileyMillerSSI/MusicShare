@@ -1,4 +1,5 @@
 using MusicShare.Contracts;
+using MusicShare.MusicAdapters;
 
 namespace MusicShare.Api.Models;
 

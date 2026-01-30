@@ -1,4 +1,4 @@
-﻿namespace MusicShare.Worker.Services.Music.Spotify
+﻿namespace MusicShare.MusicAdapters.Services.Music.Spotify
 {
     public class SpotifyImage
     {

@@ -1,9 +1,9 @@
 using MassTransit;
 using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
+using MusicShare.MusicAdapters.Services;
 using MusicShare.Persistence.Entities;
 using MusicShare.Persistence.Repositories;
-using MusicShare.Worker.Services;
 
 namespace MusicShare.Worker.Consumers;
 
@@ -12,7 +12,7 @@ namespace MusicShare.Worker.Consumers;
 /// Resolves metadata from the source service and publishes the result.
 /// </summary>
 public class SourceMetadataConsumer(
-    MusicServiceResolver serviceResolver,
+    IMusicServiceResolver serviceResolver,
     ISongRepository songRepository,
     ISongServiceLinkRepository linkRepository,
     IShareRequestRepository shareRequestRepository,

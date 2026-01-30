@@ -1,18 +1,21 @@
 using MusicShare.Contracts;
 
-namespace MusicShare.Worker.Services;
+namespace MusicShare.MusicAdapters.Services;
+
+public interface IMusicServiceResolver
+{
+    ServiceType? DetectServiceType(string url);
+    IMusicServiceAdapter? GetAdapter(ServiceType serviceType);
+    IEnumerable<IMusicServiceAdapter> GetAllAdapters();
+    IEnumerable<IMusicServiceAdapter> GetOtherAdapters(ServiceType excludeServiceType);
+}
 
 /// <summary>
 /// Resolves the appropriate music service adapter based on service type.
 /// </summary>
-public class MusicServiceResolver
+public class MusicServiceResolver(IEnumerable<IMusicServiceAdapter> adapters) : IMusicServiceResolver
 {
-    private readonly Dictionary<ServiceType, IMusicServiceAdapter> _adapters;
-
-    public MusicServiceResolver(IEnumerable<IMusicServiceAdapter> adapters)
-    {
-        _adapters = adapters.ToDictionary(a => a.ServiceType);
-    }
+    private readonly Dictionary<ServiceType, IMusicServiceAdapter> _adapters = adapters.ToDictionary(a => a.ServiceType);
 
     public IMusicServiceAdapter? GetAdapter(ServiceType serviceType)
     {

@@ -1,7 +1,7 @@
 using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
 
-namespace MusicShare.Worker.Services;
+namespace MusicShare.MusicAdapters.Services;
 
 /// <summary>
 /// Interface for music service adapters that resolve song metadata and find songs across platforms.

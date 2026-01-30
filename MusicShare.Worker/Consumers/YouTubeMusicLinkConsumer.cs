@@ -1,6 +1,7 @@
 using MusicShare.Contracts;
 using MusicShare.Persistence.Repositories;
-using MusicShare.Worker.Services;
+using MusicShare.MusicAdapters.Services;
+using MusicShare.MusicAdapters;
 
 namespace MusicShare.Worker.Consumers;
 
@@ -8,7 +9,7 @@ namespace MusicShare.Worker.Consumers;
 /// Consumer that resolves songs on YouTube Music.
 /// </summary>
 public class YouTubeMusicLinkConsumer(
-    MusicServiceResolver serviceResolver,
+    IMusicServiceResolver serviceResolver,
     ISongServiceLinkRepository linkRepository,
     ILogger<YouTubeMusicLinkConsumer> logger)
     : ServiceLinkConsumerBase(linkRepository, logger)

@@ -1,4 +1,5 @@
 using MongoDB.Driver;
+using MusicShare.Contracts;
 using MusicShare.Persistence.Entities;
 
 namespace MusicShare.Persistence.Repositories;
@@ -33,6 +34,18 @@ public class ShareRequestRepository : IShareRequestRepository
     public async Task<ShareRequest?> GetBySongIdAsync(string songId, CancellationToken cancellationToken = default)
     {
         var filter = Builders<ShareRequest>.Filter.Eq(r => r.SongId, songId);
+        return await _requests.Find(filter).FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<ShareRequest?> GetByServiceTrackIdAsync(
+        ServiceType serviceType,
+        string serviceTrackId,
+        CancellationToken cancellationToken = default)
+    {
+        var filter = Builders<ShareRequest>.Filter.And(
+            Builders<ShareRequest>.Filter.Eq(r => r.SourceService, serviceType),
+            Builders<ShareRequest>.Filter.Eq(r => r.ServiceTrackId, serviceTrackId)
+        );
         return await _requests.Find(filter).FirstOrDefaultAsync(cancellationToken);
     }
 
