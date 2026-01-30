@@ -2,7 +2,6 @@ using System.ComponentModel.DataAnnotations;
 using MediatR;
 using MusicShare.Api.Services;
 using MusicShare.Contracts;
-using MusicShare.Persistence.Entities;
 
 namespace MusicShare.Api.Commands;
 
