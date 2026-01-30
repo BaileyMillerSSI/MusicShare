@@ -1,19 +1,28 @@
-import type { ServiceLinkProps } from ".";
-import Icon from "../../assets/Apple_Music_Icon.svg";
+type Props = {
+    url: string;
+    service: string;
+    icon: string;
+    color: string;
+};
 
-export default function AppleMusicLink({ url }: Readonly<ServiceLinkProps>) {
+export default function BaseMusicLink({
+    url,
+    service,
+    icon,
+    color,
+}: Readonly<Props>) {
     return (
         <a
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-between text-white py-4 px-5 rounded-lg transition-all hover:shadow-lg transform hover:-translate-y-0.5 bg-black"
+            className={`flex items-center justify-between text-white py-4 px-5 rounded-lg transition-all hover:shadow-lg transform hover:-translate-y-0.5 ${color}`}
         >
             <div className="flex items-center gap-3">
-                <img src={Icon} alt="Apple Music" className="w-10 h-10" />
+                <img src={icon} alt={service} className="w-10 h-10" />
                 <div className="flex flex-col items-start">
                     <span className="text-xs">Listen on</span>
-                    <span className="text-sm font-semibold">Apple Music</span>
+                    <span className="text-sm font-semibold">{service}</span>
                 </div>
             </div>
             <svg
