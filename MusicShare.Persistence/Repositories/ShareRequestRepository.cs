@@ -7,7 +7,7 @@ public class ShareRequestRepository : IShareRequestRepository
 {
     private readonly IMongoCollection<ShareRequest> _requests;
 
-    public ShareRequestRepository(MusicShareDbContext context)
+    public ShareRequestRepository(IMusicShareDbContext context)
     {
         _requests = context.ShareRequests;
     }

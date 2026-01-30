@@ -1,35 +1,66 @@
-﻿using MassTransit;
+using MassTransit;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using MongoDB.Driver;
+using MusicShare.Contracts.Configuration;
 using System.Reflection;
 
-namespace MusicShare.Contracts
+namespace MusicShare.Contracts;
+
+public static class MessageAccessExtensions
 {
-    public static class MessageAccessExtensions
+    /// <summary>
+    /// Configures MassTransit with RabbitMQ, MongoDB outbox, and optional saga support.
+    /// </summary>
+    /// <param name="builder">The host application builder</param>
+    /// <param name="assemblies">Assemblies to scan for consumers</param>
+    /// <param name="configureSagas">Optional callback to register sagas</param>
+    public static TBuilder AddMessageAccess<TBuilder>(
+        this TBuilder builder,
+        Assembly[] assemblies,
+        Action<IBusRegistrationConfigurator, IHostApplicationBuilder>? configureSagas = null)
+        where TBuilder : IHostApplicationBuilder
     {
-        public static TBuilder AddMessageAccess<TBuilder>(this TBuilder builder, params Assembly[] assemblies) where TBuilder : IHostApplicationBuilder
+        builder.AddRabbitMQClient("messaging");
+
+        // Get MongoDB settings for outbox configuration
+        var mongoSettings = builder.Configuration
+            .GetSection(MongoDbSettings.SectionName)
+            .Get<MongoDbSettings>() ?? new MongoDbSettings();
+
+        builder.Services.AddMassTransit(x =>
         {
-            builder.AddRabbitMQClient("messaging");
+            x.SetKebabCaseEndpointNameFormatter();
 
-            // Configure MassTransit to use RabbitMQ and scan this assembly for consumers
-            builder.Services.AddMassTransit(x =>
+            // Register consumers from assemblies
+            x.AddConsumers(assemblies);
+
+            // Allow caller to register sagas
+            configureSagas?.Invoke(x, builder);
+
+            // Configure MongoDB outbox for reliable message delivery
+            x.AddInMemoryInboxOutbox();
+
+            x.UsingRabbitMq((context, cfg) =>
             {
-                x.SetKebabCaseEndpointNameFormatter();
-
-                // Register consumers from this assembly
-                x.AddConsumers(assemblies);
-
-                x.UsingRabbitMq((context, cfg) =>
-                {
-                    // Use the Aspire-provided RabbitMQ connection settings for the "messaging" instance
-                    var connection = builder.Configuration.GetConnectionString("rabbitmq");
-
-                    cfg.Host(connection);
-                    cfg.ConfigureEndpoints(context);
-                });
+                var connection = builder.Configuration.GetConnectionString("rabbitmq");
+                cfg.Host(connection);
+                cfg.ConfigureEndpoints(context);
             });
+        });
 
-            return builder;
-        }
+        return builder;
+    }
+
+    /// <summary>
+    /// Configures MassTransit with RabbitMQ and MongoDB outbox.
+    /// </summary>
+    public static TBuilder AddMessageAccess<TBuilder>(
+        this TBuilder builder,
+        params Assembly[] assemblies)
+        where TBuilder : IHostApplicationBuilder
+    {
+        return builder.AddMessageAccess(assemblies, configureSagas: null);
     }
 }

@@ -8,7 +8,7 @@ public class SongServiceLinkRepository : ISongServiceLinkRepository
 {
     private readonly IMongoCollection<SongServiceLink> _links;
 
-    public SongServiceLinkRepository(MusicShareDbContext context)
+    public SongServiceLinkRepository(IMusicShareDbContext context)
     {
         _links = context.SongServiceLinks;
     }

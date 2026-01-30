@@ -1,11 +1,8 @@
 namespace MusicShare.Contracts.Messages;
 
-public record SongMetadataResolved
-{
-    public required string SongId { get; init; }
-    public required SongMetadata Metadata { get; init; }
-}
-
+/// <summary>
+/// Metadata for a song, used by music service adapters.
+/// </summary>
 public record SongMetadata
 {
     public required string Title { get; init; }

@@ -1,4 +1,4 @@
-namespace MusicShare.Persistence.Configuration;
+namespace MusicShare.Contracts.Configuration;
 
 public class MongoDbSettings
 {

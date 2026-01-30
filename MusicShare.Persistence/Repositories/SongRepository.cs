@@ -7,7 +7,7 @@ public class SongRepository : ISongRepository
 {
     private readonly IMongoCollection<Song> _songs;
 
-    public SongRepository(MusicShareDbContext context)
+    public SongRepository(IMusicShareDbContext context)
     {
         _songs = context.Songs;
     }

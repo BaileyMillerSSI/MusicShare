@@ -3,7 +3,7 @@ using Microsoft.Extensions.Hosting;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;
-using MusicShare.Persistence.Configuration;
+using MusicShare.Contracts.Configuration;
 using MusicShare.Persistence.Repositories;
 
 namespace MusicShare.Persistence;
@@ -19,7 +19,7 @@ public static class DependencyInjection
         builder.Services.AddOptions<MongoDbSettings>()
             .Bind(builder.Configuration.GetSection(MongoDbSettings.SectionName));
 
-        builder.Services.AddSingleton<MusicShareDbContext>();
+        builder.Services.AddSingleton<IMusicShareDbContext, MusicShareDbContext>();
 
         // Register repositories
         builder.Services.AddScoped<ISongRepository, SongRepository>();

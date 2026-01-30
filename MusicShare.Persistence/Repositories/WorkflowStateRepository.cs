@@ -7,7 +7,7 @@ public class WorkflowStateRepository : IWorkflowStateRepository
 {
     private readonly IMongoCollection<WorkflowState> _states;
 
-    public WorkflowStateRepository(MusicShareDbContext context)
+    public WorkflowStateRepository(IMusicShareDbContext context)
     {
         _states = context.WorkflowStates;
     }

@@ -7,7 +7,7 @@ using MusicShare.Persistence.Entities;
 namespace MusicShare.Api.Commands;
 
 public record SubmitShareRequest(
-    [property: Required, Url] string Url
+    [Required, Url] string Url
 ) : IRequest<SubmitShareCommandResponse>;
 
 public record SubmitShareCommandResponse(bool Success, string? ShareId, string? Status, string? Error)
