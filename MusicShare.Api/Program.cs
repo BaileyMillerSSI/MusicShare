@@ -25,8 +25,9 @@ builder.Services.AddCors(options =>
 // Add persistence layer
 builder.AddPersistence();
 
-// Add URL normalizer service
+// Add services
 builder.Services.AddSingleton<UrlNormalizer>();
+builder.Services.AddScoped<IShareRequestService, ShareRequestService>();
 
 // Configure MassTransit with RabbitMQ
 builder.AddMessageAccess(typeof(Program).Assembly);
