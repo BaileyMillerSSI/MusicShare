@@ -1,94 +1,41 @@
-using MassTransit;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using MusicShare.Api.Commands;
 using MusicShare.Api.Models;
-using MusicShare.Api.Services;
-using MusicShare.Contracts;
-using MusicShare.Contracts.Messages;
-using MusicShare.Persistence.Entities;
-using MusicShare.Persistence.Repositories;
+using MusicShare.Api.Queries;
 
 namespace MusicShare.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class ShareController : ControllerBase
+public class ShareController(IMediator mediator) : ControllerBase
 {
-    private readonly ILogger<ShareController> _logger;
-    private readonly IPublishEndpoint _publishEndpoint;
-    private readonly IShareRequestRepository _shareRequestRepository;
-    private readonly ISongRepository _songRepository;
-    private readonly ISongServiceLinkRepository _linkRepository;
-    private readonly UrlNormalizer _urlNormalizer;
-
-    public ShareController(
-        ILogger<ShareController> logger,
-        IPublishEndpoint publishEndpoint,
-        IShareRequestRepository shareRequestRepository,
-        ISongRepository songRepository,
-        ISongServiceLinkRepository linkRepository,
-        UrlNormalizer urlNormalizer)
-    {
-        _logger = logger;
-        _publishEndpoint = publishEndpoint;
-        _shareRequestRepository = shareRequestRepository;
-        _songRepository = songRepository;
-        _linkRepository = linkRepository;
-        _urlNormalizer = urlNormalizer;
-    }
+    private readonly IMediator _mediator = mediator;
 
     /// <summary>
     /// Submit a music URL to be resolved across services.
     /// </summary>
     [HttpPost]
     public async Task<ActionResult<SubmitShareResponse>> SubmitShare(
-        [FromBody] SubmitShareRequest request,
+        [FromBody] SubmitShareRequest command,
         CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Received share submission for URL: {Url}", request.Url);
-
-        // Detect service type
-        var serviceType = _urlNormalizer.DetectServiceType(request.Url);
-        if (serviceType == ServiceType.Unknown)
+        if (!ModelState.IsValid)
         {
-            return BadRequest(new { error = "Unsupported music service URL" });
+            return BadRequest();
         }
 
-        // Generate share ID
-        var shareId = _urlNormalizer.GenerateShareId();
-        var correlationId = Guid.NewGuid();
+        var result = await _mediator.Send(command, cancellationToken);
 
-        // Create ShareRequest entity
-        var shareRequest = new ShareRequest
+        if (!result.Success)
         {
-            ShareId = shareId,
-            SourceUrl = request.Url,
-            SourceService = serviceType,
-            Status = ShareStatus.Pending,
-            CorrelationId = correlationId,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        await _shareRequestRepository.InsertAsync(shareRequest, cancellationToken);
-
-        _logger.LogInformation(
-            "Created ShareRequest: ShareId={ShareId}, ServiceType={ServiceType}",
-            shareId, serviceType);
-
-        // Publish message to trigger async processing
-        await _publishEndpoint.Publish(new SongShareSubmitted
-        {
-            ShareId = shareId,
-            SourceUrl = request.Url,
-            SourceService = serviceType,
-            CorrelationId = correlationId
-        }, cancellationToken);
-
-        _logger.LogInformation("Published SongShareSubmitted for ShareId={ShareId}", shareId);
+            return BadRequest(new { error = result.Error });
+        }
 
         return Ok(new SubmitShareResponse
         {
-            ShareId = shareId,
-            Status = ShareStatus.Pending.ToString()
+            ShareId = result.ShareId!,
+            Status = result.Status!
         });
     }
 
@@ -97,54 +44,21 @@ public class ShareController : ControllerBase
     /// </summary>
     [HttpGet("{shareId}")]
     public async Task<ActionResult<ShareResultResponse>> GetShareResult(
-        string shareId,
+        [FromRoute] string shareId,
         CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Fetching share result for ShareId={ShareId}", shareId);
+        if (!ModelState.IsValid)
+        {
+            return BadRequest();
+        }
 
-        // Get the ShareRequest
-        var shareRequest = await _shareRequestRepository.GetByShareIdAsync(shareId, cancellationToken);
-        if (shareRequest == null)
+        var result = await _mediator.Send(new GetShareResultQuery(shareId), cancellationToken);
+
+        if (!result.Found)
         {
             return NotFound(new { error = "Share not found" });
         }
 
-        var response = new ShareResultResponse
-        {
-            ShareId = shareRequest.ShareId,
-            Status = shareRequest.Status.ToString(),
-            Song = null
-        };
-
-        // If we have a SongId, fetch the song details
-        if (!string.IsNullOrEmpty(shareRequest.SongId))
-        {
-            var song = await _songRepository.GetByIdAsync(shareRequest.SongId, cancellationToken);
-            if (song != null)
-            {
-                var links = await _linkRepository.GetBySongIdAsync(song.Id, cancellationToken);
-
-                response = response with
-                {
-                    Song = new SongDetails
-                    {
-                        Id = song.Id,
-                        Title = song.Title,
-                        Artists = song.Artists,
-                        Album = song.Album,
-                        ArtworkUrl = song.ArtworkUrl,
-                        Duration = song.Duration,
-                        Status = song.Status.ToString(),
-                        Links = links.Select(l => new ServiceLink
-                        {
-                            ServiceType = l.ServiceType,
-                            Url = l.NormalizedUrl
-                        }).ToList()
-                    }
-                };
-            }
-        }
-
-        return Ok(response);
+        return Ok(result.Response);
     }
 }

@@ -1,4 +1,3 @@
-using MassTransit;
 using MusicShare.Api.Services;
 using MusicShare.Contracts;
 using MusicShare.Persistence;
@@ -8,6 +7,9 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+
+// Add MediatR
+builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 
 // Add CORS for frontend
 builder.Services.AddCors(options =>
