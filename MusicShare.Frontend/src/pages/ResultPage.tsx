@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams, Link } from "react-router-dom";
 import { api } from "../lib/api";
@@ -20,6 +21,16 @@ export function ResultPage() {
             return false;
         },
     });
+
+    const isProcessing =
+        data?.status === "Pending" || data?.status === "Processing";
+    const song = data?.song;
+
+    useEffect(() => {
+        if (song) {
+            document.title = `${song.artists.join(", ")} - ${song.title}`;
+        }
+    }, [song]);
 
     if (isLoading) {
         return (
@@ -52,9 +63,9 @@ export function ResultPage() {
         );
     }
 
-    const isProcessing =
-        data?.status === "Pending" || data?.status === "Processing";
-    const song = data?.song;
+    
+
+    
 
     return (
         <div className="min-h-screen bg-linear-to-br from-purple-500 to-pink-500 flex items-center justify-center p-4">
