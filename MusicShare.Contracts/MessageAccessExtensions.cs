@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using MongoDB.Driver;
 using MusicShare.Contracts.Configuration;
+using MusicShare.Contracts.Messages;
 using System.Reflection;
 
 namespace MusicShare.Contracts;
@@ -46,6 +47,15 @@ public static class MessageAccessExtensions
             {
                 var connection = builder.Configuration.GetConnectionString("rabbitmq");
                 cfg.Host(connection);
+
+                // Configure ResolveServiceLink to use direct exchange with routing keys
+                cfg.Message<ResolveServiceLink>(m => m.SetEntityName("resolve-service-link"));
+
+                cfg.Publish<ResolveServiceLink>(p => p.ExchangeType = "direct");
+
+                cfg.Send<ResolveServiceLink>(s =>
+                    s.UseRoutingKeyFormatter(ctx => ctx.Message.TargetService.ToRoutingKey()));
+
                 cfg.ConfigureEndpoints(context);
             });
         });

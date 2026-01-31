@@ -28,15 +28,9 @@ public abstract class ServiceLinkConsumerBase(
 
     public async Task Consume(ConsumeContext<ResolveServiceLink> context)
     {
-        await Task.Delay(TimeSpan.FromSeconds(new Random().Next(1, 60))); // Simulate variable processing time
+        await Task.Delay(TimeSpan.FromSeconds(new Random().Next(1, 30))); // Simulate variable processing time
 
         var message = context.Message;
-
-        // Filter - only process messages for this service
-        if (message.TargetService != ServiceType)
-        {
-            return;
-        }
 
         logger.LogInformation(
             "Resolving {Service} link: SongId={SongId}, CorrelationId={CorrelationId}",
