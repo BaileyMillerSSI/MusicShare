@@ -54,6 +54,7 @@ public class SourceMetadataConsumer(
                 Album = metadata.Album,
                 ArtworkUrl = metadata.ArtworkUrl,
                 Duration = metadata.Duration,
+                IsExplicit = metadata.IsExplicit,
                 Status = SongStatus.Pending,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -100,7 +101,8 @@ public class SourceMetadataConsumer(
                     Artists = [.. metadata.Artists],
                     Album = metadata.Album,
                     ArtworkUrl = metadata.ArtworkUrl,
-                    Duration = metadata.Duration
+                    Duration = metadata.Duration,
+                    IsExplicit = metadata.IsExplicit
                 }
             });
 

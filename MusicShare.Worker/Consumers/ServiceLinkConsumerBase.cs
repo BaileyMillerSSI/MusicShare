@@ -62,7 +62,8 @@ public abstract class ServiceLinkConsumerBase(
                 Artists = message.Metadata.Artists,
                 Album = message.Metadata.Album,
                 ArtworkUrl = message.Metadata.ArtworkUrl,
-                Duration = message.Metadata.Duration
+                Duration = message.Metadata.Duration,
+                IsExplicit = message.Metadata.IsExplicit
             };
 
             // Try to find the song on this service

@@ -25,7 +25,8 @@ public class AppleMusicMockAdapter : IMusicServiceAdapter
             Artists = new List<string> { "Artist A", "Artist B" },
             Album = $"Album {songId}",
             ArtworkUrl = $"https://is1-ssl.mzstatic.com/image/{songId}",
-            Duration = TimeSpan.FromMinutes(3).Add(TimeSpan.FromSeconds(30))
+            Duration = TimeSpan.FromMinutes(3).Add(TimeSpan.FromSeconds(30)),
+            IsExplicit = null
         };
 
         return Task.FromResult<SongMetadata?>(metadata);

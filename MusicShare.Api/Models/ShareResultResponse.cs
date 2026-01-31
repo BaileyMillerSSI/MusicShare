@@ -18,6 +18,7 @@ public record SongDetails
     public string? Album { get; init; }
     public string? ArtworkUrl { get; init; }
     public TimeSpan? Duration { get; init; }
+    public bool? IsExplicit { get; init; }
     public required string Status { get; init; }
     public required List<ServiceLink> Links { get; init; }
 }

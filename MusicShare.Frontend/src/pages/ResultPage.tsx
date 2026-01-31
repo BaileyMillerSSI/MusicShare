@@ -103,9 +103,16 @@ export function ResultPage() {
                                 />
                             )}
                             <div className="flex-1">
-                                <h1 className="text-2xl font-bold text-gray-800">
-                                    {song.title}
-                                </h1>
+                                <div className="flex items-center gap-2">
+                                    <h1 className="text-2xl font-bold text-gray-800">
+                                        {song.title}
+                                    </h1>
+                                    {song.isExplicit && (
+                                        <span className="inline-flex items-center justify-center w-5 h-5 bg-gray-400 text-white text-xs font-bold rounded">
+                                            E
+                                        </span>
+                                    )}
+                                </div>
                                 <p className="text-gray-600">
                                     {song.artists.join(", ")}
                                 </p>

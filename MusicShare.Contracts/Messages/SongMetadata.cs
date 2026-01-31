@@ -10,4 +10,5 @@ public record SongMetadata
     public string? Album { get; init; }
     public string? ArtworkUrl { get; init; }
     public TimeSpan? Duration { get; init; }
+    public bool? IsExplicit { get; init; }
 }

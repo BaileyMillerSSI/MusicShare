@@ -22,6 +22,7 @@ export interface SongDetails {
   album?: string;
   artworkUrl?: string;
   duration?: string;
+  isExplicit?: boolean;
   status: string;
   links: ServiceLink[];
 }

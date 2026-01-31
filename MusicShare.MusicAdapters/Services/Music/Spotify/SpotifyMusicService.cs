@@ -1,6 +1,5 @@
 ﻿using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
-using MusicShare.MusicAdapters.Services;
 using System.Net.Http.Json;
 
 namespace MusicShare.MusicAdapters.Services.Music.Spotify
@@ -50,12 +49,13 @@ namespace MusicShare.MusicAdapters.Services.Music.Spotify
             var apiResponse = await _httpClient.GetFromJsonAsync<SpotifyResponse>($"tracks/{ExtractSongId(url)}", cancellationToken);
 
             return new SongMetadata
-            { 
+            {
                 Title = apiResponse?.name ?? string.Empty,
                 Artists = apiResponse?.artists?.Select(artist => artist.name) ?? [],
                 Album = apiResponse?.album?.name,
                 ArtworkUrl = apiResponse?.album?.images?.OrderByDescending(x => x.height)?.FirstOrDefault()?.url,
-                Duration = TimeSpan.Zero
+                Duration = TimeSpan.FromMilliseconds(apiResponse?.Duration ?? 0),
+                IsExplicit = apiResponse?.Explicit
             };
         }
     }

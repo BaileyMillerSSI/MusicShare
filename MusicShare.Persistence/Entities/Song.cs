@@ -27,6 +27,9 @@ public class Song
     [BsonElement("duration")]
     public TimeSpan? Duration { get; set; }
 
+    [BsonElement("isExplicit")]
+    public bool? IsExplicit { get; set; }
+
     [BsonElement("status")]
     [BsonRepresentation(BsonType.String)]
     public SongStatus Status { get; set; } = SongStatus.Pending;

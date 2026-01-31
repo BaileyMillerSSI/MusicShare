@@ -109,6 +109,7 @@ public class ShareRequestService(
                         Album = song.Album,
                         ArtworkUrl = song.ArtworkUrl,
                         Duration = song.Duration,
+                        IsExplicit = song.IsExplicit,
                         Status = song.Status.ToString(),
                         Links = [.. links.Select(l => new ServiceLink
                         {
