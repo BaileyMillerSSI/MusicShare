@@ -2,6 +2,17 @@
 
 namespace MusicShare.MusicAdapters.Services.Music.Spotify
 {
+    public class SpotifySearchResponse
+    {
+        public SpotifyTracksResult tracks { get; set; }
+    }
+
+    public class SpotifyTracksResult
+    {
+        public SpotifyResponse[] items { get; set; }
+        public int total { get; set; }
+    }
+
     public class SpotifyResponse
     {
         public SpotifyArtist[] artists { get; set; }

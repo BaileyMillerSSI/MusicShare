@@ -1,6 +1,7 @@
 ﻿using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
 using System.Net.Http.Json;
+using System.Web;
 
 namespace MusicShare.MusicAdapters.Services.Music.Spotify
 {
@@ -31,9 +32,39 @@ namespace MusicShare.MusicAdapters.Services.Music.Spotify
             return null;
         }
 
-        public Task<string?> FindSongAsync(SongMetadata metadata, CancellationToken cancellationToken = default)
+        public async Task<string?> FindSongAsync(SongMetadata metadata, CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            var query = HttpUtility.UrlEncode(metadata.Title);
+
+            var searchResult = await _httpClient.GetFromJsonAsync<SpotifySearchResponse>(
+                $"search?q={query}&type=track&limit=5",
+                cancellationToken);
+
+            if (searchResult?.tracks?.items == null || searchResult.tracks.items.Length == 0)
+                return null;
+
+            foreach (var track in searchResult.tracks.items)
+            {
+                if (IsMatch(track, metadata))
+                {
+                    return track.external_urls?.spotify;
+                }
+            }
+
+            return null;
+        }
+
+        private static bool IsMatch(SpotifyResponse track, SongMetadata metadata)
+        {
+            if (!string.Equals(track.name, metadata.Title, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            var trackArtists = track.artists?.Select(a => a.name) ?? [];
+            var hasArtistMatch = metadata.Artists.Any(inputArtist =>
+                trackArtists.Any(trackArtist =>
+                    string.Equals(trackArtist, inputArtist, StringComparison.OrdinalIgnoreCase)));
+
+            return hasArtistMatch;
         }
 
         public string NormalizeUrl(string url)
