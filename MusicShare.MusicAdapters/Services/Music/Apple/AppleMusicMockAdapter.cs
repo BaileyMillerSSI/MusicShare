@@ -1,6 +1,5 @@
 using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
-using MusicShare.MusicAdapters.Services;
 
 namespace MusicShare.MusicAdapters.Services.Music.Apple;
 

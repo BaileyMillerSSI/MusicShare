@@ -24,7 +24,7 @@ export function SharePage() {
   return (
     <div className="min-h-screen bg-linear-to-br from-purple-500 to-pink-500 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">MusicShare</h1>
+        <h1 className="text-3xl font-bold text-gray-800 mb-2">Music Share</h1>
         <p className="text-gray-600 mb-6">
           Share music across platforms
         </p>
@@ -45,7 +45,7 @@ export function SharePage() {
               required
             />
             <p className="mt-2 text-xs text-gray-500">
-              Supports Spotify, Apple Music, and YouTube Music
+              Supports Spotify and YouTube Music
             </p>
           </div>
 

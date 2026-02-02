@@ -9,7 +9,7 @@ namespace MusicShare.MusicAdapters.Services.Extensions
         {
             builder
                 .AddSpotifyAccess()
-                .AddAppleMusicAccess()
+                //.AddAppleMusicAccess()
                 .AddYouTubeMusicAccess()
                 .Services
                 .AddSingleton<IMusicServiceResolver, MusicServiceResolver>();
