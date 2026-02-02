@@ -34,6 +34,15 @@ public class SongServiceLinkRepository : ISongServiceLinkRepository
         return await _links.Find(filter).FirstOrDefaultAsync(cancellationToken);
     }
 
+    public async Task<SongServiceLink?> GetByServiceAndSongIdAsync(ServiceType serviceType, string serviceSongId, CancellationToken cancellationToken = default)
+    {
+        var filter = Builders<SongServiceLink>.Filter.And(
+            Builders<SongServiceLink>.Filter.Eq(l => l.ServiceType, serviceType),
+            Builders<SongServiceLink>.Filter.Eq(l => l.ServiceSongId, serviceSongId)
+        );
+        return await _links.Find(filter).FirstOrDefaultAsync(cancellationToken);
+    }
+
     public async Task<SongServiceLink> InsertAsync(SongServiceLink link, CancellationToken cancellationToken = default)
     {
         link.CreatedAt = DateTime.UtcNow;

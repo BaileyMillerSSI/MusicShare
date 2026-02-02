@@ -38,15 +38,22 @@ public class ShareRequestService(
         // Extract canonical track ID for duplicate detection
         var serviceTrackId = adapter!.ExtractSongId(sourceUrl);
 
-        // Check for existing ShareRequest with same track
+        // Check if this song already exists via SongServiceLink
+        // This catches duplicates regardless of which service the song was originally submitted from
         if (!string.IsNullOrEmpty(serviceTrackId))
         {
-            var existing = await shareRequestRepository.GetByServiceTrackIdAsync(
+            var existingLink = await linkRepository.GetByServiceAndSongIdAsync(
                 serviceType, serviceTrackId, cancellationToken);
 
-            if (existing != null)
+            if (existingLink != null)
             {
-                return existing.ShareId;
+                var existingRequest = await shareRequestRepository.GetBySongIdAsync(
+                    existingLink.SongId, cancellationToken);
+
+                if (existingRequest != null)
+                {
+                    return existingRequest.ShareId;
+                }
             }
         }
 
