@@ -1,11 +1,12 @@
-# Run when commits are pushed to develop
+name: Azure Deploy
+
 on:
-  workflow_dispatch:
-  push:
-    # Run when commits are pushed to mainline branch (main or master)
-    # Set this to the mainline branch you are using
-    branches:
-      - develop
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+        description: 'Azure environment name (e.g., staging, production)'
 
 # Set up permissions for deploying with secretless Azure federated credentials
 # https://learn.microsoft.com/en-us/azure/developer/github/connect-from-azure?tabs=azure-portal%2Clinux#set-up-azure-login-with-openid-connect-authentication
@@ -13,25 +14,27 @@ permissions:
   id-token: write
   contents: read
 
-
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
     env:
-      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
-      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
-      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      AZURE_ENV_NAME: ${{ vars.AZURE_ENV_NAME }}
-      AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      AZURE_ENV_NAME: ${{ secrets.AZURE_ENV_NAME }}
+      AZURE_LOCATION: ${{ secrets.AZURE_LOCATION }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Install azd
         uses: Azure/setup-azd@v2
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: | 
+          dotnet-version: |
             8.x
             9.x
             10.x
@@ -43,7 +46,6 @@ jobs:
             --federated-credential-provider "github" `
             --tenant-id "$Env:AZURE_TENANT_ID"
         shell: pwsh
-
 
       - name: Provision Infrastructure
         run: azd provision --no-prompt
@@ -58,4 +60,3 @@ jobs:
           AZURE_MONGODB_PASSWORD: ${{ secrets.AZURE_MONGODB_PASSWORD }}
           AZURE_RABBITMQ_PASSWORD: ${{ secrets.AZURE_RABBITMQ_PASSWORD }}
           AZURE_RABBITMQ_USERNAME: ${{ secrets.AZURE_RABBITMQ_USERNAME }}
-        

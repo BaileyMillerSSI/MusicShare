@@ -5,6 +5,11 @@ on:
     branches: [main, develop]
   workflow_dispatch:
 
+# Required for azure-dev.yml to authenticate with Azure
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   frontend:
     name: Frontend Build & Lint
@@ -55,13 +60,20 @@ jobs:
       - name: Test
         run: dotnet test MusicShare.slnx --no-build --configuration Release --verbosity normal
 
-  # Future deployment jobs can be added here
-  # deploy-staging:
-  #   needs: [frontend, backend]
-  #   if: github.ref == 'refs/heads/develop'
-  #   ...
-  #
-  # deploy-production:
-  #   needs: [frontend, backend]
-  #   if: github.ref == 'refs/heads/main'
-  #   ...
+  deploy-staging:
+    name: Deploy to Staging
+    needs: [frontend, backend]
+    if: github.ref == 'refs/heads/develop'
+    uses: ./.github/workflows/azure-dev.yml
+    with:
+      environment: staging
+    secrets: inherit
+
+  deploy-production:
+    name: Deploy to Production
+    needs: [frontend, backend]
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/azure-dev.yml
+    with:
+      environment: production
+    secrets: inherit
