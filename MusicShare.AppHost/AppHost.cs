@@ -1,15 +1,19 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
 // Infrastructure
-var mongodb = builder
-    .AddMongoDB("mongodb")
-    .WithMongoExpress();
+var mongodb = builder.AddMongoDB("mongodb");
 
-var messagingUsername = builder.AddParameter("rabbitmq-username", "guest");
-var messagingPassword = builder.AddParameter("rabbitmq-password", "guest");
+var messagingUsername = builder.AddParameter("rabbitmq-username", secret: true);
+var messagingPassword = builder.AddParameter("rabbitmq-password", secret: true);
 
-var rabbitmq = builder.AddRabbitMQ("rabbitmq", messagingUsername, messagingPassword)
-    .WithManagementPlugin();
+var rabbitmq = builder.AddRabbitMQ("rabbitmq", messagingUsername, messagingPassword);
+
+// Add dev tooling only when running locally (not publishing)
+if (!builder.ExecutionContext.IsPublishMode)
+{
+    mongodb.WithMongoExpress();
+    rabbitmq.WithManagementPlugin();
+}
 
 // Backend services
 var api = builder.AddProject<Projects.MusicShare_Api>("api")
