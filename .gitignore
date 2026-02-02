@@ -404,6 +404,8 @@ FodyWeavers.xsd
 
 # Claude Code
 .claude/
+nul
 
 # Project-specific ignores
 **/appsettings.Development.json
+
