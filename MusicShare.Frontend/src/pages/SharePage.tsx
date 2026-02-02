@@ -1,11 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 
 export function SharePage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [url, setUrl] = useState('');
   const navigate = useNavigate();
+  const hasAutoSubmitted = useRef(false);
+
+  // Get the URL from query params
+  const urlFromQuery = searchParams.get('url');
 
   const submitMutation = useMutation({
     mutationFn: (url: string) => api.submitShare(url),
@@ -13,6 +18,30 @@ export function SharePage() {
       navigate(`/share/${data.shareId}`);
     },
   });
+
+  // Initialize url state from query param on mount
+  useEffect(() => {
+    if (urlFromQuery && !url) {
+      setUrl(urlFromQuery);
+    }
+  }, [urlFromQuery]);
+
+  // Auto-submit when URL param is present
+  useEffect(() => {
+    if (
+      urlFromQuery &&
+      !hasAutoSubmitted.current &&
+      !submitMutation.isPending
+    ) {
+      hasAutoSubmitted.current = true;
+
+      // Clean URL param from address bar (prevents re-submit on refresh)
+      setSearchParams({}, { replace: true });
+
+      // Trigger the search
+      submitMutation.mutate(urlFromQuery);
+    }
+  }, [urlFromQuery, submitMutation.isPending, setSearchParams]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,6 +57,15 @@ export function SharePage() {
         <p className="text-gray-600 mb-6">
           Share music across platforms
         </p>
+
+        {hasAutoSubmitted.current && submitMutation.isPending && (
+          <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded mb-4">
+            <div className="flex items-center">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-3"></div>
+              <span>Processing shared link...</span>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
