@@ -48,14 +48,17 @@ if (!builder.ExecutionContext.IsPublishMode)
     rabbitmq.WithManagementPlugin();
 }else
 {
-    builder.AddYarp("frontend-server")
-        .WithConfiguration(c =>
-        {
-            // Always proxy /api requests to backend
-            c.AddRoute("api/{**catch-all}", api);
-        })
+    var yarp = builder.AddYarp("frontend-server")
         .WithExternalHttpEndpoints()
         .PublishWithStaticFiles(frontend);
+
+    yarp.WithConfiguration(c =>
+    {
+        // Always proxy /api requests to backend
+        c.AddRoute("api/{**catch-all}", api);
+        // SPA fallback - route all other requests to root for client-side routing
+        c.AddRoute("{**catch-all}", yarp).WithTransformPathSet("/");
+    });
 }
 
 builder.Build().Run();
