@@ -10,8 +10,6 @@ var messagingPassword = builder.AddParameter("rabbitmq-password", secret: true);
 
 var rabbitmq = builder.AddRabbitMQ("rabbitmq", messagingUsername, messagingPassword);
 
-
-
 // Backend services
 var api = builder.AddProject<Projects.MusicShare_Api>("api")
     .WithReference(mongodb)
