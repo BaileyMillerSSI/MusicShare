@@ -1,17 +1,10 @@
 using MassTransit;
 using MongoDB.Driver;
-using MusicShare.Contracts;
 using MusicShare.MusicAdapters.Services.Extensions;
 using MusicShare.Persistence;
 using MusicShare.Worker.Sagas;
 
 var builder = Host.CreateApplicationBuilder(args);
-
-// TODO: Add Aspire service defaults for observability and health checks
-// builder.AddServiceDefaults();
-
-// Add persistence layer (registers IMongoClient via Aspire)
-builder.AddPersistence();
 
 // Register music service adapters
 builder.AddMusicServices();

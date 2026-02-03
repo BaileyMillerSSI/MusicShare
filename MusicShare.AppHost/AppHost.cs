@@ -44,8 +44,7 @@ if (!builder.ExecutionContext.IsPublishMode)
         .WithConfiguration(c =>
         {
             // Always proxy /api requests to backend
-            c.AddRoute("api/{**catch-all}", api)
-            .WithTransformPathRemovePrefix("/api");
+            c.AddRoute("api/{**catch-all}", api);
         })
         .WithExternalHttpEndpoints()
         .PublishWithStaticFiles(frontend);

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -7,16 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MassTransit" Version="8.5.7" />
-    <PackageReference Include="MassTransit.RabbitMQ" Version="8.5.7" />
     <PackageReference Include="MediatR" Version="12.4.1" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.2" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\MusicShare.Contracts\MusicShare.Contracts.csproj" />
     <ProjectReference Include="..\MusicShare.MusicAdapters\MusicShare.MusicAdapters.csproj" />
-    <ProjectReference Include="..\MusicShare.Persistence\MusicShare.Persistence.csproj" />
+    <ProjectReference Include="..\MusicShare.ServiceDefaults\MusicShare.ServiceDefaults.csproj" />
   </ItemGroup>
 
 </Project>
