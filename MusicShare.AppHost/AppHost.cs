@@ -1,3 +1,5 @@
+using Aspire.Hosting.Yarp.Transforms;
+
 var builder = DistributedApplication.CreateBuilder(args);
 
 // Infrastructure
@@ -8,12 +10,7 @@ var messagingPassword = builder.AddParameter("rabbitmq-password", secret: true);
 
 var rabbitmq = builder.AddRabbitMQ("rabbitmq", messagingUsername, messagingPassword);
 
-// Add dev tooling only when running locally (not publishing)
-if (!builder.ExecutionContext.IsPublishMode)
-{
-    mongodb.WithMongoExpress();
-    rabbitmq.WithManagementPlugin();
-}
+
 
 // Backend services
 var api = builder.AddProject<Projects.MusicShare_Api>("api")
@@ -29,9 +26,31 @@ builder.AddProject<Projects.MusicShare_Worker>("worker")
     .WaitFor(rabbitmq);
 
 // Frontend
-builder.AddViteApp("frontend", "../MusicShare.Frontend")
+var frontend = builder.AddViteApp("frontend", "../MusicShare.Frontend")
     .WithReference(api)
     .WaitFor(api)
-    .PublishAsDockerFile();
+    .WithEndpoint(endpointName: "http", endpoint =>
+    {
+        endpoint.Port = builder.ExecutionContext.IsRunMode ?
+                        5173 : null;
+    });
+
+// Add dev tooling only when running locally (not publishing)
+if (!builder.ExecutionContext.IsPublishMode)
+{
+    mongodb.WithMongoExpress();
+    rabbitmq.WithManagementPlugin();
+}else
+{
+    builder.AddYarp("frontend-server")
+        .WithConfiguration(c =>
+        {
+            // Always proxy /api requests to backend
+            c.AddRoute("api/{**catch-all}", api)
+            .WithTransformPathRemovePrefix("/api");
+        })
+        .WithExternalHttpEndpoints()
+        .PublishWithStaticFiles(frontend);
+}
 
 builder.Build().Run();
