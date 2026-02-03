@@ -10,16 +10,24 @@ var messagingPassword = builder.AddParameter("rabbitmq-password", secret: true);
 
 var rabbitmq = builder.AddRabbitMQ("rabbitmq", messagingUsername, messagingPassword);
 
+// Spotify credentials
+var spotifyClientId = builder.AddParameter("spotify-clientid", secret: true);
+var spotifyClientSecret = builder.AddParameter("spotify-clientsecret", secret: true);
+
 // Backend services
 var api = builder.AddProject<Projects.MusicShare_Api>("api")
     .WithReference(mongodb)
     .WithReference(rabbitmq)
+    .WithEnvironment("Spotify__ClientId", spotifyClientId)
+    .WithEnvironment("Spotify__ClientSecret", spotifyClientSecret)
     .WaitFor(mongodb)
     .WaitFor(rabbitmq);
 
 builder.AddProject<Projects.MusicShare_Worker>("worker")
     .WithReference(mongodb)
     .WithReference(rabbitmq)
+    .WithEnvironment("Spotify__ClientId", spotifyClientId)
+    .WithEnvironment("Spotify__ClientSecret", spotifyClientSecret)
     .WaitFor(mongodb)
     .WaitFor(rabbitmq);
 

@@ -21,9 +21,6 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Add persistence layer
-builder.AddPersistence();
-
 // Add services
 builder.Services.AddScoped<IShareRequestService, ShareRequestService>();
 builder.AddMusicServices();

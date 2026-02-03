@@ -6,6 +6,7 @@ using MusicShare.Worker.Sagas;
 
 var builder = Host.CreateApplicationBuilder(args);
 
+builder.AddServiceDefaults();
 // Register music service adapters
 builder.AddMusicServices();
 
