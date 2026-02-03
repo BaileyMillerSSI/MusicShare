@@ -59,21 +59,3 @@ jobs:
 
       - name: Test
         run: dotnet test MusicShare.slnx --no-build --configuration Release --verbosity normal
-
-  deploy-staging:
-    name: Deploy to Staging
-    needs: [frontend, backend]
-    if: github.ref == 'refs/heads/develop'
-    uses: ./.github/workflows/azure-dev.yml
-    with:
-      environment: staging
-    secrets: inherit
-
-  deploy-production:
-    name: Deploy to Production
-    needs: [frontend, backend]
-    if: github.ref == 'refs/heads/main'
-    uses: ./.github/workflows/azure-dev.yml
-    with:
-      environment: production
-    secrets: inherit
