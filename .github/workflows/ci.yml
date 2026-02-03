@@ -106,9 +106,13 @@ jobs:
           azd env select ${{ vars.AZURE_ENV_NAME }} 2>/dev/null || azd env new ${{ vars.AZURE_ENV_NAME }} --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }} --location ${{ vars.AZURE_LOCATION }}
           azd env set AZURE_RESOURCE_GROUP ${{ vars.RESOURCE_GROUP }}
 
-          # Set Spotify credentials
-          azd env set Spotify__ClientId "${{ secrets.Spotify_ClientId }}"
-          azd env set Spotify__ClientSecret "${{ secrets.Spotify_ClientSecret }}"
+          # Set RabbitMQ credentials (required by AppHost parameters)
+          azd env set rabbitmq-username "${{ secrets.RABBITMQ_USERNAME }}"
+          azd env set rabbitmq-password "${{ secrets.RABBITMQ_PASSWORD }}"
+
+          # Set Spotify credentials (required by AppHost parameters)
+          azd env set spotify-clientid "${{ secrets.SPOTIFY_CLIENTID }}"
+          azd env set spotify-clientsecret "${{ secrets.SPOTIFY_CLIENTSECRET }}"
 
           # Set YouTube settings
           azd env set YouTube__GeographicLocation "${{ vars.YOUTUBE_GEOGRAPHICLOCATION }}"
