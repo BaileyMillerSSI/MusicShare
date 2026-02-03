@@ -3,6 +3,8 @@ name: CI
 on:
   push:
     branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
   workflow_dispatch:
 
 # Required for azure-dev.yml to authenticate with Azure
@@ -59,3 +61,14 @@ jobs:
 
       - name: Test
         run: dotnet test MusicShare.slnx --no-build --configuration Release --verbosity normal
+
+  # CD steps - only run on push or manual trigger, not on PRs
+  deploy:
+    name: Deploy
+    needs: [frontend, backend]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Placeholder for deployment
+        run: echo "CD steps will be defined here"
