@@ -7,6 +7,10 @@ on:
     branches: [main, develop]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 # Required for azure-dev.yml to authenticate with Azure
 permissions:
   id-token: write
@@ -99,7 +103,7 @@ jobs:
 
       - name: Provision and Deploy
         run: |
-          azd env new ${{ vars.AZURE_ENV_NAME }} --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }} --location ${{ vars.AZURE_LOCATION }}
+          azd env select ${{ vars.AZURE_ENV_NAME }} 2>/dev/null || azd env new ${{ vars.AZURE_ENV_NAME }} --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }} --location ${{ vars.AZURE_LOCATION }}
           azd env set AZURE_RESOURCE_GROUP ${{ vars.RESOURCE_GROUP }}
 
           # Set Spotify credentials
