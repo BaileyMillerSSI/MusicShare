@@ -412,3 +412,4 @@ nul
 # Project-specific ignores
 **/appsettings.Development.json
 
+.azure

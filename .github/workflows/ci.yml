@@ -68,7 +68,55 @@ jobs:
     needs: [frontend, backend]
     runs-on: ubuntu-latest
     if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'develop' }}
 
     steps:
-      - name: Placeholder for deployment
-        run: echo "CD steps will be defined here"
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install .NET Aspire workload
+        run: dotnet workload install aspire
+
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Install azd
+        uses: Azure/setup-azd@v1.0.0
+
+      - name: Log in with Azure Developer CLI
+        run: |
+          azd auth login \
+            --client-id ${{ secrets.AZURE_CLIENT_ID }} \
+            --client-secret ${{ secrets.AZURE_CLIENT_SECRET }} \
+            --tenant-id ${{ secrets.AZURE_TENANT_ID }}
+
+      - name: Provision and Deploy
+        run: |
+          azd env new ${{ vars.AZURE_ENV_NAME }} --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }} --location ${{ vars.AZURE_LOCATION }}
+          azd env set AZURE_RESOURCE_GROUP ${{ vars.RESOURCE_GROUP }}
+
+          # Set Spotify credentials
+          azd env set Spotify__ClientId "${{ secrets.Spotify_ClientId }}"
+          azd env set Spotify__ClientSecret "${{ secrets.Spotify_ClientSecret }}"
+
+          # Set YouTube settings
+          azd env set YouTube__GeographicLocation "${{ vars.YOUTUBE_GEOGRAPHICLOCATION }}"
+
+          # Deploy
+          azd up --no-prompt
+        env:
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
+          AZURE_ENV_NAME: ${{ vars.AZURE_ENV_NAME }}
+
+      - name: Output deployment info
+        run: |
+          echo "Deployment completed to ${{ github.ref == 'refs/heads/main' && 'production' || 'develop' }} environment"
+          azd show
