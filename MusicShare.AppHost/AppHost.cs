@@ -64,9 +64,7 @@ if (!builder.ExecutionContext.IsPublishMode)
     var customDomain = builder.AddParameter("custom-domain");
     // certificateName is null on first deploy (no cert yet); set AZURE_CERTIFICATE_NAME
     // after binding the managed SSL cert in the Azure Portal.
-    var certificateName = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AZURE_CERTIFICATE_NAME"))
-        ? builder.AddParameter("certificate-name")
-        : null;
+    var certificateName = builder.AddParameter("certificate-name");
 
     frontend = frontend.PublishAsDockerFile()
         .PublishAsAzureContainerApp((module, app) =>
