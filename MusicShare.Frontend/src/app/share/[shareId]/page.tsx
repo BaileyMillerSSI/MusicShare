@@ -27,14 +27,25 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     }
 
     const artistsString = data.song.artists.join(', ');
+    const title = `${artistsString} - ${data.song.title}`;
+    const description = `Listen to ${data.song.title} from ${artistsString} across multiple platforms`;
 
     return {
-      title: `${artistsString} - ${data.song.title}`,
-      description: `Listen to ${data.song.title} from ${artistsString} across multiple platforms`,
+      title,
+      description,
       openGraph: {
-        title: `${artistsString} - ${data.song.title}`,
-        description: `Listen to ${data.song.title} from ${artistsString} across multiple platforms`,
-        images: data.song.artworkUrl ? [{ url: data.song.artworkUrl }] : [],
+        title,
+        description,
+        type: 'music.song',
+        images: data.song.artworkUrl
+          ? [{ url: data.song.artworkUrl, width: 300, height: 300, alt: title }]
+          : [],
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title,
+        description,
+        images: data.song.artworkUrl ? [data.song.artworkUrl] : [],
       },
     };
   } catch {
