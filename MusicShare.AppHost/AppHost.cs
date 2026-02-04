@@ -61,15 +61,15 @@ if (!builder.ExecutionContext.IsPublishMode)
         .WithAzdResourceNaming();
 
     // Custom domain for the frontend (values are supplied at deploy time by azd)
-    var customDomain = builder.AddParameter("custom-domain");
+    //var customDomain = builder.AddParameter("custom-domain");
     // certificateName is null on first deploy (no cert yet); set AZURE_CERTIFICATE_NAME
     // after binding the managed SSL cert in the Azure Portal.
-    var certificateName = builder.AddParameter("certificate-name");
+    //var certificateName = builder.AddParameter("certificate-name");
 
     frontend = frontend.PublishAsDockerFile()
         .PublishAsAzureContainerApp((module, app) =>
         {
-            app.ConfigureCustomDomain(customDomain, certificateName);
+            //app.ConfigureCustomDomain(customDomain, certificateName);
             app.Template.Scale.MinReplicas = 0;
             app.Template.Scale.MaxReplicas = 1;
         });
