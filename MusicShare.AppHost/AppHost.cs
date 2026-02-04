@@ -56,6 +56,8 @@ if (!builder.ExecutionContext.IsPublishMode)
     rabbitmq.WithManagementPlugin();
 }else
 {
+    builder.AddAzureContainerAppEnvironment("acaenv");
+
     // Custom domain for the frontend (values are supplied at deploy time by azd)
     var customDomain = builder.AddParameter("custom-domain");
     var certificateName = builder.AddParameter("certificate-name", string.Empty);
