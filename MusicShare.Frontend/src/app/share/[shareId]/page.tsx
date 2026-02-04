@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { type ShareResultResponse } from '../../../lib/api';
 import { ResultPoller } from '../../../components/ResultPoller';
 
@@ -7,6 +8,42 @@ interface PageProps {
   params: Promise<{ shareId: string }>;
 }
 
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { shareId } = await params;
+
+  const apiBase =
+    process.env.services__api__https__0 ??
+    process.env.services__api__http__0 ??
+    '.';
+
+  try {
+    const res = await fetch(`${apiBase}/api/share/${shareId}`);
+    const data: ShareResultResponse = await res.json();
+
+    if (!data.song) {
+      return {
+        title: 'Share Result',
+      };
+    }
+
+    const artistsString = data.song.artists.join(', ');
+
+    return {
+      title: `${artistsString} - ${data.song.title}`,
+      description: `Listen to ${data.song.title} from ${artistsString} across multiple platforms`,
+      openGraph: {
+        title: `${artistsString} - ${data.song.title}`,
+        description: `Listen to ${data.song.title} from ${artistsString} across multiple platforms`,
+        images: data.song.artworkUrl ? [{ url: data.song.artworkUrl }] : [],
+      },
+    };
+  } catch {
+    return {
+      title: 'Share Result',
+    };
+  }
+}
+
 export default async function ShareResultPage({ params }: PageProps) {
   const { shareId } = await params;
 
@@ -14,7 +51,7 @@ export default async function ShareResultPage({ params }: PageProps) {
   const apiBase =
     process.env.services__api__https__0 ??
     process.env.services__api__http__0 ??
-    'http://localhost:5222';
+    '.';
 
   const res = await fetch(`${apiBase}/api/share/${shareId}`);
   const data: ShareResultResponse = await res.json();

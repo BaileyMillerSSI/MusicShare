@@ -18,7 +18,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'shareId is required' }, { status: 400 });
   }
 
+  console.log(`Starting revalidation for shareId: ${shareId}`);
   revalidatePath(`/share/${shareId}`);
+  console.log(`Finished revalidation for shareId: ${shareId}`);
 
   return NextResponse.json({ revalidated: true, shareId });
 }
