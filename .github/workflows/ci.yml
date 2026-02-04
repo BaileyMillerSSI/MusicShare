@@ -114,6 +114,7 @@ jobs:
           AZURE_SPOTIFY_CLIENTID: ${{ secrets.SPOTIFY_CLIENTID }}
           AZURE_SPOTIFY_CLIENTSECRET: ${{ secrets.SPOTIFY_CLIENTSECRET }}
           AZURE_YOUTUBE_GEOGRAPHICLOCATION: ${{ vars.YOUTUBE_GEOGRAPHICLOCATION }}
+          AZURE_REVALIDATION_SECRET: ${{ secrets.REVALIDATION_SECRET }}
 
       - name: Deploy Application
         run: azd deploy --no-prompt
@@ -128,6 +129,7 @@ jobs:
           AZURE_SPOTIFY_CLIENTID: ${{ secrets.SPOTIFY_CLIENTID }}
           AZURE_SPOTIFY_CLIENTSECRET: ${{ secrets.SPOTIFY_CLIENTSECRET }}
           AZURE_YOUTUBE_GEOGRAPHICLOCATION: ${{ vars.YOUTUBE_GEOGRAPHICLOCATION }}
+          AZURE_REVALIDATION_SECRET: ${{ secrets.REVALIDATION_SECRET }}
 
       - name: Output deployment info
         run: |

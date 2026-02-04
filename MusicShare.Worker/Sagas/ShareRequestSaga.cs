@@ -1,4 +1,5 @@
 using MassTransit;
+using System.Net.Http.Json;
 using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
 using MusicShare.Persistence.Entities;
@@ -176,15 +177,21 @@ public class CompleteSagaActivity :
 {
     private readonly ISongRepository _songRepository;
     private readonly IShareRequestRepository _shareRequestRepository;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<CompleteSagaActivity> _logger;
 
     public CompleteSagaActivity(
         ISongRepository songRepository,
         IShareRequestRepository shareRequestRepository,
+        IHttpClientFactory httpClientFactory,
+        IConfiguration configuration,
         ILogger<CompleteSagaActivity> logger)
     {
         _songRepository = songRepository;
         _shareRequestRepository = shareRequestRepository;
+        _httpClientFactory = httpClientFactory;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -247,6 +254,47 @@ public class CompleteSagaActivity :
         {
             shareRequest.Status = ShareStatus.Completed;
             await _shareRequestRepository.UpdateAsync(shareRequest);
+        }
+
+        // Trigger Next.js on-demand ISR revalidation for this share page
+        await TriggerRevalidationAsync(saga.ShareId);
+    }
+
+    private async Task TriggerRevalidationAsync(string shareId)
+    {
+        var secret = _configuration["RevalidationSecret"];
+        var frontendUrl =
+            _configuration.GetConnectionString("frontend") ??
+            _configuration["services__frontend__https__0"] ??
+            _configuration["services__frontend__http__0"];
+
+        if (string.IsNullOrEmpty(secret) || string.IsNullOrEmpty(frontendUrl))
+        {
+            _logger.LogWarning(
+                "Skipping revalidation for ShareId={ShareId}: secret or frontend URL not configured",
+                shareId);
+            return;
+        }
+
+        try
+        {
+            using var client = _httpClientFactory.CreateClient();
+
+            var request = new HttpRequestMessage(HttpMethod.Post, $"{frontendUrl}/api/revalidate");
+            request.Headers.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", secret);
+            request.Content = JsonContent.Create(new { shareId });
+
+            var response = await client.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+
+            _logger.LogInformation("Revalidation triggered for ShareId={ShareId}", shareId);
+        }
+        catch (Exception ex)
+        {
+            // Non-fatal: client-side polling still delivers the result.
+            _logger.LogWarning(ex,
+                "Failed to trigger revalidation for ShareId={ShareId}", shareId);
         }
     }
 

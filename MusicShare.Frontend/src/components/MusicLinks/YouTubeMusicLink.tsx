@@ -1,6 +1,7 @@
 import type { ServiceLinkProps } from ".";
-import Icon from "../../assets/YT_Music_Icon.svg";
 import BaseMusicLink from "./BaseMusicLink";
+
+const Icon = "/YT_Music_Icon.svg";
 
 export default function YouTubeMusicLink({ url }: Readonly<ServiceLinkProps>) {
     return (

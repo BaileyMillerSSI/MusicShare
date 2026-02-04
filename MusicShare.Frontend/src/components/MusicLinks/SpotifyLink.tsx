@@ -1,6 +1,7 @@
 import type { ServiceLinkProps } from ".";
-import Icon from "../../assets/Spotify_Icon.svg";
 import BaseMusicLink from "./BaseMusicLink";
+
+const Icon = "/Spotify_Icon.svg";
 
 export default function SpotifyLink({ url }: Readonly<ServiceLinkProps>) {
     return (
