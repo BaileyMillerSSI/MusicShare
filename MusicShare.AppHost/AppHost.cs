@@ -56,8 +56,9 @@ if (!builder.ExecutionContext.IsPublishMode)
     rabbitmq.WithManagementPlugin();
 }else
 {
-    var acaEnvName = Environment.GetEnvironmentVariable("AZURE_ACA_ENV_NAME") ?? "acaenv";
-    builder.AddAzureContainerAppEnvironment(acaEnvName);
+    
+    builder.AddAzureContainerAppEnvironment("aca-env")
+        .WithAzdResourceNaming();
 
     // Custom domain for the frontend (values are supplied at deploy time by azd)
     var customDomain = builder.AddParameter("custom-domain");
