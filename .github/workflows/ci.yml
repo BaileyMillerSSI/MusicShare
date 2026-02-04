@@ -108,6 +108,7 @@ jobs:
           AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
           AZURE_ENV_NAME: ${{ vars.AZURE_ENV_NAME }}
           AZURE_RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
+          AZURE_ACA_ENV_NAME: ${{ vars.ACA_ENV_NAME }}
           AZURE_MONGODB_PASSWORD: ${{ secrets.MONGODB_PASSWORD }}
           AZURE_RABBITMQ_USERNAME: ${{ secrets.RABBITMQ_USERNAME }}
           AZURE_RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
@@ -125,6 +126,7 @@ jobs:
           AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
           AZURE_ENV_NAME: ${{ vars.AZURE_ENV_NAME }}
           AZURE_RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
+          AZURE_ACA_ENV_NAME: ${{ vars.ACA_ENV_NAME }}
           AZURE_MONGODB_PASSWORD: ${{ secrets.MONGODB_PASSWORD }}
           AZURE_RABBITMQ_USERNAME: ${{ secrets.RABBITMQ_USERNAME }}
           AZURE_RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
