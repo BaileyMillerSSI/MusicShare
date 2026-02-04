@@ -101,28 +101,33 @@ jobs:
             --client-secret ${{ secrets.AZURE_CLIENT_SECRET }} \
             --tenant-id ${{ secrets.AZURE_TENANT_ID }}
 
-      - name: Provision and Deploy
-        run: |
-          azd env select ${{ vars.AZURE_ENV_NAME }} 2>/dev/null || azd env new ${{ vars.AZURE_ENV_NAME }} --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }} --location ${{ vars.AZURE_LOCATION }}
-          azd env set AZURE_RESOURCE_GROUP ${{ vars.RESOURCE_GROUP }}
-
-          # Set RabbitMQ credentials (required by AppHost parameters)
-          azd env set RABBITMQ_USERNAME "${{ secrets.RABBITMQ_USERNAME }}"
-          azd env set RABBITMQ_PASSWORD "${{ secrets.RABBITMQ_PASSWORD }}"
-
-          # Set Spotify credentials (required by AppHost parameters)
-          azd env set SPOTIFY__CLIENTID "${{ secrets.SPOTIFY_CLIENTID }}"
-          azd env set SPOTIFY__CLIENTSECRET "${{ secrets.SPOTIFY_CLIENTSECRET }}"
-
-          # Set YouTube settings
-          azd env set YOUTUBE__GEOGRAPHICLOCATION "${{ vars.YOUTUBE_GEOGRAPHICLOCATION }}"
-
-          # Deploy
-          azd up --no-prompt
+      - name: Provision Infrastructure
+        run: azd provision --no-prompt
         env:
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
           AZURE_ENV_NAME: ${{ vars.AZURE_ENV_NAME }}
+          AZURE_RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
+          AZURE_MONGODB_PASSWORD: ${{ secrets.MONGODB_PASSWORD }}
+          AZURE_RABBITMQ_USERNAME: ${{ secrets.RABBITMQ_USERNAME }}
+          AZURE_RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
+          AZURE_SPOTIFY_CLIENTID: ${{ secrets.SPOTIFY_CLIENTID }}
+          AZURE_SPOTIFY_CLIENTSECRET: ${{ secrets.SPOTIFY_CLIENTSECRET }}
+          AZURE_YOUTUBE_GEOGRAPHICLOCATION: ${{ vars.YOUTUBE_GEOGRAPHICLOCATION }}
+
+      - name: Deploy Application
+        run: azd deploy --no-prompt
+        env:
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
+          AZURE_ENV_NAME: ${{ vars.AZURE_ENV_NAME }}
+          AZURE_RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
+          AZURE_MONGODB_PASSWORD: ${{ secrets.MONGODB_PASSWORD }}
+          AZURE_RABBITMQ_USERNAME: ${{ secrets.RABBITMQ_USERNAME }}
+          AZURE_RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
+          AZURE_SPOTIFY_CLIENTID: ${{ secrets.SPOTIFY_CLIENTID }}
+          AZURE_SPOTIFY_CLIENTSECRET: ${{ secrets.SPOTIFY_CLIENTSECRET }}
+          AZURE_YOUTUBE_GEOGRAPHICLOCATION: ${{ vars.YOUTUBE_GEOGRAPHICLOCATION }}
 
       - name: Output deployment info
         run: |
