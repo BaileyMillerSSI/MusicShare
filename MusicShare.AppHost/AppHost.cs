@@ -59,11 +59,13 @@ if (!builder.ExecutionContext.IsPublishMode)
     var acaEnvName = Environment.GetEnvironmentVariable("AZURE_ACA_ENV_NAME") ?? "acaenv";
     builder.AddAzureContainerAppEnvironment(acaEnvName);
 
-    // Custom domain for the frontend (values are supplied at deploy time by azd).
-    // On first deploy, leave AZURE_CERTIFICATE_NAME empty — no cert is bound yet.
-    // After binding the managed SSL cert in the Azure Portal, set it to the cert name.
+    // Custom domain for the frontend (values are supplied at deploy time by azd)
     var customDomain = builder.AddParameter("custom-domain");
-    var certificateName = builder.AddParameter("certificate-name", string.Empty);
+    // certificateName is null on first deploy (no cert yet); set AZURE_CERTIFICATE_NAME
+    // after binding the managed SSL cert in the Azure Portal.
+    var certificateName = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AZURE_CERTIFICATE_NAME"))
+        ? builder.AddParameter("certificate-name")
+        : null;
 
     frontend = frontend.PublishAsDockerFile()
         .PublishAsAzureContainerApp((module, app) =>
