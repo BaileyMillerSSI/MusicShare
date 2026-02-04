@@ -6,10 +6,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.Azure.AppContainers" Version="13.1.0" />
     <PackageReference Include="Aspire.Hosting.MongoDB" Version="13.1.0" />
     <PackageReference Include="Aspire.Hosting.JavaScript" Version="13.1.0" />
     <PackageReference Include="Aspire.Hosting.RabbitMQ" Version="13.1.0" />
-    <PackageReference Include="Aspire.Hosting.Yarp" Version="13.1.0" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -17,6 +17,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <NoWarn>$(NoWarn);ASPIREACADOMAINS001</NoWarn>
     <UserSecretsId>cc3bed15-222b-471f-b536-4109d9639f5f</UserSecretsId>
   </PropertyGroup>
 

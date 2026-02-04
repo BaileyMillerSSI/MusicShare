@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <!-- App background gradient (purple → pink, matching page.tsx) -->
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#a855f7"/>
+      <stop offset="100%" stop-color="#ec4899"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded-square background -->
+  <rect width="64" height="64" rx="14" ry="14" fill="url(#bg)"/>
+
+  <!-- Music-note stem (white, thick enough to read at 16px) -->
+  <rect x="20" y="24" width="5" height="26" rx="2.5" fill="#ffffff"/>
+
+  <!-- Note head (white filled circle) -->
+  <ellipse cx="22.5" cy="50" rx="7" ry="5.5" transform="rotate(-15 22.5 50)" fill="#ffffff"/>
+
+  <!--
+    Three concentric arcs radiating from the note head.
+    Colours pulled from the service icons already in /public:
+      Spotify green  #1DB954
+      Apple Music    #FB5C74  (lighter stop of the Apple gradient)
+      YouTube Music  #FF0000
+  -->
+
+  <!-- Inner arc – Spotify green -->
+  <path
+    d="M 33 38 A 12 12 0 0 1 33 52"
+    fill="none"
+    stroke="#1DB954"
+    stroke-width="3.2"
+    stroke-linecap="round"
+  />
+
+  <!-- Middle arc – Apple Music pink -->
+  <path
+    d="M 37 34 A 17 17 0 0 1 37 56"
+    fill="none"
+    stroke="#FB5C74"
+    stroke-width="3.2"
+    stroke-linecap="round"
+  />
+
+  <!-- Outer arc – YouTube Music red -->
+  <path
+    d="M 41 30 A 22 22 0 0 1 41 60"
+    fill="none"
+    stroke="#FF0000"
+    stroke-width="3.2"
+    stroke-linecap="round"
+  />
+</svg>
