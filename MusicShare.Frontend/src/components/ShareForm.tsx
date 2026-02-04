@@ -7,9 +7,25 @@ import { api } from '../lib/api';
 
 export function ShareForm() {
   const searchParams = useSearchParams();
-  const urlFromQuery = searchParams.get('url');
   const router = useRouter();
 
+  // Handle share target parameters - URL can come from 'url' or 'text' param
+  const getSharedUrl = (): string | null => {
+    const urlParam = searchParams.get('url');
+    if (urlParam) return urlParam;
+
+    // Some apps put the URL in the 'text' parameter
+    const textParam = searchParams.get('text');
+    if (textParam) {
+      // Extract URL from text if present
+      const urlMatch = textParam.match(/https?:\/\/[^\s]+/);
+      if (urlMatch) return urlMatch[0];
+    }
+
+    return null;
+  };
+
+  const urlFromQuery = getSharedUrl();
   const [url, setUrl] = useState(urlFromQuery ?? '');
   const [wasAutoSubmit] = useState(!!urlFromQuery);
   const hasTriggered = useRef(false);
