@@ -117,9 +117,6 @@ jobs:
           AZURE_YOUTUBE_GEOGRAPHICLOCATION: ${{ vars.YOUTUBE_GEOGRAPHICLOCATION }}
           AZURE_REVALIDATION_SECRET: ${{ secrets.REVALIDATION_SECRET }}
           AZURE_CUSTOM_DOMAIN: ${{ vars.sub_domain }}.${{ vars.domain }}
-          # Only set AZURE_CERTIFICATE_NAME if vars.certificate_name is defined and non-empty
-          # This prevents azd from prompting for the parameter when it's not needed
-          ${{ vars.certificate_name && 'AZURE_CERTIFICATE_NAME' || '_SKIP_CERT' }}: ${{ vars.certificate_name || 'unused' }}
 
       - name: Deploy Application
         run: azd deploy --no-prompt
@@ -137,8 +134,6 @@ jobs:
           AZURE_YOUTUBE_GEOGRAPHICLOCATION: ${{ vars.YOUTUBE_GEOGRAPHICLOCATION }}
           AZURE_REVALIDATION_SECRET: ${{ secrets.REVALIDATION_SECRET }}
           AZURE_CUSTOM_DOMAIN: ${{ vars.sub_domain }}.${{ vars.domain }}
-          # Only set AZURE_CERTIFICATE_NAME if vars.certificate_name is defined and non-empty
-          ${{ vars.certificate_name && 'AZURE_CERTIFICATE_NAME' || '_SKIP_CERT' }}: ${{ vars.certificate_name || 'unused' }}
 
       - name: Output deployment info
         run: |
