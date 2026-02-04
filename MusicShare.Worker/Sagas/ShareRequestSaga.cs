@@ -264,7 +264,6 @@ public class CompleteSagaActivity :
     {
         var secret = _configuration["RevalidationSecret"];
         var frontendUrl =
-            _configuration.GetConnectionString("frontend") ??
             _configuration["services__frontend__https__0"] ??
             _configuration["services__frontend__http__0"];
 

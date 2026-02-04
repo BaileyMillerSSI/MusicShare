@@ -22,7 +22,12 @@ var api = builder.AddProject<Projects.MusicShare_Api>("api")
     .WithEnvironment("Spotify__ClientId", spotifyClientId)
     .WithEnvironment("Spotify__ClientSecret", spotifyClientSecret)
     .WaitFor(mongodb)
-    .WaitFor(rabbitmq);
+    .WaitFor(rabbitmq)
+    .PublishAsAzureContainerApp((module, app) =>
+    {
+        app.Template.Scale.MinReplicas = 0;
+        app.Template.Scale.MaxReplicas = 1;
+    });
 
 // Frontend (Next.js)
 var frontend = builder.AddJavaScriptApp("frontend", "../MusicShare.Frontend")
@@ -49,6 +54,19 @@ if (!builder.ExecutionContext.IsPublishMode)
 {
     mongodb.WithMongoExpress();
     rabbitmq.WithManagementPlugin();
+}else
+{
+    // Custom domain for the frontend (values are supplied at deploy time by azd)
+    var customDomain = builder.AddParameter("custom-domain");
+    var certificateName = builder.AddParameter("certificate-name", string.Empty);
+
+    frontend = frontend.PublishAsDockerFile()
+        .PublishAsAzureContainerApp((module, app) =>
+        {
+            app.ConfigureCustomDomain(customDomain, certificateName);
+            app.Template.Scale.MinReplicas = 0;
+            app.Template.Scale.MaxReplicas = 1;
+        });
 }
 
-builder.Build().Run();
+    builder.Build().Run();

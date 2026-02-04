@@ -6,6 +6,7 @@ const apiTarget =
   'http://localhost:5222';
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
   rewrites: async () => [
     {
       source: '/api/:path*',
