@@ -194,6 +194,9 @@ publish/
 # in these scripts will be unencrypted
 PublishScripts/
 
+# Azure Developer CLI (azd) environment folder
+.azure/
+
 # NuGet Packages
 *.nupkg
 # NuGet Symbol Packages
@@ -409,3 +412,4 @@ nul
 # Project-specific ignores
 **/appsettings.Development.json
 
+.azure

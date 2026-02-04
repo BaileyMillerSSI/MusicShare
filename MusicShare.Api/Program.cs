@@ -1,13 +1,11 @@
 using MusicShare.Api.Services;
-using MusicShare.Contracts;
 using MusicShare.MusicAdapters.Services.Extensions;
 using MusicShare.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
-
+builder.AddServiceDefaults();
 // Add services to the container
 builder.Services.AddControllers();
-builder.Services.AddOpenApi();
 
 // Add MediatR
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
@@ -23,9 +21,6 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Add persistence layer
-builder.AddPersistence();
-
 // Add services
 builder.Services.AddScoped<IShareRequestService, ShareRequestService>();
 builder.AddMusicServices();
@@ -34,12 +29,6 @@ builder.AddMusicServices();
 builder.AddMessageAccess(typeof(Program).Assembly);
 
 var app = builder.Build();
-
-// Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
 
 app.UseHttpsRedirection();
 app.UseCors();

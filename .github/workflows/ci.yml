@@ -3,7 +3,18 @@ name: CI
 on:
   push:
     branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Required for azure-dev.yml to authenticate with Azure
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
   frontend:
@@ -55,13 +66,70 @@ jobs:
       - name: Test
         run: dotnet test MusicShare.slnx --no-build --configuration Release --verbosity normal
 
-  # Future deployment jobs can be added here
-  # deploy-staging:
-  #   needs: [frontend, backend]
-  #   if: github.ref == 'refs/heads/develop'
-  #   ...
-  #
-  # deploy-production:
-  #   needs: [frontend, backend]
-  #   if: github.ref == 'refs/heads/main'
-  #   ...
+  # CD steps - only run on push or manual trigger, not on PRs
+  deploy:
+    name: Deploy
+    needs: [frontend, backend]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'develop' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install .NET Aspire workload
+        run: dotnet workload install aspire
+
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Install azd
+        uses: Azure/setup-azd@v2
+
+      - name: Log in with Azure Developer CLI
+        run: |
+          azd auth login \
+            --client-id ${{ secrets.AZURE_CLIENT_ID }} \
+            --client-secret ${{ secrets.AZURE_CLIENT_SECRET }} \
+            --tenant-id ${{ secrets.AZURE_TENANT_ID }}
+
+      - name: Provision Infrastructure
+        run: azd provision --no-prompt
+        env:
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
+          AZURE_ENV_NAME: ${{ vars.AZURE_ENV_NAME }}
+          AZURE_RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
+          AZURE_MONGODB_PASSWORD: ${{ secrets.MONGODB_PASSWORD }}
+          AZURE_RABBITMQ_USERNAME: ${{ secrets.RABBITMQ_USERNAME }}
+          AZURE_RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
+          AZURE_SPOTIFY_CLIENTID: ${{ secrets.SPOTIFY_CLIENTID }}
+          AZURE_SPOTIFY_CLIENTSECRET: ${{ secrets.SPOTIFY_CLIENTSECRET }}
+          AZURE_YOUTUBE_GEOGRAPHICLOCATION: ${{ vars.YOUTUBE_GEOGRAPHICLOCATION }}
+
+      - name: Deploy Application
+        run: azd deploy --no-prompt
+        env:
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
+          AZURE_ENV_NAME: ${{ vars.AZURE_ENV_NAME }}
+          AZURE_RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
+          AZURE_MONGODB_PASSWORD: ${{ secrets.MONGODB_PASSWORD }}
+          AZURE_RABBITMQ_USERNAME: ${{ secrets.RABBITMQ_USERNAME }}
+          AZURE_RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
+          AZURE_SPOTIFY_CLIENTID: ${{ secrets.SPOTIFY_CLIENTID }}
+          AZURE_SPOTIFY_CLIENTSECRET: ${{ secrets.SPOTIFY_CLIENTSECRET }}
+          AZURE_YOUTUBE_GEOGRAPHICLOCATION: ${{ vars.YOUTUBE_GEOGRAPHICLOCATION }}
+
+      - name: Output deployment info
+        run: |
+          echo "Deployment completed to ${{ github.ref == 'refs/heads/main' && 'production' || 'develop' }} environment"
+          azd show

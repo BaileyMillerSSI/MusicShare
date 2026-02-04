@@ -8,17 +8,14 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MassTransit" Version="9.0.0" />
-    <PackageReference Include="MassTransit.RabbitMQ" Version="9.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.2" />
-	<PackageReference Include="Microsoft.Extensions.Http" Version="10.0.1" />
-	<PackageReference Include="Microsoft.Extensions.Options" Version="10.0.2" />
-	<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.2" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\MusicShare.Contracts\MusicShare.Contracts.csproj" />
     <ProjectReference Include="..\MusicShare.MusicAdapters\MusicShare.MusicAdapters.csproj" />
-    <ProjectReference Include="..\MusicShare.Persistence\MusicShare.Persistence.csproj" />
+    <ProjectReference Include="..\MusicShare.ServiceDefaults\MusicShare.ServiceDefaults.csproj" />
   </ItemGroup>
 </Project>
