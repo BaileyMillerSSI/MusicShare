@@ -107,15 +107,15 @@ jobs:
           azd env set AZURE_RESOURCE_GROUP ${{ vars.RESOURCE_GROUP }}
 
           # Set RabbitMQ credentials (required by AppHost parameters)
-          azd env set rabbitmq-username "${{ secrets.RABBITMQ_USERNAME }}"
-          azd env set rabbitmq-password "${{ secrets.RABBITMQ_PASSWORD }}"
+          azd env set RABBITMQ_USERNAME "${{ secrets.RABBITMQ_USERNAME }}"
+          azd env set RABBITMQ_PASSWORD "${{ secrets.RABBITMQ_PASSWORD }}"
 
           # Set Spotify credentials (required by AppHost parameters)
-          azd env set spotify-clientid "${{ secrets.SPOTIFY_CLIENTID }}"
-          azd env set spotify-clientsecret "${{ secrets.SPOTIFY_CLIENTSECRET }}"
+          azd env set SPOTIFY__CLIENTID "${{ secrets.SPOTIFY_CLIENTID }}"
+          azd env set SPOTIFY__CLIENTSECRET "${{ secrets.SPOTIFY_CLIENTSECRET }}"
 
           # Set YouTube settings
-          azd env set YouTube__GeographicLocation "${{ vars.YOUTUBE_GEOGRAPHICLOCATION }}"
+          azd env set YOUTUBE__GEOGRAPHICLOCATION "${{ vars.YOUTUBE_GEOGRAPHICLOCATION }}"
 
           # Deploy
           azd up --no-prompt
