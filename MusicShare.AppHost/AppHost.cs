@@ -56,20 +56,26 @@ if (!builder.ExecutionContext.IsPublishMode)
     rabbitmq.WithManagementPlugin();
 }else
 {
-    
     builder.AddAzureContainerAppEnvironment("aca-env")
         .WithAzdResourceNaming();
 
-    // Custom domain for the frontend (values are supplied at deploy time by azd)
-    //var customDomain = builder.AddParameter("custom-domain");
-    // certificateName is null on first deploy (no cert yet); set AZURE_CERTIFICATE_NAME
-    // after binding the managed SSL cert in the Azure Portal.
-    //var certificateName = builder.AddParameter("certificate-name");
+
+    IResourceBuilder<ParameterResource> customDomain = builder.AddParameter("custom-domain");
+    IResourceBuilder<ParameterResource> certificateName = null!;
+
+    var azureCertName = Environment.GetEnvironmentVariable("AZURE_CERTIFICATE_NAME");
+    if (!string.IsNullOrWhiteSpace(azureCertName))
+    {
+        certificateName = builder.AddParameter("certificate-name", azureCertName);
+    }
 
     frontend = frontend.PublishAsDockerFile()
         .PublishAsAzureContainerApp((module, app) =>
         {
-            //app.ConfigureCustomDomain(customDomain, certificateName);
+            if (!string.IsNullOrWhiteSpace(azureCertName) && certificateName != null)
+            {
+                app.ConfigureCustomDomain(customDomain, certificateName);
+            }
             app.Template.Scale.MinReplicas = 0;
             app.Template.Scale.MaxReplicas = 1;
         });
