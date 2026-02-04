@@ -1,5 +1,6 @@
 import type { ServiceLinkProps } from ".";
-import Icon from "../../assets/Apple_Music_Icon.svg";
+
+const Icon = "/Apple_Music_Icon.svg";
 
 export default function AppleMusicLink({ url }: Readonly<ServiceLinkProps>) {
     return (
