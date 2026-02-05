@@ -10,7 +10,7 @@ MusicShare is a full-stack web application that allows users to share music URLs
 
 - GitHub repo: https://github.com/BaileyMillerSSI/MusicShare
 - Default base branch: main
-- Create feature branches as: feature/issue-<number>-<short-name>
+- Create feature branches as: feat/issue-<number>-<short-name>
 - Keep commits small and logical
 - Follow existing coding conventions
 - Do not refactor unrelated code
@@ -319,3 +319,32 @@ OpenTelemetry is configured for:
 - Apple Music adapter is currently a mock implementation
 - Frontend uses ISR (Incremental Static Regeneration) with on-demand revalidation
 - Saga state is persisted in MongoDB with concurrency handling
+
+## Project Agents
+
+Use specialized agents for domain-specific tasks:
+
+### react-component-expert
+Use for React/Next.js frontend work including:
+- Creating or refactoring React components in `MusicShare.Frontend/src/components/`
+- Next.js App Router pages and layouts
+- Tailwind CSS styling
+- React Query integration
+- TypeScript types for frontend
+
+### infra-devops-owner
+Use for infrastructure and DevOps tasks including:
+- .NET Aspire AppHost configuration (`MusicShare.AppHost/`)
+- GitHub Actions CI/CD workflows (`.github/workflows/`)
+- Service wiring and dependency injection in `Program.cs` files
+- Environment variables and secrets management
+- Azure Container Apps deployment configuration
+- MassTransit/RabbitMQ configuration
+
+### react-native-engineer
+Use for React Native mobile app development including:
+- Building mobile UI components and screens
+- Navigation flows and routing
+- Custom hooks and state management
+- Mobile-specific styling and animations
+- Performance optimization for mobile

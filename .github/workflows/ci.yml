@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, 'feature/**', 'feat/**']
   pull_request:
-    branches: [main, develop]
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   frontend:
-    name: Frontend Build & Lint
+    name: Frontend Lint, Test & Build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -40,6 +40,9 @@ jobs:
 
       - name: Run linting
         run: npm run lint
+
+      - name: Run tests
+        run: npm run test
 
       - name: Build
         run: npm run build

@@ -1,6 +1,6 @@
 {
-  "name": "MusicShare",
-  "short_name": "MusicShare",
+  "name": "Music Share",
+  "short_name": "Music Share",
   "description": "Share music across platforms",
   "start_url": "/",
   "display": "standalone",
