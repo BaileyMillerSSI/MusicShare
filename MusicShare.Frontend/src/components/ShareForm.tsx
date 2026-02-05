@@ -29,6 +29,7 @@ export function ShareForm() {
   const [url, setUrl] = useState(urlFromQuery ?? '');
   const [wasAutoSubmit] = useState(!!urlFromQuery);
   const hasTriggered = useRef(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const submitMutation = useMutation({
     mutationFn: (url: string) => api.submitShare(url),
@@ -44,6 +45,17 @@ export function ShareForm() {
       submitMutation.mutate(url);
     }
   }, [wasAutoSubmit, submitMutation, url, router]);
+
+  // Auto-focus input on mount for better mobile UX (skip if auto-submitting)
+  useEffect(() => {
+    if (!wasAutoSubmit && inputRef.current) {
+      // Small delay to ensure DOM is ready and avoid iOS keyboard issues
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [wasAutoSubmit]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,8 +79,11 @@ export function ShareForm() {
             Paste a song URL
           </label>
           <input
+            ref={inputRef}
             id="url"
             type="url"
+            inputMode="url"
+            autoComplete="url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://open.spotify.com/track/..."
