@@ -29,6 +29,3 @@ public/sw.js
 public/sw.js.map
 public/swe-worker-*.js
 
-# Generated PWA icons
-public/icons/
-public/apple-touch-icon.png
