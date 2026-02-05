@@ -6,8 +6,8 @@ function IOSInstallInstructions({
   onDismiss,
 }: Readonly<{ onDismiss: () => void }>) {
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-t-xl sm:rounded-xl max-w-md w-full p-6">
+    <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50 md:p-4">
+      <div className="bg-white rounded-xl max-w-md w-full p-6">
         <h2 className="text-xl font-bold text-gray-800 mb-4">
           Install MusicShare
         </h2>
@@ -17,7 +17,7 @@ function IOSInstallInstructions({
 
         <ol className="space-y-4 mb-6">
           <li className="flex items-start gap-3">
-            <span className="flex-shrink-0 w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-sm font-medium">
+            <span className="shrink-0 w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-sm font-medium">
               1
             </span>
             <span className="text-gray-700">
@@ -39,7 +39,7 @@ function IOSInstallInstructions({
             </span>
           </li>
           <li className="flex items-start gap-3">
-            <span className="flex-shrink-0 w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-sm font-medium">
+            <span className="shrink-0 w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-sm font-medium">
               2
             </span>
             <span className="text-gray-700">
@@ -47,7 +47,7 @@ function IOSInstallInstructions({
             </span>
           </li>
           <li className="flex items-start gap-3">
-            <span className="flex-shrink-0 w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-sm font-medium">
+            <span className="shrink-0 w-6 h-6 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-sm font-medium">
               3
             </span>
             <span className="text-gray-700">
@@ -72,7 +72,7 @@ function InstallBanner({
   onDismiss,
 }: Readonly<{ onInstall: () => void; onDismiss: () => void }>) {
   return (
-    <div className="fixed bottom-0 md:bottom-auto md:top-0 left-0 right-0 bg-white border-t md:border-t-0 md:border-b border-gray-200 shadow-lg p-4 z-50">
+    <div className="fixed bottom-0 left-0 right-0 bg-white border-t md:border-t-0 md:border-b lg:border-b-0 lg:border-t border-gray-200 shadow-lg p-4 z-50">
       <div className="max-w-2xl mx-auto flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
