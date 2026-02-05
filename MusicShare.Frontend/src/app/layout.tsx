@@ -1,5 +1,6 @@
 import './globals.css';
 import { QueryClientWrapper } from '../components/QueryClientWrapper';
+import { PWAInstallPrompt } from '../components/PWAInstallPrompt';
 import type { Metadata, Viewport } from 'next';
 
 export const metadata: Metadata = {
@@ -34,7 +35,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <QueryClientWrapper>{children}</QueryClientWrapper>
+        <QueryClientWrapper>
+          {children}
+          <PWAInstallPrompt />
+        </QueryClientWrapper>
       </body>
     </html>
   );

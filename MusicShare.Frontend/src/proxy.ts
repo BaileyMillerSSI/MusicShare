@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const apiTarget =
     process.env.services__api__https__0 ??
     process.env.services__api__http__0 ??
