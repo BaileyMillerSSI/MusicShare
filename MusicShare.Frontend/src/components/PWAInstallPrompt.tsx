@@ -72,7 +72,7 @@ function InstallBanner({
   onDismiss,
 }: Readonly<{ onInstall: () => void; onDismiss: () => void }>) {
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg p-4 z-50">
+    <div className="fixed bottom-0 md:bottom-auto md:top-0 left-0 right-0 bg-white border-t md:border-t-0 md:border-b border-gray-200 shadow-lg p-4 z-50">
       <div className="max-w-2xl mx-auto flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
