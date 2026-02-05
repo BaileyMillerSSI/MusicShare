@@ -8,6 +8,7 @@ MusicShare is a full-stack web application that allows users to share music URLs
 
 ## Claude Code Instructions
 
+- GitHub repo: https://github.com/BaileyMillerSSI/MusicShare
 - Default base branch: main
 - Create feature branches as: feature/issue-<number>-<short-name>
 - Keep commits small and logical
