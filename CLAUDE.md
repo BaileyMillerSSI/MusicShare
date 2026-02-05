@@ -6,6 +6,16 @@ This document provides guidance for AI assistants working on the MusicShare code
 
 MusicShare is a full-stack web application that allows users to share music URLs across different streaming platforms (Spotify, Apple Music, YouTube Music). When a user submits a song link from one service, the application resolves the same song across all supported platforms.
 
+## Claude Code Instructions
+
+- Default base branch: main
+- Create feature branches as: feature/issue-<number>-<short-name>
+- Keep commits small and logical
+- Follow existing coding conventions
+- Do not refactor unrelated code
+- If requirements are unclear, make reasonable assumptions and document them in the PR
+- Always open a PR targeting develop
+
 ## Architecture
 
 **Stack:**
