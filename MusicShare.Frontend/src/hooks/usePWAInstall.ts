@@ -19,17 +19,10 @@ interface UsePWAInstallReturn {
 export function usePWAInstall(): UsePWAInstallReturn {
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
-  const [isInstalled, setIsInstalled] = useState(false);
+  const [isInstalled, setIsInstalled] = useState(isStandalone);
   const [showDelayPassed, setShowDelayPassed] = useState(false);
-  const [dismissed, setDismissedState] = useState(false);
-  const [isIOSDevice, setIsIOSDevice] = useState(false);
-
-  // Check initial state on mount
-  useEffect(() => {
-    setIsInstalled(isStandalone());
-    setDismissedState(isDismissed());
-    setIsIOSDevice(isIOS());
-  }, []);
+  const [dismissed, setDismissedState] = useState(isDismissed);
+  const [isIOSDevice] = useState(isIOS);
 
   // Delay before showing prompt
   useEffect(() => {
