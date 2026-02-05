@@ -1,5 +1,11 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
+// Scaling configuration (defaults to 0/1 for development, configurable via environment variables for production)
+var apiMinReplicas = int.TryParse(Environment.GetEnvironmentVariable("AZURE_API_MIN_REPLICAS"), out var apiMin) ? apiMin : 0;
+var apiMaxReplicas = int.TryParse(Environment.GetEnvironmentVariable("AZURE_API_MAX_REPLICAS"), out var apiMax) ? apiMax : 1;
+var frontendMinReplicas = int.TryParse(Environment.GetEnvironmentVariable("AZURE_FRONTEND_MIN_REPLICAS"), out var feMin) ? feMin : 0;
+var frontendMaxReplicas = int.TryParse(Environment.GetEnvironmentVariable("AZURE_FRONTEND_MAX_REPLICAS"), out var feMax) ? feMax : 1;
+
 // Infrastructure
 var mongodb = builder.AddMongoDB("mongodb");
 
@@ -25,8 +31,8 @@ var api = builder.AddProject<Projects.MusicShare_Api>("api")
     .WaitFor(rabbitmq)
     .PublishAsAzureContainerApp((module, app) =>
     {
-        app.Template.Scale.MinReplicas = 0;
-        app.Template.Scale.MaxReplicas = 1;
+        app.Template.Scale.MinReplicas = apiMinReplicas;
+        app.Template.Scale.MaxReplicas = apiMaxReplicas;
     });
 
 // Frontend (Next.js)
@@ -76,8 +82,8 @@ if (!builder.ExecutionContext.IsPublishMode)
             {
                 app.ConfigureCustomDomain(customDomain, certificateName);
             }
-            app.Template.Scale.MinReplicas = 0;
-            app.Template.Scale.MaxReplicas = 1;
+            app.Template.Scale.MinReplicas = frontendMinReplicas;
+            app.Template.Scale.MaxReplicas = frontendMaxReplicas;
         });
 }
 

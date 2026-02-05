@@ -120,6 +120,10 @@ jobs:
           AZURE_REVALIDATION_SECRET: ${{ secrets.REVALIDATION_SECRET }}
           AZURE_CUSTOM_DOMAIN: ${{ vars.sub_domain }}.${{ vars.domain }}
           AZURE_CERTIFICATE_NAME: "${{ vars.certificate_name }}"
+          AZURE_API_MIN_REPLICAS: ${{ vars.API_MIN_REPLICAS }}
+          AZURE_API_MAX_REPLICAS: ${{ vars.API_MAX_REPLICAS }}
+          AZURE_FRONTEND_MIN_REPLICAS: ${{ vars.FRONTEND_MIN_REPLICAS }}
+          AZURE_FRONTEND_MAX_REPLICAS: ${{ vars.FRONTEND_MAX_REPLICAS }}
 
       - name: Deploy Application
         run: azd deploy --no-prompt
@@ -137,6 +141,10 @@ jobs:
           AZURE_REVALIDATION_SECRET: ${{ secrets.REVALIDATION_SECRET }}
           AZURE_CUSTOM_DOMAIN: ${{ vars.sub_domain }}.${{ vars.domain }}
           AZURE_CERTIFICATE_NAME: "${{ vars.certificate_name }}"
+          AZURE_API_MIN_REPLICAS: ${{ vars.API_MIN_REPLICAS }}
+          AZURE_API_MAX_REPLICAS: ${{ vars.API_MAX_REPLICAS }}
+          AZURE_FRONTEND_MIN_REPLICAS: ${{ vars.FRONTEND_MIN_REPLICAS }}
+          AZURE_FRONTEND_MAX_REPLICAS: ${{ vars.FRONTEND_MAX_REPLICAS }}
 
       - name: Output deployment info
         run: |
