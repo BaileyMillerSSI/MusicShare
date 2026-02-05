@@ -5,16 +5,18 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint .",
     "lint:fix": "eslint --fix ."
   },
   "dependencies": {
+    "@serwist/next": "^9.5.4",
     "@tanstack/react-query": "^5.90.20",
     "next": "^16.1.6",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "serwist": "^9.5.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
