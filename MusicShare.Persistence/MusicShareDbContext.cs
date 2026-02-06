@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
-using MusicShare.Contracts.Configuration;
+using MusicShare.Persistence.Configuration;
 using MusicShare.Persistence.Entities;
 
 namespace MusicShare.Persistence;

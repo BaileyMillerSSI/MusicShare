@@ -5,7 +5,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
-using MusicShare.Contracts.Configuration;
 using MusicShare.Contracts.Messages;
 using MusicShare.Persistence;
 using OpenTelemetry;
@@ -134,7 +133,7 @@ namespace Microsoft.Extensions.Hosting
         }
 
         /// <summary>
-        /// Configures MassTransit with RabbitMQ, MongoDB outbox, and optional saga support.
+        /// Configures MassTransit with RabbitMQ and optional saga support.
         /// </summary>
         /// <param name="builder">The host application builder</param>
         /// <param name="assemblies">Assemblies to scan for consumers</param>
@@ -147,26 +146,20 @@ namespace Microsoft.Extensions.Hosting
         {
             builder.AddRabbitMQClient("messaging");
 
-            // Get MongoDB settings for outbox configuration
-            var mongoSettings = builder.Configuration
-                .GetSection(MongoDbSettings.SectionName)
-                .Get<MongoDbSettings>() ?? new MongoDbSettings();
-
-            builder.Services.AddMassTransit(x =>
+            builder.Services.AddMassTransit(cfg =>
             {
-
-                x.SetKebabCaseEndpointNameFormatter();
+                cfg.SetKebabCaseEndpointNameFormatter();
 
                 // Register consumers from assemblies
-                x.AddConsumers(assemblies);
+                cfg.AddConsumers(assemblies);
 
                 // Allow caller to register sagas
-                configureSagas?.Invoke(x, builder);
+                configureSagas?.Invoke(cfg, builder);
 
                 // Configure MongoDB outbox for reliable message delivery
-                x.AddInMemoryInboxOutbox();
+                cfg.AddInMemoryInboxOutbox();
 
-                x.UsingRabbitMq((context, cfg) =>
+                cfg.UsingRabbitMq((context, cfg) =>
                 {
                     var connection = builder.Configuration.GetConnectionString("rabbitmq");
                     cfg.Host(connection);
@@ -179,6 +172,7 @@ namespace Microsoft.Extensions.Hosting
                     cfg.Send<ResolveServiceLink>(s =>
                         s.UseRoutingKeyFormatter(ctx => ctx.Message.TargetService.ToRoutingKey()));
 
+                    cfg.SetQuorumQueue();
                     cfg.ConfigureEndpoints(context);
                 });
             });
@@ -187,7 +181,7 @@ namespace Microsoft.Extensions.Hosting
         }
 
         /// <summary>
-        /// Configures MassTransit with RabbitMQ and MongoDB outbox.
+        /// Configures MassTransit with RabbitMQ
         /// </summary>
         public static TBuilder AddMessageAccess<TBuilder>(
             this TBuilder builder,
