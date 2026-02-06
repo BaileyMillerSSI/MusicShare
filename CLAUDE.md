@@ -84,6 +84,11 @@ MusicShare/
 ├── MusicShare.ServiceDefaults/  # Shared infrastructure (OpenTelemetry, health checks)
 ├── MusicShare.AppHost/          # .NET Aspire orchestrator for local development
 │   └── AppHost.cs               # Local dev infrastructure + Azure config
+├── MusicShare.Tests/            # xUnit test project
+│   ├── Unit/                    # Unit tests for handlers, services, business logic
+│   ├── Integration/             # Aspire integration tests
+│   │   └── AspireIntegrationTestBase.cs  # Base class for integration tests
+│   └── GlobalUsings.cs          # Shared using directives for tests
 ├── .github/workflows/ci.yml     # CI/CD pipeline
 ├── azure.yaml                   # Azure Developer CLI configuration
 └── MusicShare.slnx              # Solution file
@@ -183,6 +188,8 @@ azd up            # Both provision and deploy
 | Orchestration | `MusicShare.AppHost/AppHost.cs` | Local dev infrastructure |
 | Message Contracts | `MusicShare.Contracts/Messages/` | Event and command definitions |
 | PWA Manifest | `MusicShare.Frontend/public/manifest.json` | PWA + Web Share Target config |
+| Test Project | `MusicShare.Tests/MusicShare.Tests.csproj` | xUnit tests with Aspire integration |
+| Integration Base | `MusicShare.Tests/Integration/AspireIntegrationTestBase.cs` | Base class for Aspire integration tests |
 
 ## Data Flow
 
@@ -269,7 +276,33 @@ MusicShare is a Progressive Web App with:
 
 ## Testing Guidelines
 
-- Backend tests: `dotnet test MusicShare.slnx`
+### Backend Testing
+
+**Test Project**: `MusicShare.Tests/`
+
+**Libraries**:
+- **xUnit 2.9.2**: Test framework
+- **FluentAssertions 7.0.0**: Readable assertion syntax
+- **Moq 4.20.72**: Mocking framework
+- **Aspire.Hosting.Testing 13.1.0**: Integration testing with full Aspire stack
+
+**Running Tests**:
+```bash
+dotnet test MusicShare.slnx                            # Run all tests
+dotnet test MusicShare.Tests/MusicShare.Tests.csproj   # Run test project only
+```
+
+**Test Organization**:
+- `Unit/` - Unit tests for handlers, services, and business logic
+- `Integration/` - Integration tests using Aspire distributed application
+
+**Writing Tests**:
+- Unit tests: Use Moq for mocking dependencies, FluentAssertions for assertions
+- Integration tests: Extend `AspireIntegrationTestBase` to spin up the full Aspire application
+- Global usings for xUnit, FluentAssertions, and Moq are in `GlobalUsings.cs`
+
+### Frontend Testing
+
 - Frontend lint: `npm run lint` (no test runner configured yet)
 - Always run lint before committing frontend changes
 
