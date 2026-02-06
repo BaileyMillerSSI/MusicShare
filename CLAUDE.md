@@ -289,6 +289,7 @@ MusicShare is a Progressive Web App with:
 - **xUnit 2.9.2**: Test framework
 - **FluentAssertions 7.0.0**: Readable assertion syntax
 - **Moq 4.20.72**: Mocking framework
+- **Moq.AutoMock 3.6.1**: Auto-mocking container for automatic dependency resolution
 - **Aspire.Hosting.Testing 13.1.0**: Integration testing with full Aspire stack
 
 **Running Tests**:
@@ -302,9 +303,46 @@ dotnet test MusicShare.Tests/MusicShare.Tests.csproj   # Run test project only
 - `Integration/` - Integration tests using Aspire distributed application
 
 **Writing Tests**:
-- Unit tests: Use Moq for mocking dependencies, FluentAssertions for assertions
+- Unit tests: Use `AutoMocker` for dependency resolution, FluentAssertions for assertions
 - Integration tests: Extend `AspireIntegrationTestBase` to spin up the full Aspire application
-- Global usings for xUnit, FluentAssertions, and Moq are in `GlobalUsings.cs`
+- Global usings for xUnit, FluentAssertions, Moq, and Moq.AutoMock are in `GlobalUsings.cs`
+
+**Test Naming Convention**:
+- All unit test methods MUST use the `ItWill` prefix (e.g., `ItWillReturnSuccessForValidSpotifyUrl`, `ItWillReturnNullForUnsupportedUrl`)
+- Do NOT use the `MethodName_Scenario_Expected` pattern
+
+**AutoMocker Pattern** (required for unit tests):
+- Use `AutoMocker` instead of top-level `Mock<T>` fields for constructor-injected dependencies
+- Create SUT via `_mocker.CreateInstance<T>()` instead of manual `new T(mock1.Object, mock2.Object)`
+- Access mocks inline via `_mocker.GetMock<IFoo>()` for setup and verification
+- For concrete 3rd-party dependencies that AutoMock cannot construct, use `mocker.Use(instance)` before `CreateInstance`
+- Non-constructor dependencies (e.g., `ConsumeContext<T>`) should be created locally in tests or via helper methods
+
+```csharp
+// Standard AutoMocker pattern
+public class MyHandlerTests
+{
+    private readonly AutoMocker _mocker = new();
+    private readonly MyHandler _sut;
+
+    public MyHandlerTests()
+    {
+        _sut = _mocker.CreateInstance<MyHandler>();
+    }
+
+    [Fact]
+    public async Task ItWillReturnExpectedResultForValidInput()
+    {
+        _mocker.GetMock<IMyService>()
+            .Setup(x => x.DoWork())
+            .ReturnsAsync("result");
+
+        var result = await _sut.Handle(new MyRequest(), CancellationToken.None);
+
+        result.Should().Be("result");
+    }
+}
+```
 
 ### Frontend Testing
 
