@@ -8,32 +8,32 @@ vi.mock('../components/QueryClientWrapper', () => ({
   ),
 }));
 
-// Mock PWAInstallPrompt
-vi.mock('../components/PWAInstallPrompt', () => ({
+// Mock PWAInstallPrompt with the correct path
+vi.mock('../components/PWAInstallPrompt/PWAInstallPrompt', () => ({
   PWAInstallPrompt: () => <div data-testid="pwa-install-prompt">PWA Install Prompt</div>,
 }));
 
 import RootLayout from './layout';
 
+// Helper function to render just the body content of the layout
+function renderLayoutBody(children: React.ReactNode) {
+  const result = render(<RootLayout>{children}</RootLayout>);
+  // The layout renders html > body > QueryClientWrapper
+  // In test environment, we access the body content directly
+  return result;
+}
+
 describe('RootLayout', () => {
   describe('Component Structure', () => {
     it('renders QueryClientWrapper as the top-level wrapper', () => {
-      render(
-        <RootLayout>
-          <div>Test content</div>
-        </RootLayout>
-      );
+      renderLayoutBody(<div>Test content</div>);
 
       const wrapper = screen.getByTestId('query-client-wrapper');
       expect(wrapper).toBeInTheDocument();
     });
 
     it('contains all required child components', () => {
-      render(
-        <RootLayout>
-          <div data-testid="test-content">Test content</div>
-        </RootLayout>
-      );
+      renderLayoutBody(<div data-testid="test-content">Test content</div>);
 
       expect(screen.getByTestId('query-client-wrapper')).toBeInTheDocument();
       expect(screen.getByTestId('test-content')).toBeInTheDocument();
@@ -43,23 +43,19 @@ describe('RootLayout', () => {
 
   describe('Children Rendering', () => {
     it('renders children correctly', () => {
-      render(
-        <RootLayout>
-          <div data-testid="child-content">Test child content</div>
-        </RootLayout>
-      );
+      renderLayoutBody(<div data-testid="child-content">Test child content</div>);
 
       expect(screen.getByTestId('child-content')).toBeInTheDocument();
       expect(screen.getByText('Test child content')).toBeInTheDocument();
     });
 
     it('renders multiple children', () => {
-      render(
-        <RootLayout>
+      renderLayoutBody(
+        <>
           <div data-testid="child-1">First child</div>
           <div data-testid="child-2">Second child</div>
           <div data-testid="child-3">Third child</div>
-        </RootLayout>
+        </>
       );
 
       expect(screen.getByTestId('child-1')).toBeInTheDocument();
@@ -68,17 +64,15 @@ describe('RootLayout', () => {
     });
 
     it('renders complex nested children', () => {
-      render(
-        <RootLayout>
-          <main>
-            <header>
-              <h1>Title</h1>
-            </header>
-            <section>
-              <p>Content</p>
-            </section>
-          </main>
-        </RootLayout>
+      renderLayoutBody(
+        <main>
+          <header>
+            <h1>Title</h1>
+          </header>
+          <section>
+            <p>Content</p>
+          </section>
+        </main>
       );
 
       expect(screen.getByRole('main')).toBeInTheDocument();
@@ -88,7 +82,7 @@ describe('RootLayout', () => {
     });
 
     it('handles empty children', () => {
-      const { container } = render(<RootLayout>{null}</RootLayout>);
+      renderLayoutBody(null);
 
       const wrapper = screen.getByTestId('query-client-wrapper');
       expect(wrapper).toBeInTheDocument();
@@ -98,11 +92,7 @@ describe('RootLayout', () => {
 
   describe('QueryClientWrapper Integration', () => {
     it('wraps children in QueryClientWrapper', () => {
-      render(
-        <RootLayout>
-          <div data-testid="wrapped-content">Wrapped</div>
-        </RootLayout>
-      );
+      renderLayoutBody(<div data-testid="wrapped-content">Wrapped</div>);
 
       const wrapper = screen.getByTestId('query-client-wrapper');
       const content = screen.getByTestId('wrapped-content');
@@ -112,11 +102,7 @@ describe('RootLayout', () => {
     });
 
     it('renders QueryClientWrapper as top-level component', () => {
-      const { container } = render(
-        <RootLayout>
-          <div>Content</div>
-        </RootLayout>
-      );
+      const { container } = renderLayoutBody(<div>Content</div>);
 
       const wrapper = screen.getByTestId('query-client-wrapper');
 
@@ -127,21 +113,13 @@ describe('RootLayout', () => {
 
   describe('PWAInstallPrompt Integration', () => {
     it('includes PWAInstallPrompt component', () => {
-      render(
-        <RootLayout>
-          <div>Content</div>
-        </RootLayout>
-      );
+      renderLayoutBody(<div>Content</div>);
 
       expect(screen.getByTestId('pwa-install-prompt')).toBeInTheDocument();
     });
 
     it('renders PWAInstallPrompt as sibling to children', () => {
-      render(
-        <RootLayout>
-          <div data-testid="main-content">Main content</div>
-        </RootLayout>
-      );
+      renderLayoutBody(<div data-testid="main-content">Main content</div>);
 
       const mainContent = screen.getByTestId('main-content');
       const pwaPrompt = screen.getByTestId('pwa-install-prompt');
@@ -153,11 +131,7 @@ describe('RootLayout', () => {
     });
 
     it('renders PWAInstallPrompt after children in DOM order', () => {
-      const { container } = render(
-        <RootLayout>
-          <div data-testid="child">Child</div>
-        </RootLayout>
-      );
+      renderLayoutBody(<div data-testid="child">Child</div>);
 
       const wrapper = screen.getByTestId('query-client-wrapper');
       const children = Array.from(wrapper.children);
@@ -174,11 +148,7 @@ describe('RootLayout', () => {
 
   describe('Layout Composition', () => {
     it('renders all components in correct order', () => {
-      const { container } = render(
-        <RootLayout>
-          <div data-testid="page-content">Page content</div>
-        </RootLayout>
-      );
+      const { container } = renderLayoutBody(<div data-testid="page-content">Page content</div>);
 
       // Expected structure:
       // QueryClientWrapper > [children, PWAInstallPrompt]
@@ -192,15 +162,13 @@ describe('RootLayout', () => {
     });
 
     it('maintains proper nesting with real page structure', () => {
-      render(
-        <RootLayout>
-          <div className="min-h-screen">
-            <main className="container">
-              <h1>MusicShare</h1>
-              <p>Share music across platforms</p>
-            </main>
-          </div>
-        </RootLayout>
+      renderLayoutBody(
+        <div className="min-h-screen">
+          <main className="container">
+            <h1>MusicShare</h1>
+            <p>Share music across platforms</p>
+          </main>
+        </div>
       );
 
       expect(screen.getByText('MusicShare')).toBeInTheDocument();
@@ -212,13 +180,11 @@ describe('RootLayout', () => {
 
   describe('Edge Cases', () => {
     it('handles children with fragments', () => {
-      render(
-        <RootLayout>
-          <>
-            <div data-testid="fragment-child-1">First</div>
-            <div data-testid="fragment-child-2">Second</div>
-          </>
-        </RootLayout>
+      renderLayoutBody(
+        <>
+          <div data-testid="fragment-child-1">First</div>
+          <div data-testid="fragment-child-2">Second</div>
+        </>
       );
 
       expect(screen.getByTestId('fragment-child-1')).toBeInTheDocument();
@@ -228,10 +194,8 @@ describe('RootLayout', () => {
     it('handles children with conditional rendering', () => {
       const showContent = true;
 
-      render(
-        <RootLayout>
-          {showContent && <div data-testid="conditional">Conditional content</div>}
-        </RootLayout>
+      renderLayoutBody(
+        showContent ? <div data-testid="conditional">Conditional content</div> : null
       );
 
       expect(screen.getByTestId('conditional')).toBeInTheDocument();
@@ -240,14 +204,12 @@ describe('RootLayout', () => {
     it('handles children with mapped elements', () => {
       const items = ['Item 1', 'Item 2', 'Item 3'];
 
-      render(
-        <RootLayout>
-          <ul>
-            {items.map((item, index) => (
-              <li key={index}>{item}</li>
-            ))}
-          </ul>
-        </RootLayout>
+      renderLayoutBody(
+        <ul>
+          {items.map((item, index) => (
+            <li key={index}>{item}</li>
+          ))}
+        </ul>
       );
 
       expect(screen.getByText('Item 1')).toBeInTheDocument();
@@ -256,36 +218,32 @@ describe('RootLayout', () => {
     });
 
     it('handles deeply nested children', () => {
-      render(
-        <RootLayout>
+      renderLayoutBody(
+        <div>
           <div>
             <div>
               <div>
                 <div>
-                  <div>
-                    <span data-testid="deeply-nested">Deeply nested content</span>
-                  </div>
+                  <span data-testid="deeply-nested">Deeply nested content</span>
                 </div>
               </div>
             </div>
           </div>
-        </RootLayout>
+        </div>
       );
 
       expect(screen.getByTestId('deeply-nested')).toBeInTheDocument();
     });
 
     it('renders correctly with different types of content', () => {
-      render(
-        <RootLayout>
-          <div>
-            <p>Text content</p>
-            <button>Button</button>
-            <input type="text" placeholder="Input" />
-            <img src="/test.jpg" alt="Image" />
-            <a href="/link">Link</a>
-          </div>
-        </RootLayout>
+      renderLayoutBody(
+        <div>
+          <p>Text content</p>
+          <button>Button</button>
+          <input type="text" placeholder="Input" />
+          <img src="/test.jpg" alt="Image" />
+          <a href="/link">Link</a>
+        </div>
       );
 
       expect(screen.getByText('Text content')).toBeInTheDocument();
@@ -302,7 +260,7 @@ describe('RootLayout', () => {
         children: <div data-testid="readonly-child">Readonly child</div>,
       };
 
-      render(<RootLayout {...readonlyChildren} />);
+      renderLayoutBody(readonlyChildren.children);
 
       expect(screen.getByTestId('readonly-child')).toBeInTheDocument();
     });

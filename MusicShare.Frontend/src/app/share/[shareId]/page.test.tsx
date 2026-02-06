@@ -3,7 +3,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock ResultPoller component
 vi.mock('../../../components/ResultPoller', () => ({
-  ResultPoller: ({ shareId, initialData }: { shareId: string; initialData?: any }) => (
+  ResultPoller: ({ shareId, initialData }: { shareId: string; initialData?: unknown }) => (
     <div data-testid="result-poller" data-share-id={shareId} data-has-initial-data={!!initialData}>
       ResultPoller Component (shareId: {shareId})
     </div>
@@ -264,7 +264,7 @@ describe('ShareResultPage', () => {
         const params = Promise.resolve({ shareId });
         const page = await ShareResultPage({ params });
 
-        const { container } = render(page);
+        render(page);
 
         const poller = screen.getByTestId('result-poller');
         expect(poller).toHaveAttribute('data-share-id', shareId);

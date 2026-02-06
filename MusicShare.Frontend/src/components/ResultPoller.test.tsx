@@ -1,10 +1,10 @@
-import { render, screen, waitFor, act } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import { describe, expect, it, vi, afterEach } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Mock Next.js Link component
 vi.mock('next/link', () => ({
-  default: ({ children, href, className }: any) => (
+  default: ({ children, href, className }: { children: React.ReactNode; href: string; className?: string }) => (
     <a href={href} className={className}>
       {children}
     </a>
@@ -22,7 +22,7 @@ vi.mock('./NativeShare', () => ({
 
 // Mock MusicServiceLink component
 vi.mock('./MusicLinks', () => ({
-  MusicServiceLink: ({ link }: any) => (
+  MusicServiceLink: ({ link }: { link: { serviceType: number; url: string } }) => (
     <div data-testid={`music-link-${link.serviceType}`}>
       Link to service {link.serviceType}: {link.url}
     </div>

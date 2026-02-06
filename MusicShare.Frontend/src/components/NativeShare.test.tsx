@@ -12,6 +12,7 @@ describe('NativeShare', () => {
 
   beforeEach(() => {
     // Reset window.location.href to a known value
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     delete (window as any).location;
     window.location = { href: 'https://musicshare.example.com/share/test123' } as Location;
 
@@ -290,6 +291,7 @@ describe('NativeShare', () => {
 
     beforeEach(() => {
       // Remove navigator.share to simulate unsupported browser
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (navigator as any).share;
 
       // Mock clipboard.writeText as a spy

@@ -41,10 +41,12 @@ describe('ShareForm', () => {
     vi.mocked(useRouter).mockReturnValue({
       push: mockPush,
       replace: mockReplace,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 
     vi.mocked(useSearchParams).mockReturnValue({
       get: (key: string) => mockSearchParams.get(key) ?? null,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
 
     mockSearchParams.clear();
@@ -137,7 +139,7 @@ describe('ShareForm', () => {
       const { container } = render(<ShareForm />, { wrapper: createWrapper() });
       const form = container.querySelector('form');
 
-      const submitHandler = vi.fn((e) => e.preventDefault());
+      const submitHandler = vi.fn((e: Event) => e.preventDefault());
       form?.addEventListener('submit', submitHandler);
 
       const input = screen.getByLabelText('Paste a song URL');
@@ -199,11 +201,13 @@ describe('ShareForm', () => {
   describe('Loading State', () => {
     it('disables input and button during submission', async () => {
       const user = userEvent.setup();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let resolveSubmit: (value: any) => void;
       const submitPromise = new Promise((resolve) => {
         resolveSubmit = resolve;
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       vi.mocked(api.submitShare).mockReturnValue(submitPromise as any);
 
       render(<ShareForm />, { wrapper: createWrapper() });
@@ -229,11 +233,13 @@ describe('ShareForm', () => {
 
     it('shows "Processing..." text on submit button during loading', async () => {
       const user = userEvent.setup();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let resolveSubmit: (value: any) => void;
       const submitPromise = new Promise((resolve) => {
         resolveSubmit = resolve;
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       vi.mocked(api.submitShare).mockReturnValue(submitPromise as any);
 
       render(<ShareForm />, { wrapper: createWrapper() });
@@ -251,11 +257,13 @@ describe('ShareForm', () => {
 
     it('button has disabled styling during loading', async () => {
       const user = userEvent.setup();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let resolveSubmit: (value: any) => void;
       const submitPromise = new Promise((resolve) => {
         resolveSubmit = resolve;
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       vi.mocked(api.submitShare).mockReturnValue(submitPromise as any);
 
       render(<ShareForm />, { wrapper: createWrapper() });
@@ -421,10 +429,12 @@ describe('ShareForm', () => {
     it('shows "Processing shared link..." message during auto-submit', async () => {
       mockSearchParams.set('url', 'https://test.com');
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let resolveSubmit: (value: any) => void;
       const submitPromise = new Promise((resolve) => {
         resolveSubmit = resolve;
       });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       vi.mocked(api.submitShare).mockReturnValue(submitPromise as any);
 
       render(<ShareForm />, { wrapper: createWrapper() });
@@ -439,10 +449,12 @@ describe('ShareForm', () => {
     it('shows loading indicator in auto-submit message', async () => {
       mockSearchParams.set('url', 'https://test.com');
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let resolveSubmit: (value: any) => void;
       const submitPromise = new Promise((resolve) => {
         resolveSubmit = resolve;
       });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       vi.mocked(api.submitShare).mockReturnValue(submitPromise as any);
 
       render(<ShareForm />, { wrapper: createWrapper() });
@@ -599,10 +611,12 @@ describe('ShareForm', () => {
 
     it('does not show auto-submit message when manually submitting', async () => {
       const user = userEvent.setup();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let resolveSubmit: (value: any) => void;
       const submitPromise = new Promise((resolve) => {
         resolveSubmit = resolve;
       });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       vi.mocked(api.submitShare).mockReturnValue(submitPromise as any);
 
       render(<ShareForm />, { wrapper: createWrapper() });

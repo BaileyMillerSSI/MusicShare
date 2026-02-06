@@ -17,7 +17,7 @@ function TestQueryComponent() {
 }
 
 // Test component that triggers a query failure to test retry behavior
-function FailingQueryComponent({ queryFn }: { queryFn: () => Promise<any> }) {
+function FailingQueryComponent({ queryFn }: { queryFn: () => Promise<unknown> }) {
   const { isLoading, isError, failureCount } = useQuery({
     queryKey: ['failing-test'],
     queryFn,
