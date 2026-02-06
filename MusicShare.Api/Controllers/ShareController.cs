@@ -17,7 +17,7 @@ public class ShareController(IMediator mediator) : ControllerBase
     /// </summary>
     [HttpPost]
     public async Task<ActionResult<SubmitShareResponse>> SubmitShare(
-        [FromBody] SubmitShareRequest command,
+        [FromBody] SubmitShare.Request command,
         CancellationToken cancellationToken)
     {
         if (!ModelState.IsValid)
@@ -52,7 +52,7 @@ public class ShareController(IMediator mediator) : ControllerBase
             return BadRequest();
         }
 
-        var result = await _mediator.Send(new GetShareResultQuery(shareId), cancellationToken);
+        var result = await _mediator.Send(new GetShareResult.Query(shareId), cancellationToken);
 
         if (!result.Found)
         {

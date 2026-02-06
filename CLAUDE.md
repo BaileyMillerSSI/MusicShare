@@ -38,8 +38,8 @@ MusicShare is a full-stack web application that allows users to share music URLs
 MusicShare/
 ├── MusicShare.Api/              # REST API (Controllers, Commands, Queries, Services)
 │   ├── Controllers/             # ShareController.cs - REST endpoints
-│   ├── Commands/                # CQRS commands (SubmitShareRequest.cs)
-│   ├── Queries/                 # CQRS queries (GetShareResultQuery.cs)
+│   ├── Commands/                # CQRS commands (SubmitShare.cs - static class with nested Request/Handler/Response)
+│   ├── Queries/                 # CQRS queries (GetShareResult.cs - static class with nested Query/Handler/Result)
 │   ├── Services/                # ShareRequestService.cs
 │   ├── Models/                  # Response DTOs
 │   └── Program.cs               # Service configuration
@@ -146,7 +146,12 @@ azd up            # Both provision and deploy
 - **Primary constructors**: Use for dependency injection (e.g., `public class X(IDep dep)`).
 - **Nullable**: Enabled globally - use nullable reference types properly.
 - **Implicit usings**: Enabled globally.
-- **MediatR pattern**: Commands implement `IRequest<TResponse>`, handlers implement `IRequestHandler<TRequest, TResponse>`.
+- **File organization**: One file per class, except for MediatR Commands/Queries which use nested types.
+- **MediatR pattern**: Commands and Queries use a static class container with nested types:
+  - Static outer class named for the operation (e.g., `SubmitShare`, `GetShareResult`)
+  - Nested `Request`/`Query` record implementing `IRequest<Response/Result>`
+  - Nested `Handler` class implementing `IRequestHandler<Request/Query, Response/Result>`
+  - Nested `Response`/`Result` record with factory methods
 - **Repository pattern**: `IRepository<T>` interfaces with MongoDB implementations.
 - **Entities**: MongoDB attributes (`[BsonId]`, `[BsonElement]`, `[BsonRequired]`, `[BsonRepresentation]`) for persistence mapping.
 - **MassTransit messages**: Use record types in `MusicShare.Contracts/Messages/`.
@@ -175,8 +180,8 @@ azd up            # Both provision and deploy
 |------|------|---------|
 | API Entry | `MusicShare.Api/Program.cs` | Service configuration, MediatR, MassTransit setup |
 | API Controller | `MusicShare.Api/Controllers/ShareController.cs` | REST endpoints |
-| CQRS Command | `MusicShare.Api/Commands/SubmitShareRequest.cs` | Share submission with handler |
-| CQRS Query | `MusicShare.Api/Queries/GetShareResultQuery.cs` | Get share result with handler |
+| CQRS Command | `MusicShare.Api/Commands/SubmitShare.cs` | Static class with nested Request/Handler/Response |
+| CQRS Query | `MusicShare.Api/Queries/GetShareResult.cs` | Static class with nested Query/Handler/Result |
 | Worker Entry | `MusicShare.Worker/Program.cs` | Background service config with MongoDB state |
 | Saga | `MusicShare.Worker/Sagas/ShareRequestSaga.cs` | Async workflow orchestration + ISR trigger |
 | Frontend Layout | `MusicShare.Frontend/src/app/layout.tsx` | Root layout, metadata, QueryClient |
@@ -320,9 +325,12 @@ dotnet test MusicShare.Tests/MusicShare.Tests.csproj   # Run test project only
 
 ### Adding a new API endpoint
 
-1. Add Command/Query in `MusicShare.Api/Commands/` or `MusicShare.Api/Queries/`
-2. Create handler implementing `IRequestHandler<TRequest, TResponse>`
-3. Add controller method using `_mediator.Send()`
+1. Create a new file in `MusicShare.Api/Commands/` or `MusicShare.Api/Queries/` (e.g., `GetUserHistory.cs`)
+2. Define a static class containing:
+   - Nested `Query`/`Request` record implementing `IRequest<Result/Response>`
+   - Nested `Handler` class with primary constructor for DI, implementing `IRequestHandler<Query/Request, Result/Response>`
+   - Nested `Result`/`Response` record with factory methods for success/failure cases
+3. Add controller method using `_mediator.Send(new FeatureName.Query(...))`
 4. Update frontend `src/lib/api.ts` with new types and fetch method
 
 ### Modifying database entities
