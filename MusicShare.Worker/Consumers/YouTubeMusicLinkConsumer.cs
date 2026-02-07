@@ -1,7 +1,7 @@
 using MusicShare.Contracts;
 using MusicShare.Persistence.Repositories;
-using MusicShare.MusicAdapters.Services;
-using MusicShare.MusicAdapters;
+using MusicShare.Services.Services;
+using MusicShare.Services.Services.Music;
 
 namespace MusicShare.Worker.Consumers;
 

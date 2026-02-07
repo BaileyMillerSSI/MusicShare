@@ -3,7 +3,7 @@ using Microsoft.Extensions.Hosting;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;
-using MusicShare.Contracts.Configuration;
+using MusicShare.Persistence.Configuration;
 using MusicShare.Persistence.Repositories;
 
 namespace MusicShare.Persistence;

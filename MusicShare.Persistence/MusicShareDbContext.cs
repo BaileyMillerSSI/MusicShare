@@ -1,18 +1,9 @@
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
-using MusicShare.Contracts.Configuration;
+using MusicShare.Persistence.Configuration;
 using MusicShare.Persistence.Entities;
 
 namespace MusicShare.Persistence;
-
-public interface IMusicShareDbContext
-{
-    IMongoDatabase Database { get; }
-    IMongoCollection<ShareRequest> ShareRequests { get; }
-    IMongoCollection<Song> Songs { get; }
-    IMongoCollection<SongServiceLink> SongServiceLinks { get; }
-    IMongoCollection<WorkflowState> WorkflowStates { get; }
-}
 
 public class MusicShareDbContext(IMongoClient client, IOptions<MongoDbSettings> settings) : IMusicShareDbContext
 {

@@ -36,15 +36,36 @@ MusicShare is a full-stack web application that allows users to share music URLs
 
 ```
 MusicShare/
-├── MusicShare.Api/              # REST API (Controllers, Commands, Queries, Services)
+├── MusicShare.Api/              # REST API (Controllers, Commands, Queries)
 │   ├── Controllers/             # ShareController.cs - REST endpoints
-│   ├── Commands/                # CQRS commands (SubmitShareRequest.cs)
-│   ├── Queries/                 # CQRS queries (GetShareResultQuery.cs)
-│   ├── Services/                # ShareRequestService.cs
-│   ├── Models/                  # Response DTOs
+│   ├── Commands/                # CQRS commands (SubmitShare.cs - static class with nested Request/Handler/Response)
+│   ├── Queries/                 # CQRS queries (GetShareResult.cs - static class with nested Query/Handler/Result)
 │   └── Program.cs               # Service configuration
+├── MusicShare.Services/         # Domain services, music adapters, models
+│   ├── Configuration/           # Service-specific settings (Spotify, YouTube, Frontend)
+│   ├── Models/                  # Response DTOs (ServiceLink, ShareResultResponse, SongDetails, SubmitShareResponse)
+│   ├── Services/                # Domain service interfaces and implementations
+│   │   ├── IMusicServiceResolver.cs   # URL detection and adapter routing
+│   │   ├── IShareRequestService.cs    # Share request creation and retrieval
+│   │   ├── IShareStatusService.cs     # Share status updates
+│   │   ├── ISongService.cs            # Song status updates
+│   │   ├── MusicServiceResolver.cs
+│   │   ├── ShareRequestService.cs
+│   │   ├── ShareStatusService.cs
+│   │   ├── SongService.cs
+│   │   ├── IFrontendRevalidateService.cs  # ISR revalidation interface
+│   │   ├── FrontendRevalidateService.cs   # ISR revalidation implementation
+│   │   └── Music/               # Music service adapters
+│   │       ├── IMusicServiceAdapter.cs
+│   │       ├── Spotify/         # SpotifyMusicService, models, auth handler
+│   │       ├── YouTube/         # YouTubeMusicAdapter, mock adapter
+│   │       └── Apple/           # AppleMusicMockAdapter
+│   └── DependencyInjection.cs   # AddDomainServices() + AddFrontendRevalidateService()
 ├── MusicShare.Worker/           # Background processor (Consumers, Sagas)
-│   ├── Sagas/                   # ShareRequestSaga.cs - state machine orchestrator
+│   ├── Sagas/ShareRequest/      # ShareRequestSaga.cs, state, activities
+│   │   ├── ShareRequestSaga.cs  # State machine orchestrator
+│   │   ├── ShareRequestSagaState.cs
+│   │   └── Activities/          # CompleteSagaActivity, FailSagaActivity
 │   ├── Consumers/               # Service-specific message consumers
 │   └── Program.cs               # Worker configuration
 ├── MusicShare.Frontend/         # Next.js SPA
@@ -68,22 +89,21 @@ MusicShare/
 │   ├── Entities/                # Song.cs, ShareRequest.cs, SongServiceLink.cs
 │   ├── Repositories/            # Repository implementations
 │   ├── MusicShareDbContext.cs   # MongoDB context
+│   ├── IMusicShareDbContext.cs  # DB context interface
 │   └── DependencyInjection.cs   # DI registration
-├── MusicShare.MusicAdapters/    # Music service integrations
-│   ├── Services/Music/
-│   │   ├── Spotify/             # SpotifyMusicService.cs
-│   │   ├── YouTube/             # YouTubeMusicAdapter.cs
-│   │   └── Apple/               # AppleMusicMockAdapter.cs
-│   ├── Configuration/           # Service-specific settings
-│   └── Services/MusicServiceResolver.cs  # URL detection and routing
 ├── MusicShare.Contracts/        # Shared types, enums, and message contracts
 │   ├── Messages/                # Event and command definitions
 │   ├── ServiceType.cs
 │   ├── ShareStatus.cs
 │   └── SongStatus.cs
-├── MusicShare.ServiceDefaults/  # Shared infrastructure (OpenTelemetry, health checks)
+├── MusicShare.ServiceDefaults/  # Shared infrastructure (OpenTelemetry, health checks, DI wiring)
 ├── MusicShare.AppHost/          # .NET Aspire orchestrator for local development
 │   └── AppHost.cs               # Local dev infrastructure + Azure config
+├── MusicShare.Tests/            # xUnit test project
+│   ├── Unit/                    # Unit tests for handlers, services, business logic
+│   ├── Integration/             # Aspire integration tests
+│   │   └── AspireIntegrationTestBase.cs  # Base class for integration tests
+│   └── GlobalUsings.cs          # Shared using directives for tests
 ├── .github/workflows/ci.yml     # CI/CD pipeline
 ├── azure.yaml                   # Azure Developer CLI configuration
 └── MusicShare.slnx              # Solution file
@@ -141,7 +161,12 @@ azd up            # Both provision and deploy
 - **Primary constructors**: Use for dependency injection (e.g., `public class X(IDep dep)`).
 - **Nullable**: Enabled globally - use nullable reference types properly.
 - **Implicit usings**: Enabled globally.
-- **MediatR pattern**: Commands implement `IRequest<TResponse>`, handlers implement `IRequestHandler<TRequest, TResponse>`.
+- **File organization**: One file per class, except for MediatR Commands/Queries which use nested types.
+- **MediatR pattern**: Commands and Queries use a static class container with nested types:
+  - Static outer class named for the operation (e.g., `SubmitShare`, `GetShareResult`)
+  - Nested `Request`/`Query` record implementing `IRequest<Response/Result>`
+  - Nested `Handler` class implementing `IRequestHandler<Request/Query, Response/Result>`
+  - Nested `Response`/`Result` record with factory methods
 - **Repository pattern**: `IRepository<T>` interfaces with MongoDB implementations.
 - **Entities**: MongoDB attributes (`[BsonId]`, `[BsonElement]`, `[BsonRequired]`, `[BsonRepresentation]`) for persistence mapping.
 - **MassTransit messages**: Use record types in `MusicShare.Contracts/Messages/`.
@@ -162,7 +187,7 @@ azd up            # Both provision and deploy
 - **Endpoints**:
   - `POST /api/share` - Submit a music URL for resolution
   - `GET /api/share/{shareId}` - Get resolution results
-- **ISR Revalidation**: `POST /api/revalidate` - Triggered by Worker on completion
+- **ISR Revalidation**: `POST /api/revalidate` - Triggered by Worker on completion, authenticated via `X-API-KEY` header
 
 ## Key Files to Know
 
@@ -170,19 +195,25 @@ azd up            # Both provision and deploy
 |------|------|---------|
 | API Entry | `MusicShare.Api/Program.cs` | Service configuration, MediatR, MassTransit setup |
 | API Controller | `MusicShare.Api/Controllers/ShareController.cs` | REST endpoints |
-| CQRS Command | `MusicShare.Api/Commands/SubmitShareRequest.cs` | Share submission with handler |
-| CQRS Query | `MusicShare.Api/Queries/GetShareResultQuery.cs` | Get share result with handler |
+| CQRS Command | `MusicShare.Api/Commands/SubmitShare.cs` | Static class with nested Request/Handler/Response |
+| CQRS Query | `MusicShare.Api/Queries/GetShareResult.cs` | Static class with nested Query/Handler/Result |
 | Worker Entry | `MusicShare.Worker/Program.cs` | Background service config with MongoDB state |
-| Saga | `MusicShare.Worker/Sagas/ShareRequestSaga.cs` | Async workflow orchestration + ISR trigger |
+| Saga | `MusicShare.Worker/Sagas/ShareRequest/ShareRequestSaga.cs` | Async workflow orchestration |
 | Frontend Layout | `MusicShare.Frontend/src/app/layout.tsx` | Root layout, metadata, QueryClient |
 | Share Page | `MusicShare.Frontend/src/app/share/[shareId]/page.tsx` | Dynamic result page |
 | API Client | `MusicShare.Frontend/src/lib/api.ts` | Backend communication |
 | Domain Entities | `MusicShare.Persistence/Entities/` | Song, ShareRequest, SongServiceLink |
-| Music Adapters | `MusicShare.MusicAdapters/Services/Music/` | Spotify, Apple, YouTube integrations |
-| Service Resolver | `MusicShare.MusicAdapters/Services/MusicServiceResolver.cs` | URL detection |
+| Domain Services | `MusicShare.Services/Services/` | ShareRequestService, ShareStatusService, SongService, FrontendRevalidateService |
+| Music Adapters | `MusicShare.Services/Services/Music/` | Spotify, Apple, YouTube integrations |
+| Service Resolver | `MusicShare.Services/Services/MusicServiceResolver.cs` | URL detection and adapter routing |
+| Frontend Config | `MusicShare.Services/Configuration/FrontendSettings.cs` | Frontend URL and revalidation secret settings |
+| DI Registration | `MusicShare.Services/DependencyInjection.cs` | AddDomainServices() for all services, adapters + revalidation |
+| Service Wiring | `MusicShare.ServiceDefaults/Extensions.cs` | Calls AddPersistence() + AddDomainServices() |
 | Orchestration | `MusicShare.AppHost/AppHost.cs` | Local dev infrastructure |
 | Message Contracts | `MusicShare.Contracts/Messages/` | Event and command definitions |
 | PWA Manifest | `MusicShare.Frontend/public/manifest.json` | PWA + Web Share Target config |
+| Test Project | `MusicShare.Tests/MusicShare.Tests.csproj` | xUnit tests with Aspire integration |
+| Integration Base | `MusicShare.Tests/Integration/AspireIntegrationTestBase.cs` | Base class for Aspire integration tests |
 
 ## Data Flow
 
@@ -229,7 +260,7 @@ azd up            # Both provision and deploy
 | `Spotify__ClientId` | Spotify API client ID |
 | `Spotify__ClientSecret` | Spotify API client secret |
 | `YouTube__GeographicLocation` | YouTube region setting |
-| `REVALIDATION_SECRET` | Shared secret for ISR revalidation |
+| `Frontend__RevalidationSecret` | Shared secret for ISR revalidation (sent as `X-API-KEY` header) |
 
 ### Azure Deployment Variables
 
@@ -269,7 +300,74 @@ MusicShare is a Progressive Web App with:
 
 ## Testing Guidelines
 
-- Backend tests: `dotnet test MusicShare.slnx`
+### Backend Testing
+
+**Test Project**: `MusicShare.Tests/`
+
+**Libraries**:
+- **xUnit v3 (3.2.2)**: Test framework
+- **FluentAssertions 7.0.0**: Readable assertion syntax
+- **Moq 4.20.72**: Mocking framework
+- **Autofac.Extras.Moq**: Auto-mocking container via `AutoMock.GetLoose()`
+- **Aspire.Hosting.Testing 13.1.0**: Integration testing with full Aspire stack
+
+**Running Tests**:
+```bash
+dotnet test MusicShare.slnx                            # Run all tests
+dotnet test MusicShare.Tests/MusicShare.Tests.csproj   # Run test project only
+```
+
+**Test Organization**:
+- `Unit/` - Unit tests for handlers, services, and business logic
+- `Integration/` - Integration tests using Aspire distributed application
+
+**Writing Tests**:
+- Unit tests: Use `AutoMock.GetLoose()` for dependency resolution, FluentAssertions for assertions
+- Integration tests: Extend `AspireIntegrationTestBase` to spin up the full Aspire application
+- Global usings for xUnit, FluentAssertions, Moq, and Autofac.Extras.Moq are in `GlobalUsings.cs`
+
+**Test Naming Convention**:
+- All unit test methods MUST use the `ItWill` prefix (e.g., `ItWillReturnSuccessForValidSpotifyUrl`, `ItWillReturnNullForUnsupportedUrl`)
+- Do NOT use the `MethodName_Scenario_Expected` pattern
+
+**AutoMock Pattern** (required for unit tests):
+- **No top-level properties**: No `_mocker`, `_sut`, or any class-level fields in test classes
+- Each test method creates its own `AutoMock` via `using var mock = AutoMock.GetLoose();`
+- SUT created per-test via `var sut = mock.Create<T>();`
+- Access mocks inline via `mock.Mock<IFoo>()` for setup and verification
+- For concrete 3rd-party dependencies that AutoMock cannot construct, use `mock.Provide(instance)` before `mock.Create<T>()`
+- Non-constructor dependencies (e.g., `ConsumeContext<T>`) should be created locally in tests or via helper methods
+
+```csharp
+// Standard AutoMock pattern - no top-level properties
+public class MyHandlerTests
+{
+    [Fact]
+    public async Task ItWillReturnExpectedResultForValidInput()
+    {
+        using var mock = AutoMock.GetLoose();
+        mock.Mock<IMyService>()
+            .Setup(x => x.DoWork())
+            .ReturnsAsync("result");
+
+        var sut = mock.Create<MyHandler>();
+        var result = await sut.Handle(new MyRequest(), CancellationToken.None);
+
+        result.Should().Be("result");
+    }
+}
+```
+
+**MassTransit Saga State Machine Tests** (uses test harness, NOT AutoMock):
+- Use `AddMassTransitTestHarness` with `ServiceCollection` for DI-based setup
+- Register saga dependencies and activities as services (not via MassTransit config)
+- `MassTransit.Testing` namespace is in the main `MassTransit` package (no separate NuGet)
+- `Finalize()` moves saga to `Final` state - check `StateMachine.Final` not custom states
+- `ContainsInState` returns the saga state type directly (no `.Saga` wrapper)
+- Wait for message consumption before asserting: `(await sagaHarness.Consumed.Any<T>()).Should().BeTrue()`
+
+### Frontend Testing
+
 - Frontend lint: `npm run lint` (no test runner configured yet)
 - Always run lint before committing frontend changes
 
@@ -277,19 +375,22 @@ MusicShare is a Progressive Web App with:
 
 ### Adding a new music service
 
-1. Create adapter in `MusicShare.MusicAdapters/Services/Music/{ServiceName}/`
+1. Create adapter in `MusicShare.Services/Services/Music/{ServiceName}/`
 2. Implement `IMusicServiceAdapter` interface
 3. Add enum value to `ServiceType` in `MusicShare.Contracts/`
-4. Register in DI via `MusicAdapterExtensions`
+4. Register in DI via `MusicShare.Services/DependencyInjection.cs`
 5. Add consumer in Worker for the new service
 6. Update Saga to include the new service in parallel resolution
 7. Add frontend link component in `src/components/MusicLinks/`
 
 ### Adding a new API endpoint
 
-1. Add Command/Query in `MusicShare.Api/Commands/` or `MusicShare.Api/Queries/`
-2. Create handler implementing `IRequestHandler<TRequest, TResponse>`
-3. Add controller method using `_mediator.Send()`
+1. Create a new file in `MusicShare.Api/Commands/` or `MusicShare.Api/Queries/` (e.g., `GetUserHistory.cs`)
+2. Define a static class containing:
+   - Nested `Query`/`Request` record implementing `IRequest<Result/Response>`
+   - Nested `Handler` class with primary constructor for DI, implementing `IRequestHandler<Query/Request, Result/Response>`
+   - Nested `Result`/`Response` record with factory methods for success/failure cases
+3. Add controller method using `_mediator.Send(new FeatureName.Query(...))`
 4. Update frontend `src/lib/api.ts` with new types and fetch method
 
 ### Modifying database entities

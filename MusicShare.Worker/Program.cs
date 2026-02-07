@@ -1,14 +1,13 @@
 using MassTransit;
 using MongoDB.Driver;
-using MusicShare.MusicAdapters.Services.Extensions;
 using MusicShare.Persistence;
-using MusicShare.Worker.Sagas;
+using MusicShare.ServiceDefaults;
+using MusicShare.Worker.Sagas.ShareRequest;
 
 var builder = Host.CreateApplicationBuilder(args);
 
 builder.AddServiceDefaults();
-// Register music service adapters
-builder.AddMusicServices();
+
 
 // Configure MassTransit with saga support and MongoDB outbox
 builder.AddMessageAccess(

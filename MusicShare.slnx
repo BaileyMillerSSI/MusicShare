@@ -2,8 +2,9 @@
   <Project Path="MusicShare.Api/MusicShare.Api.csproj" />
   <Project Path="MusicShare.AppHost/MusicShare.AppHost.csproj" />
   <Project Path="MusicShare.Contracts/MusicShare.Contracts.csproj" />
-  <Project Path="MusicShare.MusicAdapters/MusicShare.MusicAdapters.csproj" Id="3621d09d-721d-4f86-bde1-db27f5012ff2" />
   <Project Path="MusicShare.Persistence/MusicShare.Persistence.csproj" />
+  <Project Path="MusicShare.Services/MusicShare.Services.csproj" />
   <Project Path="MusicShare.ServiceDefaults/MusicShare.ServiceDefaults.csproj" Id="0a03109d-df90-4027-bfab-49331c71eb02" />
+  <Project Path="MusicShare.Tests/MusicShare.Tests.csproj" />
   <Project Path="MusicShare.Worker/MusicShare.Worker.csproj" />
 </Solution>
