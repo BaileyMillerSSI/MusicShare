@@ -151,6 +151,14 @@ jobs:
           echo "Deployment completed to ${{ github.ref == 'refs/heads/main' && 'production' || 'develop' }} environment"
           azd show
 
+  warm-cache:
+    name: Warm ISR Cache
+    needs: [deploy]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'develop' }}
+
+    steps:
       - name: Warm ISR cache
         run: |
           FRONTEND_URL="https://${{ vars.sub_domain }}.${{ vars.domain }}"
