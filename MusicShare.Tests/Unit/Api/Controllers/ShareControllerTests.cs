@@ -311,9 +311,9 @@ public class ShareControllerTests
 
         // Assert
         var okResult = actionResult.Result.Should().BeOfType<OkObjectResult>().Subject;
-        var ids = okResult.Value.Should().BeAssignableTo<IReadOnlyList<string>>().Subject;
-        ids.Should().HaveCount(2);
-        ids.Should().ContainInOrder("abc123def456", "789ghi012jkl");
+        var result = okResult.Value.Should().BeOfType<GetAllShareIds.Result>().Subject;
+        result.ShareIds.Should().HaveCount(2);
+        result.ShareIds.Should().ContainInOrder("abc123def456", "789ghi012jkl");
     }
 
     [Fact]
@@ -333,8 +333,8 @@ public class ShareControllerTests
 
         // Assert
         var okResult = actionResult.Result.Should().BeOfType<OkObjectResult>().Subject;
-        var ids = okResult.Value.Should().BeAssignableTo<IReadOnlyList<string>>().Subject;
-        ids.Should().BeEmpty();
+        var result = okResult.Value.Should().BeOfType<GetAllShareIds.Result>().Subject;
+        result.ShareIds.Should().BeEmpty();
     }
 
     [Fact]
