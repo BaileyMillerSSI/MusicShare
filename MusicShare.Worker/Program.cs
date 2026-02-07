@@ -3,7 +3,6 @@ using MongoDB.Driver;
 using MusicShare.Persistence;
 using MusicShare.ServiceDefaults;
 using MusicShare.Worker.Sagas.ShareRequest;
-using MusicShare.Worker.Services;
 
 var builder = Host.CreateApplicationBuilder(args);
 

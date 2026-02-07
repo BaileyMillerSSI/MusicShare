@@ -1,6 +1,6 @@
 using System.Net;
 using Microsoft.Extensions.Logging;
-using MusicShare.Worker.Services;
+using MusicShare.Services.Services;
 
 namespace MusicShare.Tests.Unit.Worker.Services;
 

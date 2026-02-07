@@ -2,7 +2,6 @@ using MassTransit;
 using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
 using MusicShare.Services.Services;
-using MusicShare.Worker.Services;
 
 namespace MusicShare.Worker.Sagas.ShareRequest.Activities;
 

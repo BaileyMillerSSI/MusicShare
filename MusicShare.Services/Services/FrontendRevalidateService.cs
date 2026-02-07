@@ -1,7 +1,7 @@
 ﻿using System.Net.Http.Json;
 using Microsoft.Extensions.Logging;
 
-namespace MusicShare.Worker.Services
+namespace MusicShare.Services.Services
 {
     public class FrontendRevalidateService(HttpClient client, ILogger<FrontendRevalidateService> logger) : IFrontendRevalidateService
     {

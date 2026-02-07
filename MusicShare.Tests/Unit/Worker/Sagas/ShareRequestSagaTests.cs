@@ -7,7 +7,6 @@ using MusicShare.Services.Services;
 using MusicShare.Services.Services.Music;
 using MusicShare.Worker.Sagas.ShareRequest;
 using MusicShare.Worker.Sagas.ShareRequest.Activities;
-using MusicShare.Worker.Services;
 
 namespace MusicShare.Tests.Unit.Worker.Sagas;
 

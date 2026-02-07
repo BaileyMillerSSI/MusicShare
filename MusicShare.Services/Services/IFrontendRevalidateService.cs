@@ -1,5 +1,4 @@
-﻿
-namespace MusicShare.Worker.Services
+﻿namespace MusicShare.Services.Services
 {
     public interface IFrontendRevalidateService
     {

@@ -9,7 +9,6 @@ using MusicShare.Services.Services;
 using MusicShare.Services.Services.Music;
 using MusicShare.Services.Services.Music.Spotify;
 using MusicShare.Services.Services.Music.YouTube;
-using MusicShare.Worker.Services;
 using YouTubeMusicAPI.Client;
 
 namespace MusicShare.Services;
@@ -31,19 +30,14 @@ public static class DependencyInjection
     {
         builder.Services
             .AddOptions<FrontendSettings>()
-            .Bind(builder.Configuration.GetSection(FrontendSettings.SectionName))
-            .Configure<IConfiguration>((settings, config) =>
-            {
-                settings.UrlHttps = config["services:frontend:https:0"] ?? string.Empty;
-                settings.UrlHttp = config["services:frontend:http:0"] ?? string.Empty;
-            });
+            .Bind(builder.Configuration.GetSection(FrontendSettings.SectionName));
 
         builder.Services.AddHttpClient<IFrontendRevalidateService, FrontendRevalidateService>((svp, client) =>
         {
             var settings = svp.GetRequiredService<IOptionsMonitor<FrontendSettings>>();
 
             client.DefaultRequestHeaders.TryAddWithoutValidation("X-API-KEY", settings.CurrentValue.RevalidationSecret);
-            client.BaseAddress = settings.CurrentValue.Uri;
+            client.BaseAddress = FrontendSettings.Uri;
         });
 
         return builder;
