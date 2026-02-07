@@ -78,7 +78,6 @@ describe('NativeShare', () => {
       expect(mockShare).toHaveBeenCalledTimes(1);
       expect(mockShare).toHaveBeenCalledWith({
         title: 'Test Song - Artist One, Artist Two',
-        text: 'Check out "Test Song" by Artist One, Artist Two on your favorite music platform!',
         url: 'https://musicshare.example.com/share/test123',
       });
     });
@@ -98,7 +97,6 @@ describe('NativeShare', () => {
 
       expect(mockShare).toHaveBeenCalledWith({
         title: 'Solo Song - Solo Artist',
-        text: 'Check out "Solo Song" by Solo Artist on your favorite music platform!',
         url: 'https://musicshare.example.com/share/test123',
       });
     });
@@ -118,7 +116,6 @@ describe('NativeShare', () => {
 
       expect(mockShare).toHaveBeenCalledWith({
         title: 'Collab Song - Artist A, Artist B, Artist C',
-        text: 'Check out "Collab Song" by Artist A, Artist B, Artist C on your favorite music platform!',
         url: 'https://musicshare.example.com/share/test123',
       });
     });
@@ -415,7 +412,6 @@ describe('NativeShare', () => {
 
       expect(mockShare).toHaveBeenCalledWith({
         title: 'Test Song - ',
-        text: 'Check out "Test Song" by  on your favorite music platform!',
         url: 'https://musicshare.example.com/share/test123',
       });
     });
@@ -435,7 +431,6 @@ describe('NativeShare', () => {
 
       expect(mockShare).toHaveBeenCalledWith({
         title: "Song's Title & Name (2024) - Artist",
-        text: 'Check out "Song\'s Title & Name (2024)" by Artist on your favorite music platform!',
         url: 'https://musicshare.example.com/share/test123',
       });
     });
@@ -455,7 +450,6 @@ describe('NativeShare', () => {
 
       expect(mockShare).toHaveBeenCalledWith({
         title: "Song - Artist's Name, Band & Co.",
-        text: 'Check out "Song" by Artist\'s Name, Band & Co. on your favorite music platform!',
         url: 'https://musicshare.example.com/share/test123',
       });
     });
@@ -498,7 +492,6 @@ describe('NativeShare', () => {
       const expectedArtistString = manyArtists.join(', ');
       expect(mockShare).toHaveBeenCalledWith({
         title: `Song - ${expectedArtistString}`,
-        text: `Check out "Song" by ${expectedArtistString} on your favorite music platform!`,
         url: 'https://musicshare.example.com/share/test123',
       });
     });
