@@ -32,13 +32,20 @@ public static class DependencyInjection
             .AddOptions<FrontendSettings>()
             .Bind(builder.Configuration.GetSection(FrontendSettings.SectionName));
 
+        builder.Services.AddTransient<MethodPreservingRedirectHandler>();
+
         builder.Services.AddHttpClient<IFrontendRevalidateService, FrontendRevalidateService>((svp, client) =>
         {
             var settings = svp.GetRequiredService<IOptionsMonitor<FrontendSettings>>();
 
             client.DefaultRequestHeaders.TryAddWithoutValidation("X-API-KEY", settings.CurrentValue.RevalidationSecret);
             client.BaseAddress = FrontendSettings.Uri;
-        });
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+        {
+            AllowAutoRedirect = false
+        })
+        .AddHttpMessageHandler<MethodPreservingRedirectHandler>();
 
         return builder;
     }
