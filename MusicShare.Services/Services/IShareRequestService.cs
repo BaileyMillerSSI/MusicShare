@@ -13,4 +13,7 @@ public interface IShareRequestService
     Task<ShareResultResponse?> GetByShareIdAsync(
         string shareId,
         CancellationToken cancellationToken);
+
+    Task<List<string>> GetAllCompletedShareIdsAsync(
+        CancellationToken cancellationToken);
 }
