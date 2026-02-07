@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     }
 
     const artistsString = data.song.artists.join(', ');
-    const title = `${artistsString} - ${data.song.title}`;
+    const title = `${data.song.title} - ${artistsString}`;
     const description = `Listen to ${data.song.title} from ${artistsString} across multiple platforms`;
 
     return {

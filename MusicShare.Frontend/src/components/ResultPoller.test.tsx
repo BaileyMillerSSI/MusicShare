@@ -418,7 +418,7 @@ describe('ResultPoller', () => {
       render(<ResultPoller shareId="title-123" />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(document.title).toBe('Title Artist, Featured - Title Song');
+        expect(document.title).toBe('Title Song - Title Artist, Featured');
       });
     });
   });
@@ -889,7 +889,7 @@ describe('ResultPoller', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Solo Artist')).toBeInTheDocument();
-        expect(document.title).toBe('Solo Artist - Solo Song');
+        expect(document.title).toBe('Solo Song - Solo Artist');
       });
     });
 
@@ -912,7 +912,7 @@ describe('ResultPoller', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Artist 1, Artist 2, Artist 3')).toBeInTheDocument();
-        expect(document.title).toBe('Artist 1, Artist 2, Artist 3 - Collab Song');
+        expect(document.title).toBe('Collab Song - Artist 1, Artist 2, Artist 3');
       });
     });
 

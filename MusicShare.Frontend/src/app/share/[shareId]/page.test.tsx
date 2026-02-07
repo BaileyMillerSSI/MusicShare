@@ -341,11 +341,11 @@ describe('ShareResultPage', () => {
       const params = Promise.resolve({ shareId: 'meta-123' });
       const metadata = await generateMetadata({ params });
 
-      expect(metadata.title).toBe('Artist One, Artist Two - Amazing Song');
+      expect(metadata.title).toBe('Amazing Song - Artist One, Artist Two');
       expect(metadata.description).toBe(
         'Listen to Amazing Song from Artist One, Artist Two across multiple platforms'
       );
-      expect(metadata.openGraph?.title).toBe('Artist One, Artist Two - Amazing Song');
+      expect(metadata.openGraph?.title).toBe('Amazing Song - Artist One, Artist Two');
       expect(metadata.openGraph?.description).toBe(
         'Listen to Amazing Song from Artist One, Artist Two across multiple platforms'
       );
@@ -355,11 +355,11 @@ describe('ShareResultPage', () => {
           url: 'https://example.com/artwork.jpg',
           width: 300,
           height: 300,
-          alt: 'Artist One, Artist Two - Amazing Song',
+          alt: 'Amazing Song - Artist One, Artist Two',
         },
       ]);
       expect(metadata.twitter?.card).toBe('summary_large_image');
-      expect(metadata.twitter?.title).toBe('Artist One, Artist Two - Amazing Song');
+      expect(metadata.twitter?.title).toBe('Amazing Song - Artist One, Artist Two');
       expect(metadata.twitter?.images).toEqual(['https://example.com/artwork.jpg']);
     });
 
@@ -382,7 +382,7 @@ describe('ShareResultPage', () => {
       const params = Promise.resolve({ shareId: 'no-art-meta' });
       const metadata = await generateMetadata({ params });
 
-      expect(metadata.title).toBe('Artist - Song Without Art');
+      expect(metadata.title).toBe('Song Without Art - Artist');
       expect(metadata.openGraph?.images).toEqual([]);
       expect(metadata.twitter?.images).toEqual([]);
     });
@@ -523,7 +523,7 @@ describe('ShareResultPage', () => {
       const params = Promise.resolve({ shareId: 'single-artist-meta' });
       const metadata = await generateMetadata({ params });
 
-      expect(metadata.title).toBe('Solo Artist - Solo Track');
+      expect(metadata.title).toBe('Solo Track - Solo Artist');
       expect(metadata.description).toBe('Listen to Solo Track from Solo Artist across multiple platforms');
     });
 
@@ -546,7 +546,7 @@ describe('ShareResultPage', () => {
       const params = Promise.resolve({ shareId: 'multi-artist-meta' });
       const metadata = await generateMetadata({ params });
 
-      expect(metadata.title).toBe('Artist 1, Artist 2, Artist 3 - Collab');
+      expect(metadata.title).toBe('Collab - Artist 1, Artist 2, Artist 3');
     });
 
     it('returns default metadata when JSON parsing fails', async () => {
