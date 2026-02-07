@@ -1,12 +1,15 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using MusicShare.Services.Configuration;
 using MusicShare.Services.Configuration.MusicServices;
 using MusicShare.Services.Services;
 using MusicShare.Services.Services.Music;
 using MusicShare.Services.Services.Music.Spotify;
 using MusicShare.Services.Services.Music.YouTube;
+using MusicShare.Worker.Services;
 using YouTubeMusicAPI.Client;
 
 namespace MusicShare.Services;
@@ -18,7 +21,30 @@ public static class DependencyInjection
         builder.Services.AddScoped<ISongService, SongService>();
         builder.Services.AddScoped<IShareStatusService, ShareStatusService>();
         builder.Services.AddScoped<IShareRequestService, ShareRequestService>();
-        builder.AddMusicServices();
+
+        return builder
+            .AddMusicServices()
+            .AddFrontendRevalidateService();
+    }
+
+    public static TBuilder AddFrontendRevalidateService<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
+    {
+        builder.Services
+            .AddOptions<FrontendSettings>()
+            .Bind(builder.Configuration.GetSection(FrontendSettings.SectionName))
+            .Configure<IConfiguration>((settings, config) =>
+            {
+                settings.UrlHttps = config["services:frontend:https:0"] ?? string.Empty;
+                settings.UrlHttp = config["services:frontend:http:0"] ?? string.Empty;
+            });
+
+        builder.Services.AddHttpClient<IFrontendRevalidateService, FrontendRevalidateService>((svp, client) =>
+        {
+            var settings = svp.GetRequiredService<IOptionsMonitor<FrontendSettings>>();
+
+            client.DefaultRequestHeaders.TryAddWithoutValidation("X-API-KEY", settings.CurrentValue.RevalidationSecret);
+            client.BaseAddress = settings.CurrentValue.Uri;
+        });
 
         return builder;
     }

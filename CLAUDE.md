@@ -42,7 +42,7 @@ MusicShare/
 │   ├── Queries/                 # CQRS queries (GetShareResult.cs - static class with nested Query/Handler/Result)
 │   └── Program.cs               # Service configuration
 ├── MusicShare.Services/         # Domain services, music adapters, models
-│   ├── Configuration/           # Service-specific settings (Spotify, YouTube)
+│   ├── Configuration/           # Service-specific settings (Spotify, YouTube, Frontend)
 │   ├── Models/                  # Response DTOs (ServiceLink, ShareResultResponse, SongDetails, SubmitShareResponse)
 │   ├── Services/                # Domain service interfaces and implementations
 │   │   ├── IMusicServiceResolver.cs   # URL detection and adapter routing
@@ -53,19 +53,20 @@ MusicShare/
 │   │   ├── ShareRequestService.cs
 │   │   ├── ShareStatusService.cs
 │   │   ├── SongService.cs
+│   │   ├── IFrontendRevalidateService.cs  # ISR revalidation interface
+│   │   ├── FrontendRevalidateService.cs   # ISR revalidation implementation
 │   │   └── Music/               # Music service adapters
 │   │       ├── IMusicServiceAdapter.cs
 │   │       ├── Spotify/         # SpotifyMusicService, models, auth handler
 │   │       ├── YouTube/         # YouTubeMusicAdapter, mock adapter
 │   │       └── Apple/           # AppleMusicMockAdapter
-│   └── DependencyInjection.cs   # AddDomainServices() registration
+│   └── DependencyInjection.cs   # AddDomainServices() + AddFrontendRevalidateService()
 ├── MusicShare.Worker/           # Background processor (Consumers, Sagas)
 │   ├── Sagas/ShareRequest/      # ShareRequestSaga.cs, state, activities
 │   │   ├── ShareRequestSaga.cs  # State machine orchestrator
 │   │   ├── ShareRequestSagaState.cs
 │   │   └── Activities/          # CompleteSagaActivity, FailSagaActivity
 │   ├── Consumers/               # Service-specific message consumers
-│   ├── Services/                # FrontendRevalidateService (ISR trigger)
 │   └── Program.cs               # Worker configuration
 ├── MusicShare.Frontend/         # Next.js SPA
 │   ├── src/
@@ -186,7 +187,7 @@ azd up            # Both provision and deploy
 - **Endpoints**:
   - `POST /api/share` - Submit a music URL for resolution
   - `GET /api/share/{shareId}` - Get resolution results
-- **ISR Revalidation**: `POST /api/revalidate` - Triggered by Worker on completion
+- **ISR Revalidation**: `POST /api/revalidate` - Triggered by Worker on completion, authenticated via `X-API-KEY` header
 
 ## Key Files to Know
 
@@ -202,10 +203,11 @@ azd up            # Both provision and deploy
 | Share Page | `MusicShare.Frontend/src/app/share/[shareId]/page.tsx` | Dynamic result page |
 | API Client | `MusicShare.Frontend/src/lib/api.ts` | Backend communication |
 | Domain Entities | `MusicShare.Persistence/Entities/` | Song, ShareRequest, SongServiceLink |
-| Domain Services | `MusicShare.Services/Services/` | ShareRequestService, ShareStatusService, SongService |
+| Domain Services | `MusicShare.Services/Services/` | ShareRequestService, ShareStatusService, SongService, FrontendRevalidateService |
 | Music Adapters | `MusicShare.Services/Services/Music/` | Spotify, Apple, YouTube integrations |
 | Service Resolver | `MusicShare.Services/Services/MusicServiceResolver.cs` | URL detection and adapter routing |
-| DI Registration | `MusicShare.Services/DependencyInjection.cs` | AddDomainServices() for all services + adapters |
+| Frontend Config | `MusicShare.Services/Configuration/FrontendSettings.cs` | Frontend URL and revalidation secret settings |
+| DI Registration | `MusicShare.Services/DependencyInjection.cs` | AddDomainServices() for all services, adapters + revalidation |
 | Service Wiring | `MusicShare.ServiceDefaults/Extensions.cs` | Calls AddPersistence() + AddDomainServices() |
 | Orchestration | `MusicShare.AppHost/AppHost.cs` | Local dev infrastructure |
 | Message Contracts | `MusicShare.Contracts/Messages/` | Event and command definitions |
@@ -258,7 +260,7 @@ azd up            # Both provision and deploy
 | `Spotify__ClientId` | Spotify API client ID |
 | `Spotify__ClientSecret` | Spotify API client secret |
 | `YouTube__GeographicLocation` | YouTube region setting |
-| `REVALIDATION_SECRET` | Shared secret for ISR revalidation |
+| `Frontend__RevalidationSecret` | Shared secret for ISR revalidation (sent as `X-API-KEY` header) |
 
 ### Azure Deployment Variables
 

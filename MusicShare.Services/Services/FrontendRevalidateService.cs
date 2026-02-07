@@ -1,4 +1,5 @@
 ﻿using System.Net.Http.Json;
+using Microsoft.Extensions.Logging;
 
 namespace MusicShare.Worker.Services
 {

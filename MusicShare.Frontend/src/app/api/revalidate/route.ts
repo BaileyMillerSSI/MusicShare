@@ -8,8 +8,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Revalidation secret not configured' }, { status: 500 });
   }
 
-  const authorization = request.headers.get('Authorization');
-  if (authorization !== `Bearer ${secret}`) {
+  const authorization = request.headers.get('X-API-KEY');
+  if (authorization !== secret) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
