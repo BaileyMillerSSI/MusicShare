@@ -11,7 +11,6 @@ export default function NativeShare({ title, artists }: Readonly<Props>) {
                   const shareUrl = window.location.href;
                   const shareData = {
                     title: `${title} - ${artists.join(', ')}`,
-                    text: `Check out "${title}" by ${artists.join(', ')} on your favorite music platform!`,
                     url: shareUrl,
                   };
 
