@@ -710,6 +710,69 @@ public class ShareRequestServiceTests
 
     #endregion
 
+    #region GetAllCompletedShareIdsAsync Tests
+
+    [Fact]
+    public async Task ItWillReturnCompletedShareIdsFromRepository()
+    {
+        // Arrange
+        using var mock = AutoMock.GetLoose();
+        var expectedIds = new List<string> { "abc123def456", "789ghi012jkl" };
+        mock.Mock<IShareRequestRepository>()
+            .Setup(x => x.GetAllCompletedShareIdsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(expectedIds);
+
+        var sut = mock.Create<ShareRequestService>();
+
+        // Act
+        var result = await sut.GetAllCompletedShareIdsAsync(CancellationToken.None);
+
+        // Assert
+        result.Should().HaveCount(2);
+        result.Should().ContainInOrder("abc123def456", "789ghi012jkl");
+    }
+
+    [Fact]
+    public async Task ItWillReturnEmptyListWhenNoCompletedShareRequests()
+    {
+        // Arrange
+        using var mock = AutoMock.GetLoose();
+        mock.Mock<IShareRequestRepository>()
+            .Setup(x => x.GetAllCompletedShareIdsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<string>());
+
+        var sut = mock.Create<ShareRequestService>();
+
+        // Act
+        var result = await sut.GetAllCompletedShareIdsAsync(CancellationToken.None);
+
+        // Assert
+        result.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ItWillPassCancellationTokenToRepositoryForGetAllCompletedShareIds()
+    {
+        // Arrange
+        using var mock = AutoMock.GetLoose();
+        var cts = new CancellationTokenSource();
+        mock.Mock<IShareRequestRepository>()
+            .Setup(x => x.GetAllCompletedShareIdsAsync(cts.Token))
+            .ReturnsAsync(new List<string>());
+
+        var sut = mock.Create<ShareRequestService>();
+
+        // Act
+        await sut.GetAllCompletedShareIdsAsync(cts.Token);
+
+        // Assert
+        mock.Mock<IShareRequestRepository>().Verify(
+            x => x.GetAllCompletedShareIdsAsync(cts.Token),
+            Times.Once);
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private static void SetupAdapterForCreate(AutoMock mock, string url, ServiceType serviceType, string? songId)

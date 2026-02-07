@@ -40,6 +40,19 @@ public class ShareController(IMediator mediator) : ControllerBase
     }
 
     /// <summary>
+    /// Get all share IDs for completed share requests.
+    /// Used by the frontend to pre-cache ISR routes at build time.
+    /// </summary>
+    [HttpGet("ids")]
+    public async Task<ActionResult<IReadOnlyList<string>>> GetAllShareIds(
+        CancellationToken cancellationToken)
+    {
+        var result = await _mediator.Send(new GetAllShareIds.Query(), cancellationToken);
+
+        return Ok(result.ShareIds);
+    }
+
+    /// <summary>
     /// Get the results of a share request by ShareId.
     /// </summary>
     [HttpGet("{shareId}")]

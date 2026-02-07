@@ -69,6 +69,10 @@ public class ShareRequestService(
         return shareId;
     }
 
+    public async Task<List<string>> GetAllCompletedShareIdsAsync(
+        CancellationToken cancellationToken) =>
+        await shareRequestRepository.GetAllCompletedShareIdsAsync(cancellationToken);
+
     public async Task<ShareResultResponse?> GetByShareIdAsync(
         string shareId,
         CancellationToken cancellationToken)
