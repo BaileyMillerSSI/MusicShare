@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'API base URL not configured' }, { status: 500 });
   }
 
-  const res = await fetch(`${apiBase}/api/share/ids`);
+  const res = await fetch(`${apiBase}/internal/share/ids`);
   if (!res.ok) {
     return NextResponse.json({ error: 'Failed to fetch share IDs from API' }, { status: 502 });
   }
