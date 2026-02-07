@@ -10,28 +10,23 @@ namespace MusicShare.Tests.Unit.Api.Controllers;
 
 public class ShareControllerTests
 {
-    private readonly AutoMocker _mocker = new();
-    private readonly ShareController _sut;
-
-    public ShareControllerTests()
-    {
-        _sut = _mocker.CreateInstance<ShareController>();
-    }
-
     #region SubmitShare Tests
 
     [Fact]
     public async Task ItWillReturnOkWithShareIdForValidRequest()
     {
         // Arrange
+        using var mock = AutoMock.GetLoose();
         var request = new SubmitShare.Request("https://open.spotify.com/track/abc123");
         var response = SubmitShare.Response.AsSuccess("share-123abc", ShareStatus.Pending);
-        _mocker.GetMock<IMediator>()
+        mock.Mock<IMediator>()
             .Setup(x => x.Send(request, It.IsAny<CancellationToken>()))
             .ReturnsAsync(response);
 
+        var sut = mock.Create<ShareController>();
+
         // Act
-        var actionResult = await _sut.SubmitShare(request, CancellationToken.None);
+        var actionResult = await sut.SubmitShare(request, CancellationToken.None);
 
         // Assert
         var okResult = actionResult.Result.Should().BeOfType<OkObjectResult>().Subject;
@@ -44,14 +39,17 @@ public class ShareControllerTests
     public async Task ItWillReturnBadRequestForUnsupportedUrl()
     {
         // Arrange
+        using var mock = AutoMock.GetLoose();
         var request = new SubmitShare.Request("https://unknown.com/track");
         var response = SubmitShare.Response.AsFailure("Unsupported music service URL");
-        _mocker.GetMock<IMediator>()
+        mock.Mock<IMediator>()
             .Setup(x => x.Send(request, It.IsAny<CancellationToken>()))
             .ReturnsAsync(response);
 
+        var sut = mock.Create<ShareController>();
+
         // Act
-        var actionResult = await _sut.SubmitShare(request, CancellationToken.None);
+        var actionResult = await sut.SubmitShare(request, CancellationToken.None);
 
         // Assert
         actionResult.Result.Should().BeOfType<BadRequestObjectResult>();
@@ -61,14 +59,17 @@ public class ShareControllerTests
     public async Task ItWillReturnBadRequestWithErrorForFailedResponse()
     {
         // Arrange
+        using var mock = AutoMock.GetLoose();
         var request = new SubmitShare.Request("https://bad-url.com");
         var response = SubmitShare.Response.AsFailure("Something went wrong");
-        _mocker.GetMock<IMediator>()
+        mock.Mock<IMediator>()
             .Setup(x => x.Send(request, It.IsAny<CancellationToken>()))
             .ReturnsAsync(response);
 
+        var sut = mock.Create<ShareController>();
+
         // Act
-        var actionResult = await _sut.SubmitShare(request, CancellationToken.None);
+        var actionResult = await sut.SubmitShare(request, CancellationToken.None);
 
         // Assert
         var badRequest = actionResult.Result.Should().BeOfType<BadRequestObjectResult>().Subject;
@@ -79,28 +80,33 @@ public class ShareControllerTests
     public async Task ItWillSendRequestToMediator()
     {
         // Arrange
+        using var mock = AutoMock.GetLoose();
         var request = new SubmitShare.Request("https://open.spotify.com/track/abc123");
         var cts = new CancellationTokenSource();
-        _mocker.GetMock<IMediator>()
+        mock.Mock<IMediator>()
             .Setup(x => x.Send(request, cts.Token))
             .ReturnsAsync(SubmitShare.Response.AsSuccess("id", ShareStatus.Pending));
 
+        var sut = mock.Create<ShareController>();
+
         // Act
-        await _sut.SubmitShare(request, cts.Token);
+        await sut.SubmitShare(request, cts.Token);
 
         // Assert
-        _mocker.GetMock<IMediator>().Verify(x => x.Send(request, cts.Token), Times.Once);
+        mock.Mock<IMediator>().Verify(x => x.Send(request, cts.Token), Times.Once);
     }
 
     [Fact]
     public async Task ItWillReturnBadRequestForInvalidModelState()
     {
         // Arrange
+        using var mock = AutoMock.GetLoose();
         var request = new SubmitShare.Request("https://open.spotify.com/track/abc123");
-        _sut.ModelState.AddModelError("Url", "The Url field is required.");
+        var sut = mock.Create<ShareController>();
+        sut.ModelState.AddModelError("Url", "The Url field is required.");
 
         // Act
-        var actionResult = await _sut.SubmitShare(request, CancellationToken.None);
+        var actionResult = await sut.SubmitShare(request, CancellationToken.None);
 
         // Assert
         actionResult.Result.Should().BeOfType<BadRequestResult>();
@@ -110,14 +116,16 @@ public class ShareControllerTests
     public async Task ItWillNotCallMediatorWhenModelStateIsInvalid()
     {
         // Arrange
+        using var mock = AutoMock.GetLoose();
         var request = new SubmitShare.Request("invalid");
-        _sut.ModelState.AddModelError("Url", "Invalid URL format.");
+        var sut = mock.Create<ShareController>();
+        sut.ModelState.AddModelError("Url", "Invalid URL format.");
 
         // Act
-        await _sut.SubmitShare(request, CancellationToken.None);
+        await sut.SubmitShare(request, CancellationToken.None);
 
         // Assert
-        _mocker.GetMock<IMediator>().Verify(
+        mock.Mock<IMediator>().Verify(
             x => x.Send(It.IsAny<SubmitShare.Request>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
@@ -130,6 +138,7 @@ public class ShareControllerTests
     public async Task ItWillReturnOkWithResponseForExistingShare()
     {
         // Arrange
+        using var mock = AutoMock.GetLoose();
         var shareId = "share-123";
         var shareResponse = new ShareResultResponse
         {
@@ -138,12 +147,14 @@ public class ShareControllerTests
             Song = null
         };
         var queryResult = GetShareResult.Result.Success(shareResponse);
-        _mocker.GetMock<IMediator>()
+        mock.Mock<IMediator>()
             .Setup(x => x.Send(It.Is<GetShareResult.Query>(q => q.ShareId == shareId), It.IsAny<CancellationToken>()))
             .ReturnsAsync(queryResult);
 
+        var sut = mock.Create<ShareController>();
+
         // Act
-        var actionResult = await _sut.GetShareResult(shareId, CancellationToken.None);
+        var actionResult = await sut.GetShareResult(shareId, CancellationToken.None);
 
         // Assert
         var okResult = actionResult.Result.Should().BeOfType<OkObjectResult>().Subject;
@@ -156,14 +167,17 @@ public class ShareControllerTests
     public async Task ItWillReturnNotFoundForNonExistentShare()
     {
         // Arrange
+        using var mock = AutoMock.GetLoose();
         var shareId = "nonexistent";
         var queryResult = GetShareResult.Result.NotFound();
-        _mocker.GetMock<IMediator>()
+        mock.Mock<IMediator>()
             .Setup(x => x.Send(It.Is<GetShareResult.Query>(q => q.ShareId == shareId), It.IsAny<CancellationToken>()))
             .ReturnsAsync(queryResult);
 
+        var sut = mock.Create<ShareController>();
+
         // Act
-        var actionResult = await _sut.GetShareResult(shareId, CancellationToken.None);
+        var actionResult = await sut.GetShareResult(shareId, CancellationToken.None);
 
         // Assert
         actionResult.Result.Should().BeOfType<NotFoundObjectResult>();
@@ -173,12 +187,15 @@ public class ShareControllerTests
     public async Task ItWillReturnErrorMessageWhenNotFound()
     {
         // Arrange
-        _mocker.GetMock<IMediator>()
+        using var mock = AutoMock.GetLoose();
+        mock.Mock<IMediator>()
             .Setup(x => x.Send(It.IsAny<GetShareResult.Query>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(GetShareResult.Result.NotFound());
 
+        var sut = mock.Create<ShareController>();
+
         // Act
-        var actionResult = await _sut.GetShareResult("missing", CancellationToken.None);
+        var actionResult = await sut.GetShareResult("missing", CancellationToken.None);
 
         // Assert
         var notFoundResult = actionResult.Result.Should().BeOfType<NotFoundObjectResult>().Subject;
@@ -189,17 +206,20 @@ public class ShareControllerTests
     public async Task ItWillSendCorrectQueryToMediator()
     {
         // Arrange
+        using var mock = AutoMock.GetLoose();
         var shareId = "test-share-id";
         var cts = new CancellationTokenSource();
-        _mocker.GetMock<IMediator>()
+        mock.Mock<IMediator>()
             .Setup(x => x.Send(It.IsAny<GetShareResult.Query>(), cts.Token))
             .ReturnsAsync(GetShareResult.Result.NotFound());
 
+        var sut = mock.Create<ShareController>();
+
         // Act
-        await _sut.GetShareResult(shareId, cts.Token);
+        await sut.GetShareResult(shareId, cts.Token);
 
         // Assert
-        _mocker.GetMock<IMediator>().Verify(
+        mock.Mock<IMediator>().Verify(
             x => x.Send(
                 It.Is<GetShareResult.Query>(q => q.ShareId == shareId),
                 cts.Token),
@@ -210,10 +230,12 @@ public class ShareControllerTests
     public async Task ItWillReturnBadRequestForInvalidModelStateOnGetShareResult()
     {
         // Arrange
-        _sut.ModelState.AddModelError("shareId", "Invalid share ID.");
+        using var mock = AutoMock.GetLoose();
+        var sut = mock.Create<ShareController>();
+        sut.ModelState.AddModelError("shareId", "Invalid share ID.");
 
         // Act
-        var actionResult = await _sut.GetShareResult("any-id", CancellationToken.None);
+        var actionResult = await sut.GetShareResult("any-id", CancellationToken.None);
 
         // Assert
         actionResult.Result.Should().BeOfType<BadRequestResult>();
@@ -223,6 +245,7 @@ public class ShareControllerTests
     public async Task ItWillReturnFullResponseWithSongDetails()
     {
         // Arrange
+        using var mock = AutoMock.GetLoose();
         var shareId = "share-song";
         var shareResponse = new ShareResultResponse
         {
@@ -249,12 +272,14 @@ public class ShareControllerTests
                 ]
             }
         };
-        _mocker.GetMock<IMediator>()
+        mock.Mock<IMediator>()
             .Setup(x => x.Send(It.IsAny<GetShareResult.Query>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(GetShareResult.Result.Success(shareResponse));
 
+        var sut = mock.Create<ShareController>();
+
         // Act
-        var actionResult = await _sut.GetShareResult(shareId, CancellationToken.None);
+        var actionResult = await sut.GetShareResult(shareId, CancellationToken.None);
 
         // Assert
         var okResult = actionResult.Result.Should().BeOfType<OkObjectResult>().Subject;

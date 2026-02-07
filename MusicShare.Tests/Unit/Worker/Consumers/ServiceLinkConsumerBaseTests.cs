@@ -14,19 +14,6 @@ namespace MusicShare.Tests.Unit.Worker.Consumers;
 /// </summary>
 public class ServiceLinkConsumerBaseTests
 {
-    private readonly AutoMocker _mocker = new();
-    private readonly Mock<IMusicServiceAdapter> _adapterMock = new();
-    private readonly SpotifyLinkConsumer _sut;
-
-    public ServiceLinkConsumerBaseTests()
-    {
-        _mocker.GetMock<IMusicServiceResolver>()
-            .Setup(x => x.GetAdapter(ServiceType.Spotify))
-            .Returns(_adapterMock.Object);
-
-        _sut = _mocker.CreateInstance<SpotifyLinkConsumer>();
-    }
-
     private static ResolveServiceLink CreateMessage(
         string songId = "song-1",
         string shareId = "share-1",
@@ -59,29 +46,37 @@ public class ServiceLinkConsumerBaseTests
     public async Task ItWillCreateLinkAndPublishSuccessWhenSongFoundOnService()
     {
         // Arrange
+        using var mock = AutoMock.GetLoose();
+        var adapterMock = new Mock<IMusicServiceAdapter>();
+        mock.Mock<IMusicServiceResolver>()
+            .Setup(x => x.GetAdapter(ServiceType.Spotify))
+            .Returns(adapterMock.Object);
+
         var message = CreateMessage();
         var context = CreateContext(message);
 
-        _mocker.GetMock<ISongServiceLinkRepository>()
+        mock.Mock<ISongServiceLinkRepository>()
             .Setup(x => x.GetBySongIdAndServiceAsync("song-1", ServiceType.Spotify, It.IsAny<CancellationToken>()))
             .ReturnsAsync((SongServiceLink?)null);
 
         var foundUrl = "https://open.spotify.com/track/found123";
-        _adapterMock
+        adapterMock
             .Setup(x => x.FindSongAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(foundUrl);
-        _adapterMock
+        adapterMock
             .Setup(x => x.NormalizeUrl(foundUrl))
             .Returns(foundUrl);
-        _adapterMock
+        adapterMock
             .Setup(x => x.ExtractSongId(foundUrl))
             .Returns("found123");
 
+        var sut = mock.Create<SpotifyLinkConsumer>();
+
         // Act
-        await _sut.Consume(context.Object);
+        await sut.Consume(context.Object);
 
         // Assert
-        _mocker.GetMock<ISongServiceLinkRepository>().Verify(
+        mock.Mock<ISongServiceLinkRepository>().Verify(
             x => x.InsertAsync(
                 It.Is<SongServiceLink>(l =>
                     l.SongId == "song-1" &&
@@ -106,19 +101,27 @@ public class ServiceLinkConsumerBaseTests
     public async Task ItWillPublishFailureWhenSongNotFoundOnService()
     {
         // Arrange
+        using var mock = AutoMock.GetLoose();
+        var adapterMock = new Mock<IMusicServiceAdapter>();
+        mock.Mock<IMusicServiceResolver>()
+            .Setup(x => x.GetAdapter(ServiceType.Spotify))
+            .Returns(adapterMock.Object);
+
         var message = CreateMessage();
         var context = CreateContext(message);
 
-        _mocker.GetMock<ISongServiceLinkRepository>()
+        mock.Mock<ISongServiceLinkRepository>()
             .Setup(x => x.GetBySongIdAndServiceAsync("song-1", ServiceType.Spotify, It.IsAny<CancellationToken>()))
             .ReturnsAsync((SongServiceLink?)null);
 
-        _adapterMock
+        adapterMock
             .Setup(x => x.FindSongAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((string?)null);
 
+        var sut = mock.Create<SpotifyLinkConsumer>();
+
         // Act
-        await _sut.Consume(context.Object);
+        await sut.Consume(context.Object);
 
         // Assert
         context.Verify(
@@ -130,7 +133,7 @@ public class ServiceLinkConsumerBaseTests
                 It.IsAny<CancellationToken>()),
             Times.Once);
 
-        _mocker.GetMock<ISongServiceLinkRepository>().Verify(
+        mock.Mock<ISongServiceLinkRepository>().Verify(
             x => x.InsertAsync(It.IsAny<SongServiceLink>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
@@ -139,19 +142,27 @@ public class ServiceLinkConsumerBaseTests
     public async Task ItWillPublishFailureWhenFindSongReturnsEmptyString()
     {
         // Arrange
+        using var mock = AutoMock.GetLoose();
+        var adapterMock = new Mock<IMusicServiceAdapter>();
+        mock.Mock<IMusicServiceResolver>()
+            .Setup(x => x.GetAdapter(ServiceType.Spotify))
+            .Returns(adapterMock.Object);
+
         var message = CreateMessage();
         var context = CreateContext(message);
 
-        _mocker.GetMock<ISongServiceLinkRepository>()
+        mock.Mock<ISongServiceLinkRepository>()
             .Setup(x => x.GetBySongIdAndServiceAsync("song-1", ServiceType.Spotify, It.IsAny<CancellationToken>()))
             .ReturnsAsync((SongServiceLink?)null);
 
-        _adapterMock
+        adapterMock
             .Setup(x => x.FindSongAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync("");
 
+        var sut = mock.Create<SpotifyLinkConsumer>();
+
         // Act
-        await _sut.Consume(context.Object);
+        await sut.Consume(context.Object);
 
         // Assert
         context.Verify(
@@ -163,6 +174,12 @@ public class ServiceLinkConsumerBaseTests
     public async Task ItWillPublishSuccessWithoutCreatingNewWhenLinkExists()
     {
         // Arrange
+        using var mock = AutoMock.GetLoose();
+        var adapterMock = new Mock<IMusicServiceAdapter>();
+        mock.Mock<IMusicServiceResolver>()
+            .Setup(x => x.GetAdapter(ServiceType.Spotify))
+            .Returns(adapterMock.Object);
+
         var correlationId = Guid.NewGuid();
         var message = CreateMessage(correlationId: correlationId);
         var context = CreateContext(message);
@@ -176,12 +193,14 @@ public class ServiceLinkConsumerBaseTests
             OriginalUrl = "https://open.spotify.com/track/existing",
             NormalizedUrl = "https://open.spotify.com/track/existing"
         };
-        _mocker.GetMock<ISongServiceLinkRepository>()
+        mock.Mock<ISongServiceLinkRepository>()
             .Setup(x => x.GetBySongIdAndServiceAsync("song-1", ServiceType.Spotify, It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingLink);
 
+        var sut = mock.Create<SpotifyLinkConsumer>();
+
         // Act
-        await _sut.Consume(context.Object);
+        await sut.Consume(context.Object);
 
         // Assert
         context.Verify(
@@ -193,12 +212,12 @@ public class ServiceLinkConsumerBaseTests
             Times.Once);
 
         // Should not create a new link
-        _mocker.GetMock<ISongServiceLinkRepository>().Verify(
+        mock.Mock<ISongServiceLinkRepository>().Verify(
             x => x.InsertAsync(It.IsAny<SongServiceLink>(), It.IsAny<CancellationToken>()),
             Times.Never);
 
         // Should not try to find the song again
-        _adapterMock.Verify(
+        adapterMock.Verify(
             x => x.FindSongAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
@@ -207,19 +226,27 @@ public class ServiceLinkConsumerBaseTests
     public async Task ItWillPublishFailureAndNotRethrowWhenAdapterThrowsException()
     {
         // Arrange
+        using var mock = AutoMock.GetLoose();
+        var adapterMock = new Mock<IMusicServiceAdapter>();
+        mock.Mock<IMusicServiceResolver>()
+            .Setup(x => x.GetAdapter(ServiceType.Spotify))
+            .Returns(adapterMock.Object);
+
         var message = CreateMessage();
         var context = CreateContext(message);
 
-        _mocker.GetMock<ISongServiceLinkRepository>()
+        mock.Mock<ISongServiceLinkRepository>()
             .Setup(x => x.GetBySongIdAndServiceAsync("song-1", ServiceType.Spotify, It.IsAny<CancellationToken>()))
             .ReturnsAsync((SongServiceLink?)null);
 
-        _adapterMock
+        adapterMock
             .Setup(x => x.FindSongAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("API error"));
 
+        var sut = mock.Create<SpotifyLinkConsumer>();
+
         // Act - should not throw
-        await _sut.Consume(context.Object);
+        await sut.Consume(context.Object);
 
         // Assert
         context.Verify(
@@ -234,29 +261,37 @@ public class ServiceLinkConsumerBaseTests
     public async Task ItWillUseFoundUrlAsServiceSongIdWhenExtractSongIdReturnsNull()
     {
         // Arrange
+        using var mock = AutoMock.GetLoose();
+        var adapterMock = new Mock<IMusicServiceAdapter>();
+        mock.Mock<IMusicServiceResolver>()
+            .Setup(x => x.GetAdapter(ServiceType.Spotify))
+            .Returns(adapterMock.Object);
+
         var message = CreateMessage();
         var context = CreateContext(message);
 
-        _mocker.GetMock<ISongServiceLinkRepository>()
+        mock.Mock<ISongServiceLinkRepository>()
             .Setup(x => x.GetBySongIdAndServiceAsync("song-1", ServiceType.Spotify, It.IsAny<CancellationToken>()))
             .ReturnsAsync((SongServiceLink?)null);
 
         var foundUrl = "https://open.spotify.com/track/xyz";
-        _adapterMock
+        adapterMock
             .Setup(x => x.FindSongAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(foundUrl);
-        _adapterMock
+        adapterMock
             .Setup(x => x.NormalizeUrl(foundUrl))
             .Returns(foundUrl);
-        _adapterMock
+        adapterMock
             .Setup(x => x.ExtractSongId(foundUrl))
             .Returns((string?)null);
 
+        var sut = mock.Create<SpotifyLinkConsumer>();
+
         // Act
-        await _sut.Consume(context.Object);
+        await sut.Consume(context.Object);
 
         // Assert
-        _mocker.GetMock<ISongServiceLinkRepository>().Verify(
+        mock.Mock<ISongServiceLinkRepository>().Verify(
             x => x.InsertAsync(
                 It.Is<SongServiceLink>(l => l.ServiceSongId == foundUrl),
                 It.IsAny<CancellationToken>()),
@@ -267,6 +302,12 @@ public class ServiceLinkConsumerBaseTests
     public async Task ItWillConvertPayloadToSongMetadata()
     {
         // Arrange
+        using var mock = AutoMock.GetLoose();
+        var adapterMock = new Mock<IMusicServiceAdapter>();
+        mock.Mock<IMusicServiceResolver>()
+            .Setup(x => x.GetAdapter(ServiceType.Spotify))
+            .Returns(adapterMock.Object);
+
         var message = new ResolveServiceLink
         {
             CorrelationId = Guid.NewGuid(),
@@ -285,19 +326,21 @@ public class ServiceLinkConsumerBaseTests
         };
         var context = CreateContext(message);
 
-        _mocker.GetMock<ISongServiceLinkRepository>()
+        mock.Mock<ISongServiceLinkRepository>()
             .Setup(x => x.GetBySongIdAndServiceAsync("song-1", ServiceType.Spotify, It.IsAny<CancellationToken>()))
             .ReturnsAsync((SongServiceLink?)null);
 
-        _adapterMock
+        adapterMock
             .Setup(x => x.FindSongAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((string?)null);
 
+        var sut = mock.Create<SpotifyLinkConsumer>();
+
         // Act
-        await _sut.Consume(context.Object);
+        await sut.Consume(context.Object);
 
         // Assert
-        _adapterMock.Verify(
+        adapterMock.Verify(
             x => x.FindSongAsync(
                 It.Is<SongMetadata>(m =>
                     m.Title == "Specific Title" &&

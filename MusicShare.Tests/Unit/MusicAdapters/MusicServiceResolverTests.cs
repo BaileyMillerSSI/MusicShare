@@ -5,15 +5,13 @@ namespace MusicShare.Tests.Unit.MusicAdapters;
 
 public class MusicServiceResolverTests
 {
-    private readonly MusicServiceResolver _sut;
-
-    public MusicServiceResolverTests()
+    private static MusicServiceResolver CreateResolverWithAllAdapters()
     {
         var spotifyAdapter = Mock.Of<IMusicServiceAdapter>(a => a.ServiceType == ServiceType.Spotify);
         var appleMusicAdapter = Mock.Of<IMusicServiceAdapter>(a => a.ServiceType == ServiceType.AppleMusic);
         var youTubeMusicAdapter = Mock.Of<IMusicServiceAdapter>(a => a.ServiceType == ServiceType.YouTubeMusic);
 
-        _sut = new MusicServiceResolver([spotifyAdapter, appleMusicAdapter, youTubeMusicAdapter]);
+        return new MusicServiceResolver([spotifyAdapter, appleMusicAdapter, youTubeMusicAdapter]);
     }
 
     #region DetectServiceType Tests
@@ -26,7 +24,8 @@ public class MusicServiceResolverTests
     public void ItWillReturnSpotifyForSpotifyUrl(string url)
     {
         // Act
-        var result = _sut.DetectServiceType(url);
+        var sut = CreateResolverWithAllAdapters();
+        var result = sut.DetectServiceType(url);
 
         // Assert
         result.Should().Be(ServiceType.Spotify);
@@ -38,7 +37,8 @@ public class MusicServiceResolverTests
     public void ItWillReturnAppleMusicForAppleMusicUrl(string url)
     {
         // Act
-        var result = _sut.DetectServiceType(url);
+        var sut = CreateResolverWithAllAdapters();
+        var result = sut.DetectServiceType(url);
 
         // Assert
         result.Should().Be(ServiceType.AppleMusic);
@@ -52,7 +52,8 @@ public class MusicServiceResolverTests
     public void ItWillReturnYouTubeMusicForYouTubeMusicUrl(string url)
     {
         // Act
-        var result = _sut.DetectServiceType(url);
+        var sut = CreateResolverWithAllAdapters();
+        var result = sut.DetectServiceType(url);
 
         // Assert
         result.Should().Be(ServiceType.YouTubeMusic);
@@ -67,7 +68,8 @@ public class MusicServiceResolverTests
     public void ItWillReturnNullForUnsupportedUrl(string url)
     {
         // Act
-        var result = _sut.DetectServiceType(url);
+        var sut = CreateResolverWithAllAdapters();
+        var result = sut.DetectServiceType(url);
 
         // Assert
         result.Should().BeNull();
@@ -81,7 +83,8 @@ public class MusicServiceResolverTests
     public void ItWillReturnSpotifyAdapterForSpotify()
     {
         // Act
-        var adapter = _sut.GetAdapter(ServiceType.Spotify);
+        var sut = CreateResolverWithAllAdapters();
+        var adapter = sut.GetAdapter(ServiceType.Spotify);
 
         // Assert
         adapter.Should().NotBeNull();
@@ -92,7 +95,8 @@ public class MusicServiceResolverTests
     public void ItWillReturnAppleMusicAdapterForAppleMusic()
     {
         // Act
-        var adapter = _sut.GetAdapter(ServiceType.AppleMusic);
+        var sut = CreateResolverWithAllAdapters();
+        var adapter = sut.GetAdapter(ServiceType.AppleMusic);
 
         // Assert
         adapter.Should().NotBeNull();
@@ -103,7 +107,8 @@ public class MusicServiceResolverTests
     public void ItWillReturnYouTubeMusicAdapterForYouTubeMusic()
     {
         // Act
-        var adapter = _sut.GetAdapter(ServiceType.YouTubeMusic);
+        var sut = CreateResolverWithAllAdapters();
+        var adapter = sut.GetAdapter(ServiceType.YouTubeMusic);
 
         // Assert
         adapter.Should().NotBeNull();
@@ -114,7 +119,8 @@ public class MusicServiceResolverTests
     public void ItWillReturnNullForUnknown()
     {
         // Act
-        var adapter = _sut.GetAdapter(ServiceType.Unknown);
+        var sut = CreateResolverWithAllAdapters();
+        var adapter = sut.GetAdapter(ServiceType.Unknown);
 
         // Assert
         adapter.Should().BeNull();
@@ -142,7 +148,8 @@ public class MusicServiceResolverTests
     public void ItWillReturnAllRegisteredAdapters()
     {
         // Act
-        var adapters = _sut.GetAllAdapters().ToList();
+        var sut = CreateResolverWithAllAdapters();
+        var adapters = sut.GetAllAdapters().ToList();
 
         // Assert
         adapters.Should().HaveCount(3);
@@ -173,7 +180,8 @@ public class MusicServiceResolverTests
     public void ItWillReturnAppleAndYouTubeWhenExcludingSpotify()
     {
         // Act
-        var adapters = _sut.GetOtherAdapters(ServiceType.Spotify).ToList();
+        var sut = CreateResolverWithAllAdapters();
+        var adapters = sut.GetOtherAdapters(ServiceType.Spotify).ToList();
 
         // Assert
         adapters.Should().HaveCount(2);
@@ -187,7 +195,8 @@ public class MusicServiceResolverTests
     public void ItWillReturnSpotifyAndYouTubeWhenExcludingAppleMusic()
     {
         // Act
-        var adapters = _sut.GetOtherAdapters(ServiceType.AppleMusic).ToList();
+        var sut = CreateResolverWithAllAdapters();
+        var adapters = sut.GetOtherAdapters(ServiceType.AppleMusic).ToList();
 
         // Assert
         adapters.Should().HaveCount(2);
@@ -201,7 +210,8 @@ public class MusicServiceResolverTests
     public void ItWillReturnSpotifyAndAppleWhenExcludingYouTubeMusic()
     {
         // Act
-        var adapters = _sut.GetOtherAdapters(ServiceType.YouTubeMusic).ToList();
+        var sut = CreateResolverWithAllAdapters();
+        var adapters = sut.GetOtherAdapters(ServiceType.YouTubeMusic).ToList();
 
         // Assert
         adapters.Should().HaveCount(2);
@@ -215,7 +225,8 @@ public class MusicServiceResolverTests
     public void ItWillReturnAllWhenExcludingNonExistent()
     {
         // Act
-        var adapters = _sut.GetOtherAdapters(ServiceType.Unknown).ToList();
+        var sut = CreateResolverWithAllAdapters();
+        var adapters = sut.GetOtherAdapters(ServiceType.Unknown).ToList();
 
         // Assert
         adapters.Should().HaveCount(3);

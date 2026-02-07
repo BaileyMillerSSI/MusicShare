@@ -289,7 +289,7 @@ MusicShare is a Progressive Web App with:
 - **xUnit 2.9.2**: Test framework
 - **FluentAssertions 7.0.0**: Readable assertion syntax
 - **Moq 4.20.72**: Mocking framework
-- **Moq.AutoMock 3.6.1**: Auto-mocking container for automatic dependency resolution
+- **Autofac.Extras.Moq**: Auto-mocking container via `AutoMock.GetLoose()`
 - **Aspire.Hosting.Testing 13.1.0**: Integration testing with full Aspire stack
 
 **Running Tests**:
@@ -303,41 +303,36 @@ dotnet test MusicShare.Tests/MusicShare.Tests.csproj   # Run test project only
 - `Integration/` - Integration tests using Aspire distributed application
 
 **Writing Tests**:
-- Unit tests: Use `AutoMocker` for dependency resolution, FluentAssertions for assertions
+- Unit tests: Use `AutoMock.GetLoose()` for dependency resolution, FluentAssertions for assertions
 - Integration tests: Extend `AspireIntegrationTestBase` to spin up the full Aspire application
-- Global usings for xUnit, FluentAssertions, Moq, and Moq.AutoMock are in `GlobalUsings.cs`
+- Global usings for xUnit, FluentAssertions, Moq, and Autofac.Extras.Moq are in `GlobalUsings.cs`
 
 **Test Naming Convention**:
 - All unit test methods MUST use the `ItWill` prefix (e.g., `ItWillReturnSuccessForValidSpotifyUrl`, `ItWillReturnNullForUnsupportedUrl`)
 - Do NOT use the `MethodName_Scenario_Expected` pattern
 
-**AutoMocker Pattern** (required for unit tests):
-- Use `AutoMocker` instead of top-level `Mock<T>` fields for constructor-injected dependencies
-- Create SUT via `_mocker.CreateInstance<T>()` instead of manual `new T(mock1.Object, mock2.Object)`
-- Access mocks inline via `_mocker.GetMock<IFoo>()` for setup and verification
-- For concrete 3rd-party dependencies that AutoMock cannot construct, use `mocker.Use(instance)` before `CreateInstance`
+**AutoMock Pattern** (required for unit tests):
+- **No top-level properties**: No `_mocker`, `_sut`, or any class-level fields in test classes
+- Each test method creates its own `AutoMock` via `using var mock = AutoMock.GetLoose();`
+- SUT created per-test via `var sut = mock.Create<T>();`
+- Access mocks inline via `mock.Mock<IFoo>()` for setup and verification
+- For concrete 3rd-party dependencies that AutoMock cannot construct, use `mock.Provide(instance)` before `mock.Create<T>()`
 - Non-constructor dependencies (e.g., `ConsumeContext<T>`) should be created locally in tests or via helper methods
 
 ```csharp
-// Standard AutoMocker pattern
+// Standard AutoMock pattern - no top-level properties
 public class MyHandlerTests
 {
-    private readonly AutoMocker _mocker = new();
-    private readonly MyHandler _sut;
-
-    public MyHandlerTests()
-    {
-        _sut = _mocker.CreateInstance<MyHandler>();
-    }
-
     [Fact]
     public async Task ItWillReturnExpectedResultForValidInput()
     {
-        _mocker.GetMock<IMyService>()
+        using var mock = AutoMock.GetLoose();
+        mock.Mock<IMyService>()
             .Setup(x => x.DoWork())
             .ReturnsAsync("result");
 
-        var result = await _sut.Handle(new MyRequest(), CancellationToken.None);
+        var sut = mock.Create<MyHandler>();
+        var result = await sut.Handle(new MyRequest(), CancellationToken.None);
 
         result.Should().Be("result");
     }

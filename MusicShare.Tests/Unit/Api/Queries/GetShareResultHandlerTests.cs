@@ -7,18 +7,11 @@ namespace MusicShare.Tests.Unit.Api.Queries;
 
 public class GetShareResultHandlerTests
 {
-    private readonly AutoMocker _mocker = new();
-    private readonly GetShareResult.Handler _sut;
-
-    public GetShareResultHandlerTests()
-    {
-        _sut = _mocker.CreateInstance<GetShareResult.Handler>();
-    }
-
     [Fact]
     public async Task ItWillReturnSuccessResultForExistingShareId()
     {
         // Arrange
+        using var mock = AutoMock.GetLoose();
         var shareId = "abc123";
         var query = new GetShareResult.Query(shareId);
         var expectedResponse = new ShareResultResponse
@@ -27,12 +20,14 @@ public class GetShareResultHandlerTests
             Status = "Completed",
             Song = null
         };
-        _mocker.GetMock<IShareRequestService>()
+        mock.Mock<IShareRequestService>()
             .Setup(x => x.GetByShareIdAsync(shareId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedResponse);
 
+        var sut = mock.Create<GetShareResult.Handler>();
+
         // Act
-        var result = await _sut.Handle(query, CancellationToken.None);
+        var result = await sut.Handle(query, CancellationToken.None);
 
         // Assert
         result.Found.Should().BeTrue();
@@ -45,13 +40,16 @@ public class GetShareResultHandlerTests
     public async Task ItWillReturnNotFoundResultForNonExistingShareId()
     {
         // Arrange
+        using var mock = AutoMock.GetLoose();
         var query = new GetShareResult.Query("nonexistent");
-        _mocker.GetMock<IShareRequestService>()
+        mock.Mock<IShareRequestService>()
             .Setup(x => x.GetByShareIdAsync("nonexistent", It.IsAny<CancellationToken>()))
             .ReturnsAsync((ShareResultResponse?)null);
 
+        var sut = mock.Create<GetShareResult.Handler>();
+
         // Act
-        var result = await _sut.Handle(query, CancellationToken.None);
+        var result = await sut.Handle(query, CancellationToken.None);
 
         // Assert
         result.Found.Should().BeFalse();
@@ -62,6 +60,7 @@ public class GetShareResultHandlerTests
     public async Task ItWillReturnFullResultForShareWithSongDetails()
     {
         // Arrange
+        using var mock = AutoMock.GetLoose();
         var shareId = "share-with-song";
         var query = new GetShareResult.Query(shareId);
         var expectedResponse = new ShareResultResponse
@@ -83,12 +82,14 @@ public class GetShareResultHandlerTests
                 ]
             }
         };
-        _mocker.GetMock<IShareRequestService>()
+        mock.Mock<IShareRequestService>()
             .Setup(x => x.GetByShareIdAsync(shareId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedResponse);
 
+        var sut = mock.Create<GetShareResult.Handler>();
+
         // Act
-        var result = await _sut.Handle(query, CancellationToken.None);
+        var result = await sut.Handle(query, CancellationToken.None);
 
         // Assert
         result.Found.Should().BeTrue();
@@ -101,17 +102,20 @@ public class GetShareResultHandlerTests
     public async Task ItWillPassCancellationTokenToService()
     {
         // Arrange
+        using var mock = AutoMock.GetLoose();
         var cts = new CancellationTokenSource();
         var query = new GetShareResult.Query("test-id");
-        _mocker.GetMock<IShareRequestService>()
+        mock.Mock<IShareRequestService>()
             .Setup(x => x.GetByShareIdAsync("test-id", cts.Token))
             .ReturnsAsync((ShareResultResponse?)null);
 
+        var sut = mock.Create<GetShareResult.Handler>();
+
         // Act
-        await _sut.Handle(query, cts.Token);
+        await sut.Handle(query, cts.Token);
 
         // Assert
-        _mocker.GetMock<IShareRequestService>().Verify(
+        mock.Mock<IShareRequestService>().Verify(
             x => x.GetByShareIdAsync("test-id", cts.Token),
             Times.Once);
     }

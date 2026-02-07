@@ -5,17 +5,13 @@ namespace MusicShare.Tests.Unit.MusicAdapters;
 
 public class SpotifyMusicServiceTests
 {
-    private readonly SpotifyMusicService _sut;
-
-    public SpotifyMusicServiceTests()
-    {
-        _sut = new SpotifyMusicService(new HttpClient());
-    }
+    private static SpotifyMusicService CreateSut() => new(new HttpClient());
 
     [Fact]
     public void ItWillReturnSpotifyServiceType()
     {
-        _sut.ServiceType.Should().Be(ServiceType.Spotify);
+        var sut = CreateSut();
+        sut.ServiceType.Should().Be(ServiceType.Spotify);
     }
 
     #region ExtractSongId Tests
@@ -23,7 +19,8 @@ public class SpotifyMusicServiceTests
     [Fact]
     public void ItWillReturnTrackIdForStandardTrackUrl()
     {
-        var result = _sut.ExtractSongId("https://open.spotify.com/track/6rqhFgbbKwnb9MLmUQDhG6");
+        var sut = CreateSut();
+        var result = sut.ExtractSongId("https://open.spotify.com/track/6rqhFgbbKwnb9MLmUQDhG6");
 
         result.Should().Be("6rqhFgbbKwnb9MLmUQDhG6");
     }
@@ -31,7 +28,8 @@ public class SpotifyMusicServiceTests
     [Fact]
     public void ItWillReturnTrackIdWithoutParamsForTrackUrlWithQueryParams()
     {
-        var result = _sut.ExtractSongId("https://open.spotify.com/track/6rqhFgbbKwnb9MLmUQDhG6?si=abc123");
+        var sut = CreateSut();
+        var result = sut.ExtractSongId("https://open.spotify.com/track/6rqhFgbbKwnb9MLmUQDhG6?si=abc123");
 
         result.Should().Be("6rqhFgbbKwnb9MLmUQDhG6");
     }
@@ -39,7 +37,8 @@ public class SpotifyMusicServiceTests
     [Fact]
     public void ItWillReturnTrackIdForSpotifyUri()
     {
-        var result = _sut.ExtractSongId("spotify:track:6rqhFgbbKwnb9MLmUQDhG6");
+        var sut = CreateSut();
+        var result = sut.ExtractSongId("spotify:track:6rqhFgbbKwnb9MLmUQDhG6");
 
         result.Should().Be("6rqhFgbbKwnb9MLmUQDhG6");
     }
@@ -47,7 +46,8 @@ public class SpotifyMusicServiceTests
     [Fact]
     public void ItWillReturnNullForAlbumUrl()
     {
-        var result = _sut.ExtractSongId("https://open.spotify.com/album/abc123");
+        var sut = CreateSut();
+        var result = sut.ExtractSongId("https://open.spotify.com/album/abc123");
 
         result.Should().BeNull();
     }
@@ -55,7 +55,8 @@ public class SpotifyMusicServiceTests
     [Fact]
     public void ItWillReturnNullForNonSpotifyUrl()
     {
-        var result = _sut.ExtractSongId("https://music.apple.com/us/song/123");
+        var sut = CreateSut();
+        var result = sut.ExtractSongId("https://music.apple.com/us/song/123");
 
         result.Should().BeNull();
     }
@@ -63,7 +64,8 @@ public class SpotifyMusicServiceTests
     [Fact]
     public void ItWillReturnNullForEmptyString()
     {
-        var result = _sut.ExtractSongId("");
+        var sut = CreateSut();
+        var result = sut.ExtractSongId("");
 
         result.Should().BeNull();
     }
@@ -75,7 +77,8 @@ public class SpotifyMusicServiceTests
     [Fact]
     public void ItWillReturnCanonicalUrlForStandardUrl()
     {
-        var result = _sut.NormalizeUrl("https://open.spotify.com/track/abc123");
+        var sut = CreateSut();
+        var result = sut.NormalizeUrl("https://open.spotify.com/track/abc123");
 
         result.Should().Be("https://open.spotify.com/track/abc123");
     }
@@ -83,7 +86,8 @@ public class SpotifyMusicServiceTests
     [Fact]
     public void ItWillReturnCleanUrlForUrlWithQueryParams()
     {
-        var result = _sut.NormalizeUrl("https://open.spotify.com/track/abc123?si=extra_params");
+        var sut = CreateSut();
+        var result = sut.NormalizeUrl("https://open.spotify.com/track/abc123?si=extra_params");
 
         result.Should().Be("https://open.spotify.com/track/abc123");
     }
@@ -91,7 +95,8 @@ public class SpotifyMusicServiceTests
     [Fact]
     public void ItWillReturnWebUrlForSpotifyUri()
     {
-        var result = _sut.NormalizeUrl("spotify:track:abc123");
+        var sut = CreateSut();
+        var result = sut.NormalizeUrl("spotify:track:abc123");
 
         result.Should().Be("https://open.spotify.com/track/abc123");
     }
@@ -99,8 +104,9 @@ public class SpotifyMusicServiceTests
     [Fact]
     public void ItWillReturnOriginalUrlForNonTrackUrl()
     {
+        var sut = CreateSut();
         var url = "https://open.spotify.com/album/xyz";
-        var result = _sut.NormalizeUrl(url);
+        var result = sut.NormalizeUrl(url);
 
         result.Should().Be(url);
     }

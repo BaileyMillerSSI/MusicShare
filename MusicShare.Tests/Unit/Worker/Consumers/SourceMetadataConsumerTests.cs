@@ -11,14 +11,6 @@ namespace MusicShare.Tests.Unit.Worker.Consumers;
 
 public class SourceMetadataConsumerTests
 {
-    private readonly AutoMocker _mocker = new();
-    private readonly SourceMetadataConsumer _sut;
-
-    public SourceMetadataConsumerTests()
-    {
-        _sut = _mocker.CreateInstance<SourceMetadataConsumer>();
-    }
-
     private static ResolveSourceMetadata CreateMessage(
         string shareId = "share-1",
         string sourceUrl = "https://open.spotify.com/track/abc",
@@ -34,7 +26,7 @@ public class SourceMetadataConsumerTests
         };
     }
 
-    private Mock<ConsumeContext<ResolveSourceMetadata>> CreateContext(ResolveSourceMetadata message)
+    private static Mock<ConsumeContext<ResolveSourceMetadata>> CreateContext(ResolveSourceMetadata message)
     {
         var context = new Mock<ConsumeContext<ResolveSourceMetadata>>();
         context.Setup(x => x.Message).Returns(message);
@@ -46,11 +38,12 @@ public class SourceMetadataConsumerTests
     public async Task ItWillCreateSongAndLinkForValidMetadata()
     {
         // Arrange
+        using var mock = AutoMock.GetLoose();
         var message = CreateMessage();
         var context = CreateContext(message);
 
         var adapterMock = new Mock<IMusicServiceAdapter>();
-        _mocker.GetMock<IMusicServiceResolver>().Setup(x => x.GetAdapter(ServiceType.Spotify)).Returns(adapterMock.Object);
+        mock.Mock<IMusicServiceResolver>().Setup(x => x.GetAdapter(ServiceType.Spotify)).Returns(adapterMock.Object);
 
         var metadata = new SongMetadata
         {
@@ -74,7 +67,7 @@ public class SourceMetadataConsumerTests
             Album = "Test Album",
             Status = SongStatus.Pending
         };
-        _mocker.GetMock<ISongRepository>()
+        mock.Mock<ISongRepository>()
             .Setup(x => x.InsertAsync(It.IsAny<Song>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(insertedSong);
 
@@ -85,21 +78,23 @@ public class SourceMetadataConsumerTests
             SourceService = ServiceType.Spotify,
             Status = ShareStatus.Pending
         };
-        _mocker.GetMock<IShareRequestRepository>()
+        mock.Mock<IShareRequestRepository>()
             .Setup(x => x.GetByShareIdAsync(message.ShareId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(shareRequest);
 
+        var sut = mock.Create<SourceMetadataConsumer>();
+
         // Act
-        await _sut.Consume(context.Object);
+        await sut.Consume(context.Object);
 
         // Assert
-        _mocker.GetMock<ISongRepository>().Verify(
+        mock.Mock<ISongRepository>().Verify(
             x => x.InsertAsync(
                 It.Is<Song>(s => s.Title == "Test Song" && s.Artists.Contains("Artist One")),
                 It.IsAny<CancellationToken>()),
             Times.Once);
 
-        _mocker.GetMock<ISongServiceLinkRepository>().Verify(
+        mock.Mock<ISongServiceLinkRepository>().Verify(
             x => x.InsertAsync(
                 It.Is<SongServiceLink>(l =>
                     l.SongId == "song-new-id" &&
@@ -113,18 +108,19 @@ public class SourceMetadataConsumerTests
     public async Task ItWillUpdateShareRequestStatusForValidMetadata()
     {
         // Arrange
+        using var mock = AutoMock.GetLoose();
         var message = CreateMessage();
         var context = CreateContext(message);
 
         var adapterMock = new Mock<IMusicServiceAdapter>();
-        _mocker.GetMock<IMusicServiceResolver>().Setup(x => x.GetAdapter(ServiceType.Spotify)).Returns(adapterMock.Object);
+        mock.Mock<IMusicServiceResolver>().Setup(x => x.GetAdapter(ServiceType.Spotify)).Returns(adapterMock.Object);
 
         adapterMock.Setup(x => x.ResolveMetadataAsync(message.SourceUrl, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new SongMetadata { Title = "Song", Artists = ["A"] });
         adapterMock.Setup(x => x.NormalizeUrl(message.SourceUrl)).Returns(message.SourceUrl);
         adapterMock.Setup(x => x.ExtractSongId(message.SourceUrl)).Returns("abc");
 
-        _mocker.GetMock<ISongRepository>()
+        mock.Mock<ISongRepository>()
             .Setup(x => x.InsertAsync(It.IsAny<Song>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Song { Id = "song-1", Title = "Song", Artists = ["A"] });
 
@@ -133,17 +129,19 @@ public class SourceMetadataConsumerTests
             ShareId = message.ShareId,
             Status = ShareStatus.Pending
         };
-        _mocker.GetMock<IShareRequestRepository>()
+        mock.Mock<IShareRequestRepository>()
             .Setup(x => x.GetByShareIdAsync(message.ShareId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(shareRequest);
 
+        var sut = mock.Create<SourceMetadataConsumer>();
+
         // Act
-        await _sut.Consume(context.Object);
+        await sut.Consume(context.Object);
 
         // Assert
         shareRequest.SongId.Should().Be("song-1");
         shareRequest.Status.Should().Be(ShareStatus.Processing);
-        _mocker.GetMock<IShareRequestRepository>().Verify(
+        mock.Mock<IShareRequestRepository>().Verify(
             x => x.UpdateAsync(shareRequest, It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -152,28 +150,31 @@ public class SourceMetadataConsumerTests
     public async Task ItWillPublishSourceMetadataResolvedForValidMetadata()
     {
         // Arrange
+        using var mock = AutoMock.GetLoose();
         var correlationId = Guid.NewGuid();
         var message = CreateMessage(correlationId: correlationId);
         var context = CreateContext(message);
 
         var adapterMock = new Mock<IMusicServiceAdapter>();
-        _mocker.GetMock<IMusicServiceResolver>().Setup(x => x.GetAdapter(ServiceType.Spotify)).Returns(adapterMock.Object);
+        mock.Mock<IMusicServiceResolver>().Setup(x => x.GetAdapter(ServiceType.Spotify)).Returns(adapterMock.Object);
 
         adapterMock.Setup(x => x.ResolveMetadataAsync(message.SourceUrl, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new SongMetadata { Title = "Song", Artists = ["A"], Album = "Album" });
         adapterMock.Setup(x => x.NormalizeUrl(message.SourceUrl)).Returns(message.SourceUrl);
         adapterMock.Setup(x => x.ExtractSongId(message.SourceUrl)).Returns("abc");
 
-        _mocker.GetMock<ISongRepository>()
+        mock.Mock<ISongRepository>()
             .Setup(x => x.InsertAsync(It.IsAny<Song>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Song { Id = "song-1", Title = "Song", Artists = ["A"] });
 
-        _mocker.GetMock<IShareRequestRepository>()
+        mock.Mock<IShareRequestRepository>()
             .Setup(x => x.GetByShareIdAsync(message.ShareId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ShareRequest?)null);
 
+        var sut = mock.Create<SourceMetadataConsumer>();
+
         // Act
-        await _sut.Consume(context.Object);
+        await sut.Consume(context.Object);
 
         // Assert
         context.Verify(
@@ -192,15 +193,18 @@ public class SourceMetadataConsumerTests
     public async Task ItWillPublishFailureWhenNoAdapterFound()
     {
         // Arrange
+        using var mock = AutoMock.GetLoose();
         var message = CreateMessage();
         var context = CreateContext(message);
 
-        _mocker.GetMock<IMusicServiceResolver>()
+        mock.Mock<IMusicServiceResolver>()
             .Setup(x => x.GetAdapter(ServiceType.Spotify))
             .Returns((IMusicServiceAdapter?)null);
 
+        var sut = mock.Create<SourceMetadataConsumer>();
+
         // Act
-        await _sut.Consume(context.Object);
+        await sut.Consume(context.Object);
 
         // Assert
         context.Verify(
@@ -212,7 +216,7 @@ public class SourceMetadataConsumerTests
                 It.IsAny<CancellationToken>()),
             Times.Once);
 
-        _mocker.GetMock<ISongRepository>().Verify(
+        mock.Mock<ISongRepository>().Verify(
             x => x.InsertAsync(It.IsAny<Song>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
@@ -221,17 +225,20 @@ public class SourceMetadataConsumerTests
     public async Task ItWillPublishFailureWhenMetadataResolutionReturnsNull()
     {
         // Arrange
+        using var mock = AutoMock.GetLoose();
         var message = CreateMessage();
         var context = CreateContext(message);
 
         var adapterMock = new Mock<IMusicServiceAdapter>();
-        _mocker.GetMock<IMusicServiceResolver>().Setup(x => x.GetAdapter(ServiceType.Spotify)).Returns(adapterMock.Object);
+        mock.Mock<IMusicServiceResolver>().Setup(x => x.GetAdapter(ServiceType.Spotify)).Returns(adapterMock.Object);
 
         adapterMock.Setup(x => x.ResolveMetadataAsync(message.SourceUrl, It.IsAny<CancellationToken>()))
             .ReturnsAsync((SongMetadata?)null);
 
+        var sut = mock.Create<SourceMetadataConsumer>();
+
         // Act
-        await _sut.Consume(context.Object);
+        await sut.Consume(context.Object);
 
         // Assert
         context.Verify(
@@ -246,17 +253,20 @@ public class SourceMetadataConsumerTests
     public async Task ItWillPublishFailureAndRethrowWhenExceptionThrown()
     {
         // Arrange
+        using var mock = AutoMock.GetLoose();
         var message = CreateMessage();
         var context = CreateContext(message);
 
         var adapterMock = new Mock<IMusicServiceAdapter>();
-        _mocker.GetMock<IMusicServiceResolver>().Setup(x => x.GetAdapter(ServiceType.Spotify)).Returns(adapterMock.Object);
+        mock.Mock<IMusicServiceResolver>().Setup(x => x.GetAdapter(ServiceType.Spotify)).Returns(adapterMock.Object);
 
         adapterMock.Setup(x => x.ResolveMetadataAsync(message.SourceUrl, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("Network error"));
 
+        var sut = mock.Create<SourceMetadataConsumer>();
+
         // Act & Assert
-        await Assert.ThrowsAsync<HttpRequestException>(() => _sut.Consume(context.Object));
+        await Assert.ThrowsAsync<HttpRequestException>(() => sut.Consume(context.Object));
 
         context.Verify(
             x => x.Publish(
@@ -270,30 +280,33 @@ public class SourceMetadataConsumerTests
     public async Task ItWillUseSourceUrlAsServiceSongIdWhenExtractSongIdReturnsNull()
     {
         // Arrange
+        using var mock = AutoMock.GetLoose();
         var message = CreateMessage();
         var context = CreateContext(message);
 
         var adapterMock = new Mock<IMusicServiceAdapter>();
-        _mocker.GetMock<IMusicServiceResolver>().Setup(x => x.GetAdapter(ServiceType.Spotify)).Returns(adapterMock.Object);
+        mock.Mock<IMusicServiceResolver>().Setup(x => x.GetAdapter(ServiceType.Spotify)).Returns(adapterMock.Object);
 
         adapterMock.Setup(x => x.ResolveMetadataAsync(message.SourceUrl, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new SongMetadata { Title = "Song", Artists = ["A"] });
         adapterMock.Setup(x => x.NormalizeUrl(message.SourceUrl)).Returns(message.SourceUrl);
         adapterMock.Setup(x => x.ExtractSongId(message.SourceUrl)).Returns((string?)null);
 
-        _mocker.GetMock<ISongRepository>()
+        mock.Mock<ISongRepository>()
             .Setup(x => x.InsertAsync(It.IsAny<Song>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Song { Id = "song-1", Title = "Song", Artists = ["A"] });
 
-        _mocker.GetMock<IShareRequestRepository>()
+        mock.Mock<IShareRequestRepository>()
             .Setup(x => x.GetByShareIdAsync(message.ShareId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ShareRequest?)null);
 
+        var sut = mock.Create<SourceMetadataConsumer>();
+
         // Act
-        await _sut.Consume(context.Object);
+        await sut.Consume(context.Object);
 
         // Assert
-        _mocker.GetMock<ISongServiceLinkRepository>().Verify(
+        mock.Mock<ISongServiceLinkRepository>().Verify(
             x => x.InsertAsync(
                 It.Is<SongServiceLink>(l => l.ServiceSongId == message.SourceUrl),
                 It.IsAny<CancellationToken>()),
@@ -304,33 +317,36 @@ public class SourceMetadataConsumerTests
     public async Task ItWillSkipUpdateButContinueWhenShareRequestNotFound()
     {
         // Arrange
+        using var mock = AutoMock.GetLoose();
         var message = CreateMessage();
         var context = CreateContext(message);
 
         var adapterMock = new Mock<IMusicServiceAdapter>();
-        _mocker.GetMock<IMusicServiceResolver>().Setup(x => x.GetAdapter(ServiceType.Spotify)).Returns(adapterMock.Object);
+        mock.Mock<IMusicServiceResolver>().Setup(x => x.GetAdapter(ServiceType.Spotify)).Returns(adapterMock.Object);
 
         adapterMock.Setup(x => x.ResolveMetadataAsync(message.SourceUrl, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new SongMetadata { Title = "Song", Artists = ["A"] });
         adapterMock.Setup(x => x.NormalizeUrl(message.SourceUrl)).Returns(message.SourceUrl);
         adapterMock.Setup(x => x.ExtractSongId(message.SourceUrl)).Returns("abc");
 
-        _mocker.GetMock<ISongRepository>()
+        mock.Mock<ISongRepository>()
             .Setup(x => x.InsertAsync(It.IsAny<Song>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Song { Id = "song-1", Title = "Song", Artists = ["A"] });
 
-        _mocker.GetMock<IShareRequestRepository>()
+        mock.Mock<IShareRequestRepository>()
             .Setup(x => x.GetByShareIdAsync(message.ShareId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ShareRequest?)null);
 
+        var sut = mock.Create<SourceMetadataConsumer>();
+
         // Act
-        await _sut.Consume(context.Object);
+        await sut.Consume(context.Object);
 
         // Assert - should still publish success
         context.Verify(
             x => x.Publish(It.IsAny<SourceMetadataResolved>(), It.IsAny<CancellationToken>()),
             Times.Once);
-        _mocker.GetMock<IShareRequestRepository>().Verify(
+        mock.Mock<IShareRequestRepository>().Verify(
             x => x.UpdateAsync(It.IsAny<ShareRequest>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }

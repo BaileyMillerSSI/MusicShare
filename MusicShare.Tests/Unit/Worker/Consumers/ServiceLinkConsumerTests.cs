@@ -10,17 +10,17 @@ public class SpotifyLinkConsumerUnitTests
     public void ItWillReturnSpotifyAdapter()
     {
         // Arrange
-        var mocker = new AutoMocker();
+        using var mock = AutoMock.GetLoose();
         var adapterMock = new Mock<IMusicServiceAdapter>();
         adapterMock.Setup(x => x.ServiceType).Returns(ServiceType.Spotify);
-        mocker.GetMock<IMusicServiceResolver>()
+        mock.Mock<IMusicServiceResolver>()
             .Setup(x => x.GetAdapter(ServiceType.Spotify))
             .Returns(adapterMock.Object);
 
-        mocker.CreateInstance<SpotifyLinkConsumer>();
+        mock.Create<SpotifyLinkConsumer>();
 
         // Act
-        var adapter = mocker.GetMock<IMusicServiceResolver>().Object.GetAdapter(ServiceType.Spotify);
+        var adapter = mock.Mock<IMusicServiceResolver>().Object.GetAdapter(ServiceType.Spotify);
 
         // Assert
         adapter.Should().NotBeNull();
@@ -31,15 +31,15 @@ public class SpotifyLinkConsumerUnitTests
     public void ItWillReturnNullWhenNoAdapterRegistered()
     {
         // Arrange
-        var mocker = new AutoMocker();
-        mocker.GetMock<IMusicServiceResolver>()
+        using var mock = AutoMock.GetLoose();
+        mock.Mock<IMusicServiceResolver>()
             .Setup(x => x.GetAdapter(ServiceType.Spotify))
             .Returns((IMusicServiceAdapter?)null);
 
-        mocker.CreateInstance<SpotifyLinkConsumer>();
+        mock.Create<SpotifyLinkConsumer>();
 
         // Act & Assert
-        mocker.GetMock<IMusicServiceResolver>().Object.GetAdapter(ServiceType.Spotify).Should().BeNull();
+        mock.Mock<IMusicServiceResolver>().Object.GetAdapter(ServiceType.Spotify).Should().BeNull();
     }
 }
 
@@ -49,17 +49,17 @@ public class AppleMusicLinkConsumerUnitTests
     public void ItWillReturnAppleMusicAdapter()
     {
         // Arrange
-        var mocker = new AutoMocker();
+        using var mock = AutoMock.GetLoose();
         var adapterMock = new Mock<IMusicServiceAdapter>();
         adapterMock.Setup(x => x.ServiceType).Returns(ServiceType.AppleMusic);
-        mocker.GetMock<IMusicServiceResolver>()
+        mock.Mock<IMusicServiceResolver>()
             .Setup(x => x.GetAdapter(ServiceType.AppleMusic))
             .Returns(adapterMock.Object);
 
-        mocker.CreateInstance<AppleMusicLinkConsumer>();
+        mock.Create<AppleMusicLinkConsumer>();
 
         // Act
-        var adapter = mocker.GetMock<IMusicServiceResolver>().Object.GetAdapter(ServiceType.AppleMusic);
+        var adapter = mock.Mock<IMusicServiceResolver>().Object.GetAdapter(ServiceType.AppleMusic);
 
         // Assert
         adapter.Should().NotBeNull();
@@ -73,17 +73,17 @@ public class YouTubeMusicLinkConsumerUnitTests
     public void ItWillReturnYouTubeMusicAdapter()
     {
         // Arrange
-        var mocker = new AutoMocker();
+        using var mock = AutoMock.GetLoose();
         var adapterMock = new Mock<IMusicServiceAdapter>();
         adapterMock.Setup(x => x.ServiceType).Returns(ServiceType.YouTubeMusic);
-        mocker.GetMock<IMusicServiceResolver>()
+        mock.Mock<IMusicServiceResolver>()
             .Setup(x => x.GetAdapter(ServiceType.YouTubeMusic))
             .Returns(adapterMock.Object);
 
-        mocker.CreateInstance<YouTubeMusicLinkConsumer>();
+        mock.Create<YouTubeMusicLinkConsumer>();
 
         // Act
-        var adapter = mocker.GetMock<IMusicServiceResolver>().Object.GetAdapter(ServiceType.YouTubeMusic);
+        var adapter = mock.Mock<IMusicServiceResolver>().Object.GetAdapter(ServiceType.YouTubeMusic);
 
         // Assert
         adapter.Should().NotBeNull();
