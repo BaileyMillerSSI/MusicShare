@@ -1,11 +1,27 @@
 import type { Metadata } from 'next';
-import { type ShareResultResponse } from '../../../lib/api';
+import { type ShareResultResponse, api } from '../../../lib/api';
 import { ResultPoller } from '../../../components/ResultPoller';
 
 export const revalidate = false; // cache indefinitely; revalidated on-demand by the Worker
 
 interface PageProps {
   params: Promise<{ shareId: string }>;
+}
+
+export async function generateStaticParams() {
+  // Pre-cache all completed share routes at build time
+  const apiBase =
+    process.env.services__api__https__0 ??
+    process.env.services__api__http__0 ??
+    undefined;
+
+  try {
+    const shareIds = await api.getAllShareIds(apiBase);
+    return shareIds.map((shareId) => ({ shareId }));
+  } catch {
+    // Gracefully handle API unavailability during build
+    return [];
+  }
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {

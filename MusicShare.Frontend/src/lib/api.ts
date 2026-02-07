@@ -40,6 +40,10 @@ export interface ServiceLink {
   url: string;
 }
 
+export interface GetShareIdsResponse {
+  shareIds: string[];
+}
+
 export const api = {
   async submitShare(url: string): Promise<SubmitShareResponse> {
     const response = await fetch(`/api/share`, {
@@ -67,5 +71,23 @@ export const api = {
     }
 
     return response.json();
+  },
+
+  async getAllShareIds(apiBase?: string): Promise<string[]> {
+    const baseUrl = apiBase ?? '';
+
+    try {
+      const response = await fetch(`${baseUrl}/api/share/ids`);
+
+      if (!response.ok) {
+        return [];
+      }
+
+      const data: GetShareIdsResponse = await response.json();
+      return data.shareIds ?? [];
+    } catch {
+      // Gracefully handle API unavailability (e.g., during initial deployment)
+      return [];
+    }
   },
 };
