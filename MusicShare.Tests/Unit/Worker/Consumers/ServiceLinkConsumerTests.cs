@@ -1,5 +1,6 @@
 using MusicShare.Contracts;
-using MusicShare.MusicAdapters.Services;
+using MusicShare.Services.Services;
+using MusicShare.Services.Services.Music;
 using MusicShare.Worker.Consumers;
 
 namespace MusicShare.Tests.Unit.Worker.Consumers;

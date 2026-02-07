@@ -1,6 +1,6 @@
 using MediatR;
-using MusicShare.Api.Models;
-using MusicShare.Api.Services;
+using MusicShare.Services.Models;
+using MusicShare.Services.Services;
 
 namespace MusicShare.Api.Queries;
 

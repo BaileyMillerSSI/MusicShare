@@ -2,9 +2,9 @@ using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using MusicShare.Api.Commands;
 using MusicShare.Api.Controllers;
-using MusicShare.Api.Models;
 using MusicShare.Api.Queries;
 using MusicShare.Contracts;
+using MusicShare.Services.Models;
 
 namespace MusicShare.Tests.Unit.Api.Controllers;
 

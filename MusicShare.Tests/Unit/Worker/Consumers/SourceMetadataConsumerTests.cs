@@ -2,9 +2,10 @@ using MassTransit;
 using Microsoft.Extensions.Logging;
 using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
-using MusicShare.MusicAdapters.Services;
 using MusicShare.Persistence.Entities;
 using MusicShare.Persistence.Repositories;
+using MusicShare.Services.Services;
+using MusicShare.Services.Services.Music;
 using MusicShare.Worker.Consumers;
 
 namespace MusicShare.Tests.Unit.Worker.Consumers;

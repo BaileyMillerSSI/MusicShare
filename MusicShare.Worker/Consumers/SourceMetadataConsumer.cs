@@ -1,9 +1,9 @@
 using MassTransit;
 using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
-using MusicShare.MusicAdapters.Services;
 using MusicShare.Persistence.Entities;
 using MusicShare.Persistence.Repositories;
+using MusicShare.Services.Services;
 
 namespace MusicShare.Worker.Consumers;
 

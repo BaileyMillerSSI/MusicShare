@@ -1,5 +1,5 @@
-using MusicShare.Api.Models;
 using MusicShare.Api.Queries;
+using MusicShare.Services.Models;
 
 namespace MusicShare.Tests.Unit.Api.Queries;
 

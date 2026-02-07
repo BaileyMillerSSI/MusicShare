@@ -1,16 +1,13 @@
 using MediatR;
-using MusicShare.Api.Services;
 using MusicShare.Contracts;
-using MusicShare.MusicAdapters.Services;
+using MusicShare.Services.Services;
 using System.ComponentModel.DataAnnotations;
 
 namespace MusicShare.Api.Commands;
 
 public static class SubmitShare
 {
-    public record Request(
-    [Required, Url] string Url
-) : IRequest<Response>;
+    public record Request([Required, Url] string Url) : IRequest<Response>;
 
     public class Handler(
     IShareRequestService shareRequestService,

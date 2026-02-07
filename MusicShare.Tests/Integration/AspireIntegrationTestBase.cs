@@ -15,7 +15,7 @@ public abstract class AspireIntegrationTestBase : IAsyncLifetime
     /// Initializes the Aspire application for testing.
     /// Override this method to customize application setup.
     /// </summary>
-    public virtual async Task InitializeAsync()
+    public virtual async ValueTask InitializeAsync()
     {
         // Create the distributed application from the AppHost
         var appHost = await DistributedApplicationTestingBuilder
@@ -31,12 +31,14 @@ public abstract class AspireIntegrationTestBase : IAsyncLifetime
     /// <summary>
     /// Cleans up the Aspire application after tests complete.
     /// </summary>
-    public virtual async Task DisposeAsync()
+    public virtual async ValueTask DisposeAsync()
     {
         if (App is not null)
         {
             await App.DisposeAsync();
         }
+
+        GC.SuppressFinalize(this);
     }
 
     /// <summary>

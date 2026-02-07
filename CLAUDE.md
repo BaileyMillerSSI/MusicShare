@@ -36,16 +36,36 @@ MusicShare is a full-stack web application that allows users to share music URLs
 
 ```
 MusicShare/
-├── MusicShare.Api/              # REST API (Controllers, Commands, Queries, Services)
+├── MusicShare.Api/              # REST API (Controllers, Commands, Queries)
 │   ├── Controllers/             # ShareController.cs - REST endpoints
 │   ├── Commands/                # CQRS commands (SubmitShare.cs - static class with nested Request/Handler/Response)
 │   ├── Queries/                 # CQRS queries (GetShareResult.cs - static class with nested Query/Handler/Result)
-│   ├── Services/                # ShareRequestService.cs
-│   ├── Models/                  # Response DTOs
 │   └── Program.cs               # Service configuration
+├── MusicShare.Services/         # Domain services, music adapters, models
+│   ├── Configuration/           # Service-specific settings (Spotify, YouTube)
+│   ├── Models/                  # Response DTOs (ServiceLink, ShareResultResponse, SongDetails, SubmitShareResponse)
+│   ├── Services/                # Domain service interfaces and implementations
+│   │   ├── IMusicServiceResolver.cs   # URL detection and adapter routing
+│   │   ├── IShareRequestService.cs    # Share request creation and retrieval
+│   │   ├── IShareStatusService.cs     # Share status updates
+│   │   ├── ISongService.cs            # Song status updates
+│   │   ├── MusicServiceResolver.cs
+│   │   ├── ShareRequestService.cs
+│   │   ├── ShareStatusService.cs
+│   │   ├── SongService.cs
+│   │   └── Music/               # Music service adapters
+│   │       ├── IMusicServiceAdapter.cs
+│   │       ├── Spotify/         # SpotifyMusicService, models, auth handler
+│   │       ├── YouTube/         # YouTubeMusicAdapter, mock adapter
+│   │       └── Apple/           # AppleMusicMockAdapter
+│   └── DependencyInjection.cs   # AddDomainServices() registration
 ├── MusicShare.Worker/           # Background processor (Consumers, Sagas)
-│   ├── Sagas/                   # ShareRequestSaga.cs - state machine orchestrator
+│   ├── Sagas/ShareRequest/      # ShareRequestSaga.cs, state, activities
+│   │   ├── ShareRequestSaga.cs  # State machine orchestrator
+│   │   ├── ShareRequestSagaState.cs
+│   │   └── Activities/          # CompleteSagaActivity, FailSagaActivity
 │   ├── Consumers/               # Service-specific message consumers
+│   ├── Services/                # FrontendRevalidateService (ISR trigger)
 │   └── Program.cs               # Worker configuration
 ├── MusicShare.Frontend/         # Next.js SPA
 │   ├── src/
@@ -68,20 +88,14 @@ MusicShare/
 │   ├── Entities/                # Song.cs, ShareRequest.cs, SongServiceLink.cs
 │   ├── Repositories/            # Repository implementations
 │   ├── MusicShareDbContext.cs   # MongoDB context
+│   ├── IMusicShareDbContext.cs  # DB context interface
 │   └── DependencyInjection.cs   # DI registration
-├── MusicShare.MusicAdapters/    # Music service integrations
-│   ├── Services/Music/
-│   │   ├── Spotify/             # SpotifyMusicService.cs
-│   │   ├── YouTube/             # YouTubeMusicAdapter.cs
-│   │   └── Apple/               # AppleMusicMockAdapter.cs
-│   ├── Configuration/           # Service-specific settings
-│   └── Services/MusicServiceResolver.cs  # URL detection and routing
 ├── MusicShare.Contracts/        # Shared types, enums, and message contracts
 │   ├── Messages/                # Event and command definitions
 │   ├── ServiceType.cs
 │   ├── ShareStatus.cs
 │   └── SongStatus.cs
-├── MusicShare.ServiceDefaults/  # Shared infrastructure (OpenTelemetry, health checks)
+├── MusicShare.ServiceDefaults/  # Shared infrastructure (OpenTelemetry, health checks, DI wiring)
 ├── MusicShare.AppHost/          # .NET Aspire orchestrator for local development
 │   └── AppHost.cs               # Local dev infrastructure + Azure config
 ├── MusicShare.Tests/            # xUnit test project
@@ -183,13 +197,16 @@ azd up            # Both provision and deploy
 | CQRS Command | `MusicShare.Api/Commands/SubmitShare.cs` | Static class with nested Request/Handler/Response |
 | CQRS Query | `MusicShare.Api/Queries/GetShareResult.cs` | Static class with nested Query/Handler/Result |
 | Worker Entry | `MusicShare.Worker/Program.cs` | Background service config with MongoDB state |
-| Saga | `MusicShare.Worker/Sagas/ShareRequestSaga.cs` | Async workflow orchestration + ISR trigger |
+| Saga | `MusicShare.Worker/Sagas/ShareRequest/ShareRequestSaga.cs` | Async workflow orchestration |
 | Frontend Layout | `MusicShare.Frontend/src/app/layout.tsx` | Root layout, metadata, QueryClient |
 | Share Page | `MusicShare.Frontend/src/app/share/[shareId]/page.tsx` | Dynamic result page |
 | API Client | `MusicShare.Frontend/src/lib/api.ts` | Backend communication |
 | Domain Entities | `MusicShare.Persistence/Entities/` | Song, ShareRequest, SongServiceLink |
-| Music Adapters | `MusicShare.MusicAdapters/Services/Music/` | Spotify, Apple, YouTube integrations |
-| Service Resolver | `MusicShare.MusicAdapters/Services/MusicServiceResolver.cs` | URL detection |
+| Domain Services | `MusicShare.Services/Services/` | ShareRequestService, ShareStatusService, SongService |
+| Music Adapters | `MusicShare.Services/Services/Music/` | Spotify, Apple, YouTube integrations |
+| Service Resolver | `MusicShare.Services/Services/MusicServiceResolver.cs` | URL detection and adapter routing |
+| DI Registration | `MusicShare.Services/DependencyInjection.cs` | AddDomainServices() for all services + adapters |
+| Service Wiring | `MusicShare.ServiceDefaults/Extensions.cs` | Calls AddPersistence() + AddDomainServices() |
 | Orchestration | `MusicShare.AppHost/AppHost.cs` | Local dev infrastructure |
 | Message Contracts | `MusicShare.Contracts/Messages/` | Event and command definitions |
 | PWA Manifest | `MusicShare.Frontend/public/manifest.json` | PWA + Web Share Target config |
@@ -286,7 +303,7 @@ MusicShare is a Progressive Web App with:
 **Test Project**: `MusicShare.Tests/`
 
 **Libraries**:
-- **xUnit 2.9.2**: Test framework
+- **xUnit v3 (3.2.2)**: Test framework
 - **FluentAssertions 7.0.0**: Readable assertion syntax
 - **Moq 4.20.72**: Mocking framework
 - **Autofac.Extras.Moq**: Auto-mocking container via `AutoMock.GetLoose()`
@@ -339,6 +356,14 @@ public class MyHandlerTests
 }
 ```
 
+**MassTransit Saga State Machine Tests** (uses test harness, NOT AutoMock):
+- Use `AddMassTransitTestHarness` with `ServiceCollection` for DI-based setup
+- Register saga dependencies and activities as services (not via MassTransit config)
+- `MassTransit.Testing` namespace is in the main `MassTransit` package (no separate NuGet)
+- `Finalize()` moves saga to `Final` state - check `StateMachine.Final` not custom states
+- `ContainsInState` returns the saga state type directly (no `.Saga` wrapper)
+- Wait for message consumption before asserting: `(await sagaHarness.Consumed.Any<T>()).Should().BeTrue()`
+
 ### Frontend Testing
 
 - Frontend lint: `npm run lint` (no test runner configured yet)
@@ -348,10 +373,10 @@ public class MyHandlerTests
 
 ### Adding a new music service
 
-1. Create adapter in `MusicShare.MusicAdapters/Services/Music/{ServiceName}/`
+1. Create adapter in `MusicShare.Services/Services/Music/{ServiceName}/`
 2. Implement `IMusicServiceAdapter` interface
 3. Add enum value to `ServiceType` in `MusicShare.Contracts/`
-4. Register in DI via `MusicAdapterExtensions`
+4. Register in DI via `MusicShare.Services/DependencyInjection.cs`
 5. Add consumer in Worker for the new service
 6. Update Saga to include the new service in parallel resolution
 7. Add frontend link component in `src/components/MusicLinks/`

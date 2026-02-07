@@ -1,7 +1,6 @@
 using MusicShare.Api.Commands;
-using MusicShare.Api.Services;
 using MusicShare.Contracts;
-using MusicShare.MusicAdapters.Services;
+using MusicShare.Services.Services;
 
 namespace MusicShare.Tests.Unit.Api.Commands;
 

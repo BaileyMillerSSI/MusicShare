@@ -1,7 +1,7 @@
-using MusicShare.Api.Models;
 using MusicShare.Api.Queries;
-using MusicShare.Api.Services;
 using MusicShare.Contracts;
+using MusicShare.Services.Models;
+using MusicShare.Services.Services;
 
 namespace MusicShare.Tests.Unit.Api.Queries;
 

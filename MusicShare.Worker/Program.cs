@@ -1,14 +1,20 @@
 using MassTransit;
 using MongoDB.Driver;
-using MusicShare.MusicAdapters.Services.Extensions;
 using MusicShare.Persistence;
-using MusicShare.Worker.Sagas;
+using MusicShare.ServiceDefaults;
+using MusicShare.Worker.Sagas.ShareRequest;
+using MusicShare.Worker.Services;
 
 var builder = Host.CreateApplicationBuilder(args);
 
 builder.AddServiceDefaults();
-// Register music service adapters
-builder.AddMusicServices();
+builder.Services.AddHttpClient<IFrontendRevalidateService, FrontendRevalidateService>((svp, client) =>
+{
+    var configuration = svp.GetRequiredService<IConfiguration>();
+
+    client.DefaultRequestHeaders.TryAddWithoutValidation("Bearer", configuration["RevalidateSecret"]);
+    client.BaseAddress = new Uri(configuration["services__frontend__https__0"] ?? configuration["services__frontend__http__0"] ?? string.Empty);
+});
 
 // Configure MassTransit with saga support and MongoDB outbox
 builder.AddMessageAccess(
