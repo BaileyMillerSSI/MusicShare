@@ -27,7 +27,7 @@ export function ResultPoller({ shareId, initialData }: Readonly<Props>) {
   const song = data?.song;
 
   useEffect(() => {
-    if (song) document.title = `${song.artists.join(', ')} - ${song.title}`;
+    if (song) document.title = `${song.title} - ${song.artists.join(', ')}`;
   }, [song]);
 
   // --- Loading ---
