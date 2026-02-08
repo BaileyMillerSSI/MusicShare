@@ -4,6 +4,7 @@ using Microsoft.Extensions.Hosting;
 using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
 using MusicShare.Services;
+using MusicShare.Services.Models;
 using MusicShare.Services.Services;
 using MusicShare.Services.Services.Music;
 
@@ -139,7 +140,7 @@ public class ConfidenceAdapterIntegrationTests
             Title = "Test Song",
             Artists = ["Test Artist"],
             Album = "Test Album",
-            DurationMs = 180000
+            Duration = TimeSpan.FromMilliseconds(180000)
         };
 
         // Act - Simulate ServiceLinkConsumerBase calling FindSongAsync (obsolete method)
@@ -174,7 +175,7 @@ public class ConfidenceAdapterIntegrationTests
             Title = "Completely Different Song",
             Artists = ["Completely Different Artist"],
             Album = "Completely Different Album",
-            DurationMs = 999999 // Very different duration
+            Duration = TimeSpan.FromMilliseconds(999999) // Very different duration
         };
 
         // Act - The mock adapter will return a result, but ConfidenceAdapter should filter it
@@ -205,7 +206,7 @@ public class ConfidenceAdapterIntegrationTests
             Title = "Test Song",
             Artists = ["Test Artist"],
             Album = "Test Album",
-            DurationMs = 180000
+            Duration = TimeSpan.FromMilliseconds(180000)
         };
 
         // Act
@@ -238,7 +239,7 @@ public class ConfidenceAdapterIntegrationTests
             Title = "Bohemian Rhapsody",
             Artists = ["Queen"],
             Album = "A Night at the Opera",
-            DurationMs = 354000
+            Duration = TimeSpan.FromMilliseconds(354000)
         };
 
         var exactMatch = new SongMetadata
@@ -246,7 +247,7 @@ public class ConfidenceAdapterIntegrationTests
             Title = "Bohemian Rhapsody",
             Artists = ["Queen"],
             Album = "A Night at the Opera",
-            DurationMs = 354000
+            Duration = TimeSpan.FromMilliseconds(354000)
         };
 
         var closeMatch = new SongMetadata
@@ -254,7 +255,7 @@ public class ConfidenceAdapterIntegrationTests
             Title = "Bohemian Rhapsody",
             Artists = ["Queen"],
             Album = "Greatest Hits", // Different album
-            DurationMs = 354000
+            Duration = TimeSpan.FromMilliseconds(354000)
         };
 
         var poorMatch = new SongMetadata
@@ -262,7 +263,7 @@ public class ConfidenceAdapterIntegrationTests
             Title = "Different Song",
             Artists = ["Different Artist"],
             Album = "Different Album",
-            DurationMs = 200000
+            Duration = TimeSpan.FromMilliseconds(200000)
         };
 
         // Act
@@ -323,7 +324,7 @@ public class ConfidenceAdapterIntegrationTests
             Title = "Test Song",
             Artists = ["Test Artist"],
             Album = "Test Album",
-            DurationMs = 180000
+            Duration = TimeSpan.FromMilliseconds(180000)
         };
 
         // Act - Call the obsolete FindSongAsync method through decorated adapter

@@ -21,7 +21,7 @@ public class ConfidenceAdapterTests
             Title = "Test Song",
             Artists = ["Test Artist"],
             Album = "Test Album",
-            DurationMs = 180000
+            Duration = TimeSpan.FromMilliseconds(180000)
         };
 
         var lowMatch = new SongSearchResult(
@@ -31,7 +31,7 @@ public class ConfidenceAdapterTests
                 Title = "Similar Song",
                 Artists = ["Test Artist"],
                 Album = "Test Album",
-                DurationMs = 180000
+                Duration = TimeSpan.FromMilliseconds(180000)
             });
 
         var highMatch = new SongSearchResult(
@@ -41,7 +41,7 @@ public class ConfidenceAdapterTests
                 Title = "Test Song",
                 Artists = ["Test Artist"],
                 Album = "Test Album",
-                DurationMs = 180000
+                Duration = TimeSpan.FromMilliseconds(180000)
             });
 
         var mediumMatch = new SongSearchResult(
@@ -51,7 +51,7 @@ public class ConfidenceAdapterTests
                 Title = "Test Song",
                 Artists = ["Different Artist"],
                 Album = "Test Album",
-                DurationMs = 180000
+                Duration = TimeSpan.FromMilliseconds(180000)
             });
 
         mock.Mock<IMusicServiceAdapter>()
@@ -99,7 +99,7 @@ public class ConfidenceAdapterTests
             Title = "Test Song",
             Artists = ["Test Artist"],
             Album = "Test Album",
-            DurationMs = 180000
+            Duration = TimeSpan.FromMilliseconds(180000)
         };
 
         var lowMatch = new SongSearchResult(
@@ -109,7 +109,7 @@ public class ConfidenceAdapterTests
                 Title = "Different",
                 Artists = ["Different"],
                 Album = "Different",
-                DurationMs = 200000
+                Duration = TimeSpan.FromMilliseconds(200000)
             });
 
         mock.Mock<IMusicServiceAdapter>()
@@ -145,7 +145,7 @@ public class ConfidenceAdapterTests
             Title = "Test Song",
             Artists = ["Test Artist"],
             Album = "Test Album",
-            DurationMs = 180000
+            Duration = TimeSpan.FromMilliseconds(180000)
         };
 
         var goodMatch = new SongSearchResult(
@@ -155,7 +155,7 @@ public class ConfidenceAdapterTests
                 Title = "Test Song",
                 Artists = ["Test Artist"],
                 Album = "Test Album",
-                DurationMs = 180000
+                Duration = TimeSpan.FromMilliseconds(180000)
             });
 
         mock.Mock<IMusicServiceAdapter>()
@@ -192,7 +192,7 @@ public class ConfidenceAdapterTests
             Title = "Test Song",
             Artists = ["Test Artist"],
             Album = "Test Album",
-            DurationMs = 180000
+            Duration = TimeSpan.FromMilliseconds(180000)
         };
 
         mock.Mock<IMusicServiceAdapter>()
@@ -228,20 +228,20 @@ public class ConfidenceAdapterTests
             Title = "Test Song",
             Artists = ["Test Artist"],
             Album = "Test Album",
-            DurationMs = 180000
+            Duration = TimeSpan.FromMilliseconds(180000)
         };
 
         var result1 = new SongSearchResult(
             "https://spotify.com/track/1",
-            new SongMetadata { Title = "Song 1", Artists = ["Artist 1"], Album = "Album 1", DurationMs = 180000 });
+            new SongMetadata { Title = "Song 1", Artists = ["Artist 1"], Album = "Album 1", Duration = TimeSpan.FromMilliseconds(180000) });
 
         var result2 = new SongSearchResult(
             "https://spotify.com/track/2",
-            new SongMetadata { Title = "Song 2", Artists = ["Artist 2"], Album = "Album 2", DurationMs = 180000 });
+            new SongMetadata { Title = "Song 2", Artists = ["Artist 2"], Album = "Album 2", Duration = TimeSpan.FromMilliseconds(180000) });
 
         var result3 = new SongSearchResult(
             "https://spotify.com/track/3",
-            new SongMetadata { Title = "Song 3", Artists = ["Artist 3"], Album = "Album 3", DurationMs = 180000 });
+            new SongMetadata { Title = "Song 3", Artists = ["Artist 3"], Album = "Album 3", Duration = TimeSpan.FromMilliseconds(180000) });
 
         mock.Mock<IMusicServiceAdapter>()
             .Setup(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()))
@@ -278,16 +278,16 @@ public class ConfidenceAdapterTests
             Title = "Test Song",
             Artists = ["Test Artist"],
             Album = "Test Album",
-            DurationMs = 180000
+            Duration = TimeSpan.FromMilliseconds(180000)
         };
 
         var highScore = new SongSearchResult(
             "https://spotify.com/track/high",
-            new SongMetadata { Title = "High", Artists = ["Artist"], Album = "Album", DurationMs = 180000 });
+            new SongMetadata { Title = "High", Artists = ["Artist"], Album = "Album", Duration = TimeSpan.FromMilliseconds(180000) });
 
         var lowScore = new SongSearchResult(
             "https://spotify.com/track/low",
-            new SongMetadata { Title = "Low", Artists = ["Artist"], Album = "Album", DurationMs = 180000 });
+            new SongMetadata { Title = "Low", Artists = ["Artist"], Album = "Album", Duration = TimeSpan.FromMilliseconds(180000) });
 
         mock.Mock<IMusicServiceAdapter>()
             .Setup(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()))
@@ -333,15 +333,15 @@ public class ConfidenceAdapterTests
             Title = "Test Song",
             Artists = ["Test Artist"],
             Album = "Test Album",
-            DurationMs = 180000
+            Duration = TimeSpan.FromMilliseconds(180000)
         };
 
         var result1 = new SongSearchResult("https://spotify.com/track/1",
-            new SongMetadata { Title = "1", Artists = ["A"], Album = "A", DurationMs = 180000 });
+            new SongMetadata { Title = "1", Artists = ["A"], Album = "A", Duration = TimeSpan.FromMilliseconds(180000) });
         var result2 = new SongSearchResult("https://spotify.com/track/2",
-            new SongMetadata { Title = "2", Artists = ["A"], Album = "A", DurationMs = 180000 });
+            new SongMetadata { Title = "2", Artists = ["A"], Album = "A", Duration = TimeSpan.FromMilliseconds(180000) });
         var result3 = new SongSearchResult("https://spotify.com/track/3",
-            new SongMetadata { Title = "3", Artists = ["A"], Album = "A", DurationMs = 180000 });
+            new SongMetadata { Title = "3", Artists = ["A"], Album = "A", Duration = TimeSpan.FromMilliseconds(180000) });
 
         // Return in arbitrary order
         mock.Mock<IMusicServiceAdapter>()
@@ -393,15 +393,15 @@ public class ConfidenceAdapterTests
             Title = "Test Song",
             Artists = ["Test Artist"],
             Album = "Test Album",
-            DurationMs = 180000
+            Duration = TimeSpan.FromMilliseconds(180000)
         };
 
         var high = new SongSearchResult("https://spotify.com/track/high",
-            new SongMetadata { Title = "H", Artists = ["A"], Album = "A", DurationMs = 180000 });
+            new SongMetadata { Title = "H", Artists = ["A"], Album = "A", Duration = TimeSpan.FromMilliseconds(180000) });
         var medium = new SongSearchResult("https://spotify.com/track/medium",
-            new SongMetadata { Title = "M", Artists = ["A"], Album = "A", DurationMs = 180000 });
+            new SongMetadata { Title = "M", Artists = ["A"], Album = "A", Duration = TimeSpan.FromMilliseconds(180000) });
         var low = new SongSearchResult("https://spotify.com/track/low",
-            new SongMetadata { Title = "L", Artists = ["A"], Album = "A", DurationMs = 180000 });
+            new SongMetadata { Title = "L", Artists = ["A"], Album = "A", Duration = TimeSpan.FromMilliseconds(180000) });
 
         mock.Mock<IMusicServiceAdapter>()
             .Setup(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()))
@@ -447,13 +447,13 @@ public class ConfidenceAdapterTests
             Title = "Test Song",
             Artists = ["Test Artist"],
             Album = "Test Album",
-            DurationMs = 180000
+            Duration = TimeSpan.FromMilliseconds(180000)
         };
 
         var exactThreshold = new SongSearchResult("https://spotify.com/track/exact",
-            new SongMetadata { Title = "T", Artists = ["A"], Album = "A", DurationMs = 180000 });
+            new SongMetadata { Title = "T", Artists = ["A"], Album = "A", Duration = TimeSpan.FromMilliseconds(180000) });
         var justBelow = new SongSearchResult("https://spotify.com/track/below",
-            new SongMetadata { Title = "T", Artists = ["A"], Album = "A", DurationMs = 180000 });
+            new SongMetadata { Title = "T", Artists = ["A"], Album = "A", Duration = TimeSpan.FromMilliseconds(180000) });
 
         mock.Mock<IMusicServiceAdapter>()
             .Setup(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()))
@@ -493,11 +493,11 @@ public class ConfidenceAdapterTests
             Title = "Test Song",
             Artists = ["Test Artist"],
             Album = "Test Album",
-            DurationMs = 180000
+            Duration = TimeSpan.FromMilliseconds(180000)
         };
 
         var mediumScore = new SongSearchResult("https://spotify.com/track/medium",
-            new SongMetadata { Title = "T", Artists = ["A"], Album = "A", DurationMs = 180000 });
+            new SongMetadata { Title = "T", Artists = ["A"], Album = "A", Duration = TimeSpan.FromMilliseconds(180000) });
 
         mock.Mock<IMusicServiceAdapter>()
             .Setup(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()))
@@ -536,11 +536,11 @@ public class ConfidenceAdapterTests
             Title = "Test Song",
             Artists = ["Test Artist"],
             Album = "Test Album",
-            DurationMs = 180000
+            Duration = TimeSpan.FromMilliseconds(180000)
         };
 
         var justBelow = new SongSearchResult("https://spotify.com/track/1",
-            new SongMetadata { Title = "T", Artists = ["A"], Album = "A", DurationMs = 180000 });
+            new SongMetadata { Title = "T", Artists = ["A"], Album = "A", Duration = TimeSpan.FromMilliseconds(180000) });
 
         mock.Mock<IMusicServiceAdapter>()
             .Setup(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()))
@@ -579,7 +579,7 @@ public class ConfidenceAdapterTests
             Title = "Test Song",
             Artists = ["Test Artist"],
             Album = "Test Album",
-            DurationMs = 180000
+            Duration = TimeSpan.FromMilliseconds(180000)
         };
 
         var innerAdapter = mock.Mock<IMusicServiceAdapter>();
@@ -632,7 +632,7 @@ public class ConfidenceAdapterTests
             Title = "Test Song",
             Artists = ["Test Artist"],
             Album = "Test Album",
-            DurationMs = 180000
+            Duration = TimeSpan.FromMilliseconds(180000)
         };
 
         mock.Mock<IMusicServiceAdapter>()
@@ -667,7 +667,7 @@ public class ConfidenceAdapterTests
             Title = "Test Song",
             Artists = ["Test Artist"],
             Album = "Test Album",
-            DurationMs = 180000
+            Duration = TimeSpan.FromMilliseconds(180000)
         };
 
         var innerAdapter = mock.Mock<IMusicServiceAdapter>();
@@ -697,13 +697,13 @@ public class ConfidenceAdapterTests
             Title = "Test Song",
             Artists = ["Test Artist"],
             Album = "Test Album",
-            DurationMs = 180000
+            Duration = TimeSpan.FromMilliseconds(180000)
         };
 
         var result1 = new SongSearchResult("https://spotify.com/track/1",
-            new SongMetadata { Title = "1", Artists = ["A"], Album = "A", DurationMs = 180000 });
+            new SongMetadata { Title = "1", Artists = ["A"], Album = "A", Duration = TimeSpan.FromMilliseconds(180000) });
         var result2 = new SongSearchResult("https://spotify.com/track/2",
-            new SongMetadata { Title = "2", Artists = ["A"], Album = "A", DurationMs = 180000 });
+            new SongMetadata { Title = "2", Artists = ["A"], Album = "A", Duration = TimeSpan.FromMilliseconds(180000) });
 
         mock.Mock<IMusicServiceAdapter>()
             .Setup(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()))
@@ -746,11 +746,11 @@ public class ConfidenceAdapterTests
             Title = "Test Song",
             Artists = ["Test Artist"],
             Album = "Test Album",
-            DurationMs = 180000
+            Duration = TimeSpan.FromMilliseconds(180000)
         };
 
         var lowScore = new SongSearchResult("https://spotify.com/track/1",
-            new SongMetadata { Title = "L", Artists = ["A"], Album = "A", DurationMs = 180000 });
+            new SongMetadata { Title = "L", Artists = ["A"], Album = "A", Duration = TimeSpan.FromMilliseconds(180000) });
 
         mock.Mock<IMusicServiceAdapter>()
             .Setup(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()))
@@ -792,11 +792,11 @@ public class ConfidenceAdapterTests
             Title = "Test Song",
             Artists = ["Test Artist"],
             Album = "Test Album",
-            DurationMs = 180000
+            Duration = TimeSpan.FromMilliseconds(180000)
         };
 
         var goodMatch = new SongSearchResult("https://spotify.com/track/1",
-            new SongMetadata { Title = "T", Artists = ["A"], Album = "A", DurationMs = 180000 });
+            new SongMetadata { Title = "T", Artists = ["A"], Album = "A", Duration = TimeSpan.FromMilliseconds(180000) });
 
         mock.Mock<IMusicServiceAdapter>()
             .Setup(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()))
@@ -838,7 +838,7 @@ public class ConfidenceAdapterTests
             Title = "Test Song",
             Artists = ["Test Artist"],
             Album = "Test Album",
-            DurationMs = 180000
+            Duration = TimeSpan.FromMilliseconds(180000)
         };
 
         mock.Mock<IMusicServiceAdapter>()
@@ -881,13 +881,13 @@ public class ConfidenceAdapterTests
             Title = "Test Song",
             Artists = ["Test Artist"],
             Album = "Test Album",
-            DurationMs = 180000
+            Duration = TimeSpan.FromMilliseconds(180000)
         };
 
         var lowMatch = new SongSearchResult("https://spotify.com/track/low",
-            new SongMetadata { Title = "L", Artists = ["A"], Album = "A", DurationMs = 180000 });
+            new SongMetadata { Title = "L", Artists = ["A"], Album = "A", Duration = TimeSpan.FromMilliseconds(180000) });
         var highMatch = new SongSearchResult("https://spotify.com/track/high",
-            new SongMetadata { Title = "H", Artists = ["A"], Album = "A", DurationMs = 180000 });
+            new SongMetadata { Title = "H", Artists = ["A"], Album = "A", Duration = TimeSpan.FromMilliseconds(180000) });
 
         mock.Mock<IMusicServiceAdapter>()
             .Setup(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()))
@@ -924,11 +924,11 @@ public class ConfidenceAdapterTests
             Title = "Test Song",
             Artists = ["Test Artist"],
             Album = "Test Album",
-            DurationMs = 180000
+            Duration = TimeSpan.FromMilliseconds(180000)
         };
 
         var lowMatch = new SongSearchResult("https://spotify.com/track/1",
-            new SongMetadata { Title = "L", Artists = ["A"], Album = "A", DurationMs = 180000 });
+            new SongMetadata { Title = "L", Artists = ["A"], Album = "A", Duration = TimeSpan.FromMilliseconds(180000) });
 
         mock.Mock<IMusicServiceAdapter>()
             .Setup(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()))

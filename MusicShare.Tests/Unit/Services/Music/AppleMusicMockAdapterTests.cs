@@ -1,5 +1,6 @@
 using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
+using MusicShare.Services.Models;
 using MusicShare.Services.Services.Music.Apple;
 
 namespace MusicShare.Tests.Unit.Services.Music;

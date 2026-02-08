@@ -21,8 +21,8 @@ public class SpotifyMusicServiceImplTests
             return Task.FromResult(CreateJsonResponse(response, HttpStatusCode.OK));
         });
 
-        mock.Provide(httpClient);
-        var sut = mock.Create<SpotifyMusicServiceImpl>();
+        var logger = mock.Mock<ILogger<SpotifyMusicServiceImpl>>().Object;
+        var sut = new SpotifyMusicServiceImpl(httpClient, logger);
 
         var result = await sut.SearchAsync("test query", 5, TestContext.Current.CancellationToken);
 
@@ -44,8 +44,8 @@ public class SpotifyMusicServiceImplTests
         var httpClient = CreateMockHttpClient((_, _) =>
             Task.FromResult(CreateJsonResponse(response, HttpStatusCode.OK)));
 
-        mock.Provide(httpClient);
-        var sut = mock.Create<SpotifyMusicServiceImpl>();
+        var logger = mock.Mock<ILogger<SpotifyMusicServiceImpl>>().Object;
+        var sut = new SpotifyMusicServiceImpl(httpClient, logger);
 
         var result = await sut.SearchAsync("unknown query", 5, TestContext.Current.CancellationToken);
 
@@ -59,8 +59,8 @@ public class SpotifyMusicServiceImplTests
         var httpClient = CreateMockHttpClient((_, _) =>
             Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError)));
 
-        mock.Provide(httpClient);
-        var sut = mock.Create<SpotifyMusicServiceImpl>();
+        var logger = mock.Mock<ILogger<SpotifyMusicServiceImpl>>().Object;
+        var sut = new SpotifyMusicServiceImpl(httpClient, logger);
 
         var result = await sut.SearchAsync("test query", 5, TestContext.Current.CancellationToken);
 
@@ -78,8 +78,8 @@ public class SpotifyMusicServiceImplTests
             return Task.FromResult(CreateJsonResponse(track, HttpStatusCode.OK));
         });
 
-        mock.Provide(httpClient);
-        var sut = mock.Create<SpotifyMusicServiceImpl>();
+        var logger = mock.Mock<ILogger<SpotifyMusicServiceImpl>>().Object;
+        var sut = new SpotifyMusicServiceImpl(httpClient, logger);
 
         var result = await sut.GetTrackAsync("track-123", TestContext.Current.CancellationToken);
 
@@ -99,8 +99,8 @@ public class SpotifyMusicServiceImplTests
         var httpClient = CreateMockHttpClient((_, _) =>
             Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound)));
 
-        mock.Provide(httpClient);
-        var sut = mock.Create<SpotifyMusicServiceImpl>();
+        var logger = mock.Mock<ILogger<SpotifyMusicServiceImpl>>().Object;
+        var sut = new SpotifyMusicServiceImpl(httpClient, logger);
 
         var result = await sut.GetTrackAsync("invalid-id", TestContext.Current.CancellationToken);
 
@@ -146,8 +146,8 @@ public class SpotifyMusicServiceImplTests
         var httpClient = CreateMockHttpClient((_, _) =>
             Task.FromResult(CreateJsonResponse(response, HttpStatusCode.OK)));
 
-        mock.Provide(httpClient);
-        var sut = mock.Create<SpotifyMusicServiceImpl>();
+        var logger = mock.Mock<ILogger<SpotifyMusicServiceImpl>>().Object;
+        var sut = new SpotifyMusicServiceImpl(httpClient, logger);
 
         var result = await sut.SearchAsync("Bohemian Rhapsody", 5, TestContext.Current.CancellationToken);
 
@@ -171,8 +171,8 @@ public class SpotifyMusicServiceImplTests
         var httpClient = CreateMockHttpClient((_, _) =>
             throw new HttpRequestException("Network error"));
 
-        mock.Provide(httpClient);
-        var sut = mock.Create<SpotifyMusicServiceImpl>();
+        var logger = mock.Mock<ILogger<SpotifyMusicServiceImpl>>().Object;
+        var sut = new SpotifyMusicServiceImpl(httpClient, logger);
 
         var result = await sut.SearchAsync("test query", 5, TestContext.Current.CancellationToken);
 
