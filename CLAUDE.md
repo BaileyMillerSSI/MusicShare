@@ -15,7 +15,8 @@ MusicShare is a full-stack web application that allows users to share music URLs
 - Follow existing coding conventions
 - Do not refactor unrelated code
 - If requirements are unclear, make reasonable assumptions and document them in the PR
-- Always open a PR targeting develop
+- Always open a PR targeting main
+- When creating a PR from a GitHub issue, reference the issue in the PR description (e.g., "Closes #31") to create an automatic link
 
 ## Architecture
 

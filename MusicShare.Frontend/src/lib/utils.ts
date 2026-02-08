@@ -23,7 +23,7 @@ export function formatDuration(duration: string | number | undefined): string | 
     return null;
   }
 
-  let totalSeconds: number;
+  let totalSeconds: number | undefined;
 
   if (typeof duration === 'number') {
     totalSeconds = duration;
@@ -39,7 +39,7 @@ export function formatDuration(duration: string | number | undefined): string | 
       totalSeconds = hours * 3600 + minutes * 60 + seconds + fractionalSeconds;
     }
     // Try parsing as MM:SS format with optional fractional seconds
-    else if (duration.match(/^(\d{1,2}):(\d{2})(?:\.(\d+))?$/)) {
+    else {
       const mmssMatch = duration.match(/^(\d{1,2}):(\d{2})(?:\.(\d+))?$/);
       if (mmssMatch) {
         const minutes = parseInt(mmssMatch[1], 10);
@@ -48,27 +48,31 @@ export function formatDuration(duration: string | number | undefined): string | 
         const fractionalSeconds = fractional ? parseFloat('0.' + fractional) : 0;
         totalSeconds = minutes * 60 + seconds + fractionalSeconds;
       }
-    }
-    // Try parsing as ISO 8601 duration (PT3M30S)
-    else if (duration.startsWith('PT')) {
-      const iso8601Match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?/);
-      if (iso8601Match) {
-        const hours = parseInt(iso8601Match[1] || '0', 10);
-        const minutes = parseInt(iso8601Match[2] || '0', 10);
-        const seconds = parseFloat(iso8601Match[3] || '0');
-        totalSeconds = hours * 3600 + minutes * 60 + seconds;
+      // Try parsing as ISO 8601 duration (PT3M30S)
+      else if (duration.startsWith('PT')) {
+        const iso8601Match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?/);
+        if (iso8601Match) {
+          const hours = parseInt(iso8601Match[1] || '0', 10);
+          const minutes = parseInt(iso8601Match[2] || '0', 10);
+          const seconds = parseFloat(iso8601Match[3] || '0');
+          totalSeconds = hours * 3600 + minutes * 60 + seconds;
+        } else {
+          return null;
+        }
       } else {
-        return null;
+        // Try parsing as plain number string
+        const parsed = parseFloat(duration);
+        if (isNaN(parsed)) {
+          return null;
+        }
+        totalSeconds = parsed;
       }
-    } else {
-      // Try parsing as plain number string
-      const parsed = parseFloat(duration);
-      if (isNaN(parsed)) {
-        return null;
-      }
-      totalSeconds = parsed;
     }
   } else {
+    return null;
+  }
+
+  if (totalSeconds === undefined || totalSeconds <= 0 || !isFinite(totalSeconds)) {
     return null;
   }
 
@@ -98,7 +102,7 @@ export function durationToSeconds(duration: string | number | undefined): number
     return null;
   }
 
-  let totalSeconds: number;
+  let totalSeconds: number | undefined;
 
   if (typeof duration === 'number') {
     totalSeconds = duration;
@@ -114,7 +118,7 @@ export function durationToSeconds(duration: string | number | undefined): number
       totalSeconds = hours * 3600 + minutes * 60 + seconds + fractionalSeconds;
     }
     // Try parsing as MM:SS format with optional fractional seconds
-    else if (duration.match(/^(\d{1,2}):(\d{2})(?:\.(\d+))?$/)) {
+    else {
       const mmssMatch = duration.match(/^(\d{1,2}):(\d{2})(?:\.(\d+))?$/);
       if (mmssMatch) {
         const minutes = parseInt(mmssMatch[1], 10);
@@ -123,31 +127,31 @@ export function durationToSeconds(duration: string | number | undefined): number
         const fractionalSeconds = fractional ? parseFloat('0.' + fractional) : 0;
         totalSeconds = minutes * 60 + seconds + fractionalSeconds;
       }
-    }
-    // Try parsing as ISO 8601 duration (PT3M30S)
-    else if (duration.startsWith('PT')) {
-      const iso8601Match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?/);
-      if (iso8601Match) {
-        const hours = parseInt(iso8601Match[1] || '0', 10);
-        const minutes = parseInt(iso8601Match[2] || '0', 10);
-        const seconds = parseFloat(iso8601Match[3] || '0');
-        totalSeconds = hours * 3600 + minutes * 60 + seconds;
+      // Try parsing as ISO 8601 duration (PT3M30S)
+      else if (duration.startsWith('PT')) {
+        const iso8601Match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?/);
+        if (iso8601Match) {
+          const hours = parseInt(iso8601Match[1] || '0', 10);
+          const minutes = parseInt(iso8601Match[2] || '0', 10);
+          const seconds = parseFloat(iso8601Match[3] || '0');
+          totalSeconds = hours * 3600 + minutes * 60 + seconds;
+        } else {
+          return null;
+        }
       } else {
-        return null;
+        // Try parsing as plain number string
+        const parsed = parseFloat(duration);
+        if (isNaN(parsed)) {
+          return null;
+        }
+        totalSeconds = parsed;
       }
-    } else {
-      // Try parsing as plain number string
-      const parsed = parseFloat(duration);
-      if (isNaN(parsed)) {
-        return null;
-      }
-      totalSeconds = parsed;
     }
   } else {
     return null;
   }
 
-  if (totalSeconds <= 0 || !isFinite(totalSeconds)) {
+  if (totalSeconds === undefined || totalSeconds <= 0 || !isFinite(totalSeconds)) {
     return null;
   }
 
