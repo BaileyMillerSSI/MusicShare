@@ -143,7 +143,7 @@ public static class DependencyInjection
     private static TBuilder AddAppleMusicAccess<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
         // Register Apple Music service (mock implementation)
-        builder.Services.AddTransient<IAppleMusicService, AppleMusicServiceImpl>();
+        builder.Services.AddTransient<IAppleMusicService, AppleMusicService>();
 
         // Register Apple Music adapter (mock implementation)
         builder.Services.AddTransient<IMusicServiceAdapter, AppleMusicMockAdapter>();

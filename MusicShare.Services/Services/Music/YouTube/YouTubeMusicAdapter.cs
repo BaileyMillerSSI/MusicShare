@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Logging;
 using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
@@ -47,9 +48,9 @@ public class YouTubeMusicAdapter(
         }
     }
 
-    public async IAsyncEnumerable<SongSearchResult> FindSongsAsync(
+    public async IAsyncEnumerable<Models.SongSearchResult> FindSongsAsync(
         SongMetadata metadata,
-        CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var query = BuildSearchQuery(metadata);
         logger.LogDebug("Searching YouTube Music for: {Query}", query);

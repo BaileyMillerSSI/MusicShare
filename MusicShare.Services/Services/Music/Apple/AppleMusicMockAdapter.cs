@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Logging;
 using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
@@ -46,7 +47,7 @@ public class AppleMusicMockAdapter(
 
     public async IAsyncEnumerable<SongSearchResult> FindSongsAsync(
         SongMetadata metadata,
-        CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var query = BuildSearchQuery(metadata);
         logger.LogDebug("Searching Apple Music for: {Query}", query);

@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
 using MusicShare.Services.Models;
@@ -22,7 +23,7 @@ public class ConfidenceAdapter(
 
     public async IAsyncEnumerable<SongSearchResult> FindSongsAsync(
         SongMetadata metadata,
-        CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var candidates = new List<(SongSearchResult Result, ConfidenceScore Score)>();
 
@@ -36,7 +37,7 @@ public class ConfidenceAdapter(
                 metadata.Title,
                 ServiceType,
                 candidate.Url,
-                score.Total);
+                score.TotalScore);
         }
 
         if (candidates.Count == 0)
@@ -49,8 +50,8 @@ public class ConfidenceAdapter(
         }
 
         var filteredCandidates = candidates
-            .Where(c => c.Score.Total >= confidenceThreshold)
-            .OrderByDescending(c => c.Score.Total)
+            .Where(c => c.Score.TotalScore >= confidenceThreshold)
+            .OrderByDescending(c => c.Score.TotalScore)
             .ToList();
 
         if (filteredCandidates.Count == 0)
@@ -61,7 +62,7 @@ public class ConfidenceAdapter(
                 metadata.Title,
                 ServiceType,
                 confidenceThreshold,
-                candidates.Max(c => c.Score.Total));
+                candidates.Max(c => c.Score.TotalScore));
             yield break;
         }
 
@@ -71,11 +72,11 @@ public class ConfidenceAdapter(
             metadata.Title,
             ServiceType,
             filteredCandidates.Count,
-            filteredCandidates[0].Score.Total);
+            filteredCandidates[0].Score.TotalScore);
 
-        foreach (var (result, _) in filteredCandidates)
+        foreach (var candidate in filteredCandidates)
         {
-            yield return result;
+            yield return candidate.Result;
         }
     }
 
