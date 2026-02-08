@@ -138,46 +138,302 @@ public class AppleMusicMockAdapterTests
     #region FindSongsAsync Tests
 
     [Fact]
-    public async Task ItWillReturnMockResultsForAnyMetadata()
+    public async Task ItWillReturnMultipleAppleMusicResults()
     {
-        var sut = CreateSut();
-        var metadata = new SongMetadata
+        using var mock = AutoMock.GetLoose();
+        var searchResults = new List<Services.Services.Music.Apple.AppleMusicTrack>
         {
-            Title = "Test Song",
-            Artists = ["Test Artist"]
-        };
+            new("track1", "Test Song", ["Artist One"], "Album One", "https://artwork.apple.com/1.jpg", TimeSpan.FromMinutes(3), false),
+            new("track2", "Test Song (Remix)", ["Artist Two"], "Album Two", "https://artwork.apple.com/2.jpg", TimeSpan.FromMinutes(4), true)
+        }.AsReadOnly();
 
-        var results = new List<MusicShare.Services.Models.SongSearchResult>();
+        mock.Mock<Services.Services.Music.Apple.IAppleMusicService>()
+            .Setup(x => x.SearchTracksAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(searchResults);
+
+        var sut = mock.Create<Services.Services.Music.Apple.AppleMusicMockAdapter>();
+        var metadata = new SongMetadata { Title = "Test Song", Artists = ["Artist"] };
+
+        var results = new List<Services.Models.SongSearchResult>();
         await foreach (var result in sut.FindSongsAsync(metadata))
         {
             results.Add(result);
         }
 
-        results.Should().NotBeEmpty();
-        results.First().Url.Should().StartWith("https://music.apple.com/us/song/");
-        results.First().FoundMetadata.Should().NotBeNull();
+        results.Should().HaveCount(2);
+        results[0].Url.Should().Be("https://music.apple.com/us/song/track1");
+        results[1].Url.Should().Be("https://music.apple.com/us/song/track2");
     }
 
     [Fact]
-    public async Task ItWillReturnSameUrlForSameTitle()
+    public async Task ItWillTransformAppleTrackToSongSearchResult()
     {
-        var sut = CreateSut();
+        using var mock = AutoMock.GetLoose();
+        var searchResults = new List<Services.Services.Music.Apple.AppleMusicTrack>
+        {
+            new(
+                "track123",
+                "Complete Song",
+                ["Primary Artist", "Featured Artist"],
+                "Test Album",
+                "https://artwork.apple.com/complete.jpg",
+                TimeSpan.FromSeconds(215),
+                true)
+        }.AsReadOnly();
+
+        mock.Mock<Services.Services.Music.Apple.IAppleMusicService>()
+            .Setup(x => x.SearchTracksAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(searchResults);
+
+        var sut = mock.Create<Services.Services.Music.Apple.AppleMusicMockAdapter>();
+        var metadata = new SongMetadata { Title = "Complete Song", Artists = ["Primary Artist"] };
+
+        var results = new List<Services.Models.SongSearchResult>();
+        await foreach (var result in sut.FindSongsAsync(metadata))
+        {
+            results.Add(result);
+        }
+
+        var firstResult = results.Should().ContainSingle().Subject;
+        firstResult.Url.Should().Be("https://music.apple.com/us/song/track123");
+        firstResult.FoundMetadata.Title.Should().Be("Complete Song");
+        firstResult.FoundMetadata.Artists.Should().BeEquivalentTo(["Primary Artist", "Featured Artist"]);
+        firstResult.FoundMetadata.Album.Should().Be("Test Album");
+        firstResult.FoundMetadata.ArtworkUrl.Should().Be("https://artwork.apple.com/complete.jpg");
+        firstResult.FoundMetadata.Duration.Should().Be(TimeSpan.FromSeconds(215));
+        firstResult.FoundMetadata.IsExplicit.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ItWillGenerateCorrectAppleMusicUrls()
+    {
+        using var mock = AutoMock.GetLoose();
+        var searchResults = new List<Services.Services.Music.Apple.AppleMusicTrack>
+        {
+            new("1234567890", "Song", ["Artist"], null, null, TimeSpan.FromMinutes(3), false)
+        }.AsReadOnly();
+
+        mock.Mock<Services.Services.Music.Apple.IAppleMusicService>()
+            .Setup(x => x.SearchTracksAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(searchResults);
+
+        var sut = mock.Create<Services.Services.Music.Apple.AppleMusicMockAdapter>();
+        var metadata = new SongMetadata { Title = "Song", Artists = ["Artist"] };
+
+        var results = new List<Services.Models.SongSearchResult>();
+        await foreach (var result in sut.FindSongsAsync(metadata))
+        {
+            results.Add(result);
+        }
+
+        results.First().Url.Should().Be("https://music.apple.com/us/song/1234567890");
+    }
+
+    [Fact]
+    public async Task ItWillReturnConsistentResults()
+    {
+        using var mock = AutoMock.GetLoose();
+        var searchResults = new List<Services.Services.Music.Apple.AppleMusicTrack>
+        {
+            new("track123", "Consistent Song", ["Artist"], "Album", null, TimeSpan.FromMinutes(3), false)
+        }.AsReadOnly();
+
+        mock.Mock<Services.Services.Music.Apple.IAppleMusicService>()
+            .Setup(x => x.SearchTracksAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(searchResults);
+
+        var sut = mock.Create<Services.Services.Music.Apple.AppleMusicMockAdapter>();
         var metadata1 = new SongMetadata { Title = "Consistent Song", Artists = ["A"] };
         var metadata2 = new SongMetadata { Title = "Consistent Song", Artists = ["B"] };
 
-        var results1 = new List<MusicShare.Services.Models.SongSearchResult>();
+        var results1 = new List<Services.Models.SongSearchResult>();
         await foreach (var result in sut.FindSongsAsync(metadata1))
         {
             results1.Add(result);
         }
 
-        var results2 = new List<MusicShare.Services.Models.SongSearchResult>();
+        var results2 = new List<Services.Models.SongSearchResult>();
         await foreach (var result in sut.FindSongsAsync(metadata2))
         {
             results2.Add(result);
         }
 
         results1.First().Url.Should().Be(results2.First().Url);
+    }
+
+    [Fact]
+    public async Task ItWillIncludeCompleteMetadata()
+    {
+        using var mock = AutoMock.GetLoose();
+        var searchResults = new List<Services.Services.Music.Apple.AppleMusicTrack>
+        {
+            new(
+                "track1",
+                "Song Title",
+                ["Artist Name"],
+                "Album Name",
+                "https://artwork.apple.com/image.jpg",
+                TimeSpan.FromMinutes(4),
+                false)
+        }.AsReadOnly();
+
+        mock.Mock<Services.Services.Music.Apple.IAppleMusicService>()
+            .Setup(x => x.SearchTracksAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(searchResults);
+
+        var sut = mock.Create<Services.Services.Music.Apple.AppleMusicMockAdapter>();
+        var metadata = new SongMetadata { Title = "Song Title", Artists = ["Artist Name"] };
+
+        var results = new List<Services.Models.SongSearchResult>();
+        await foreach (var result in sut.FindSongsAsync(metadata))
+        {
+            results.Add(result);
+        }
+
+        var foundMetadata = results.First().FoundMetadata;
+        foundMetadata.Title.Should().NotBeNullOrEmpty();
+        foundMetadata.Artists.Should().NotBeEmpty();
+        foundMetadata.Album.Should().NotBeNullOrEmpty();
+        foundMetadata.ArtworkUrl.Should().NotBeNullOrEmpty();
+        foundMetadata.Duration.Should().BeGreaterThan(TimeSpan.Zero);
+    }
+
+    [Fact]
+    public async Task ItWillHandleMissingAlbumInfo()
+    {
+        using var mock = AutoMock.GetLoose();
+        var searchResults = new List<Services.Services.Music.Apple.AppleMusicTrack>
+        {
+            new("track1", "Song Without Album", ["Artist"], null, "https://artwork.apple.com/1.jpg", TimeSpan.FromMinutes(3), false)
+        }.AsReadOnly();
+
+        mock.Mock<Services.Services.Music.Apple.IAppleMusicService>()
+            .Setup(x => x.SearchTracksAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(searchResults);
+
+        var sut = mock.Create<Services.Services.Music.Apple.AppleMusicMockAdapter>();
+        var metadata = new SongMetadata { Title = "Test", Artists = ["Artist"] };
+
+        var results = new List<Services.Models.SongSearchResult>();
+        await foreach (var result in sut.FindSongsAsync(metadata))
+        {
+            results.Add(result);
+        }
+
+        results.Should().ContainSingle();
+        results[0].FoundMetadata.Album.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ItWillHandleEmptySearchResults()
+    {
+        using var mock = AutoMock.GetLoose();
+        var searchResults = new List<Services.Services.Music.Apple.AppleMusicTrack>().AsReadOnly();
+
+        mock.Mock<Services.Services.Music.Apple.IAppleMusicService>()
+            .Setup(x => x.SearchTracksAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(searchResults);
+
+        var sut = mock.Create<Services.Services.Music.Apple.AppleMusicMockAdapter>();
+        var metadata = new SongMetadata { Title = "Nonexistent Song", Artists = ["Unknown Artist"] };
+
+        var results = new List<Services.Models.SongSearchResult>();
+        await foreach (var result in sut.FindSongsAsync(metadata))
+        {
+            results.Add(result);
+        }
+
+        results.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ItWillBuildSearchQueryWithArtistAndTitle()
+    {
+        using var mock = AutoMock.GetLoose();
+        string? capturedQuery = null;
+
+        mock.Mock<Services.Services.Music.Apple.IAppleMusicService>()
+            .Setup(x => x.SearchTracksAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Callback<string, int, CancellationToken>((query, _, _) => capturedQuery = query)
+            .ReturnsAsync(new List<Services.Services.Music.Apple.AppleMusicTrack>().AsReadOnly());
+
+        var sut = mock.Create<Services.Services.Music.Apple.AppleMusicMockAdapter>();
+        var metadata = new SongMetadata { Title = "Song Title", Artists = ["Artist Name"] };
+
+        await foreach (var _ in sut.FindSongsAsync(metadata))
+        {
+            // Consume enumerable to trigger search
+        }
+
+        capturedQuery.Should().Be("Song Title Artist Name");
+    }
+
+    [Fact]
+    public async Task ItWillHandleNullSearchResponse()
+    {
+        using var mock = AutoMock.GetLoose();
+
+        mock.Mock<Services.Services.Music.Apple.IAppleMusicService>()
+            .Setup(x => x.SearchTracksAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IReadOnlyList<Services.Services.Music.Apple.AppleMusicTrack>?)null);
+
+        var sut = mock.Create<Services.Services.Music.Apple.AppleMusicMockAdapter>();
+        var metadata = new SongMetadata { Title = "Test", Artists = ["Artist"] };
+
+        var results = new List<Services.Models.SongSearchResult>();
+        await foreach (var result in sut.FindSongsAsync(metadata))
+        {
+            results.Add(result);
+        }
+
+        results.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ItWillHandleSearchException()
+    {
+        using var mock = AutoMock.GetLoose();
+
+        mock.Mock<Services.Services.Music.Apple.IAppleMusicService>()
+            .Setup(x => x.SearchTracksAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new Exception("Apple Music API error"));
+
+        var sut = mock.Create<Services.Services.Music.Apple.AppleMusicMockAdapter>();
+        var metadata = new SongMetadata { Title = "Test", Artists = ["Artist"] };
+
+        var results = new List<Services.Models.SongSearchResult>();
+        await foreach (var result in sut.FindSongsAsync(metadata))
+        {
+            results.Add(result);
+        }
+
+        results.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ItWillHandleMissingArtworkUrl()
+    {
+        using var mock = AutoMock.GetLoose();
+        var searchResults = new List<Services.Services.Music.Apple.AppleMusicTrack>
+        {
+            new("track1", "Song", ["Artist"], "Album", null, TimeSpan.FromMinutes(3), false)
+        }.AsReadOnly();
+
+        mock.Mock<Services.Services.Music.Apple.IAppleMusicService>()
+            .Setup(x => x.SearchTracksAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(searchResults);
+
+        var sut = mock.Create<Services.Services.Music.Apple.AppleMusicMockAdapter>();
+        var metadata = new SongMetadata { Title = "Test", Artists = ["Artist"] };
+
+        var results = new List<Services.Models.SongSearchResult>();
+        await foreach (var result in sut.FindSongsAsync(metadata))
+        {
+            results.Add(result);
+        }
+
+        results.Should().ContainSingle();
+        results[0].FoundMetadata.ArtworkUrl.Should().BeNull();
     }
 
     #endregion
