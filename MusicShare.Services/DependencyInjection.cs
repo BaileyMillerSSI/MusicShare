@@ -53,12 +53,27 @@ public static class DependencyInjection
 
     private static TBuilder AddMusicServices<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
+        // Register the confidence scoring service (used by ConfidenceAdapter)
+        builder.Services.AddSingleton<IConfidenceScoreService, ConfidenceScoreService>();
+
+        // Register all music service implementations and adapters
         builder
             .AddSpotifyAccess()
             .AddAppleMusicAccess()
             .AddYouTubeMusicAccess()
             .Services
             .AddSingleton<IMusicServiceResolver, MusicServiceResolver>();
+
+        // Decorate ALL IMusicServiceAdapter registrations with ConfidenceAdapter
+        // This single line wraps each adapter (Spotify, Apple, YouTube) with confidence filtering
+        // Using Scrutor's Decorate method - automatically resolves ILogger<ConfidenceAdapter> and IConfidenceScoreService
+        builder.Services.Decorate<IMusicServiceAdapter>(
+            (inner, provider) => new ConfidenceAdapter(
+                inner,
+                provider.GetRequiredService<IConfidenceScoreService>(),
+                provider.GetRequiredService<ILogger<ConfidenceAdapter>>()
+            )
+        );
 
         return builder;
     }
