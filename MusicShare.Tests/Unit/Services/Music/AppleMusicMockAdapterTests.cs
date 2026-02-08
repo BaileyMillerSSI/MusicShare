@@ -6,7 +6,11 @@ namespace MusicShare.Tests.Unit.Services.Music;
 
 public class AppleMusicMockAdapterTests
 {
-    private static AppleMusicMockAdapter CreateSut() => new();
+    private static AppleMusicMockAdapter CreateSut()
+    {
+        using var mock = AutoMock.GetLoose();
+        return mock.Create<AppleMusicMockAdapter>();
+    }
 
     [Fact]
     public void ItWillReturnAppleMusicServiceType()
@@ -131,10 +135,10 @@ public class AppleMusicMockAdapterTests
 
     #endregion
 
-    #region FindSongAsync Tests
+    #region FindSongsAsync Tests
 
     [Fact]
-    public async Task ItWillReturnMockUrlForAnyMetadata()
+    public async Task ItWillReturnMockResultsForAnyMetadata()
     {
         var sut = CreateSut();
         var metadata = new SongMetadata
@@ -143,10 +147,15 @@ public class AppleMusicMockAdapterTests
             Artists = ["Test Artist"]
         };
 
-        var result = await sut.FindSongAsync(metadata);
+        var results = new List<MusicShare.Services.Models.SongSearchResult>();
+        await foreach (var result in sut.FindSongsAsync(metadata))
+        {
+            results.Add(result);
+        }
 
-        result.Should().NotBeNull();
-        result.Should().StartWith("https://music.apple.com/us/song/");
+        results.Should().NotBeEmpty();
+        results.First().Url.Should().StartWith("https://music.apple.com/us/song/");
+        results.First().FoundMetadata.Should().NotBeNull();
     }
 
     [Fact]
@@ -156,10 +165,19 @@ public class AppleMusicMockAdapterTests
         var metadata1 = new SongMetadata { Title = "Consistent Song", Artists = ["A"] };
         var metadata2 = new SongMetadata { Title = "Consistent Song", Artists = ["B"] };
 
-        var result1 = await sut.FindSongAsync(metadata1);
-        var result2 = await sut.FindSongAsync(metadata2);
+        var results1 = new List<MusicShare.Services.Models.SongSearchResult>();
+        await foreach (var result in sut.FindSongsAsync(metadata1))
+        {
+            results1.Add(result);
+        }
 
-        result1.Should().Be(result2);
+        var results2 = new List<MusicShare.Services.Models.SongSearchResult>();
+        await foreach (var result in sut.FindSongsAsync(metadata2))
+        {
+            results2.Add(result);
+        }
+
+        results1.First().Url.Should().Be(results2.First().Url);
     }
 
     #endregion

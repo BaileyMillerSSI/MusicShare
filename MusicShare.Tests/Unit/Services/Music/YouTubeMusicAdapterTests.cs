@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Logging;
 using MusicShare.Contracts;
 using MusicShare.Services.Services.Music.YouTube;
-using YouTubeMusicAPI.Client;
 
 namespace MusicShare.Tests.Unit.Services.Music;
 
@@ -9,11 +8,8 @@ public class YouTubeMusicAdapterTests
 {
     private static YouTubeMusicAdapter CreateSut()
     {
-        var client = new YouTubeMusicClient(
-            logger: Mock.Of<ILogger>(),
-            geographicalLocation: "US",
-            httpClient: new HttpClient());
-        return new YouTubeMusicAdapter(Mock.Of<ILogger<YouTubeMusicAdapter>>(), client);
+        using var mock = AutoMock.GetLoose();
+        return mock.Create<YouTubeMusicAdapter>();
     }
 
     [Fact]
