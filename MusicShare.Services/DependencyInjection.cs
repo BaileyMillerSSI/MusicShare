@@ -7,6 +7,7 @@ using MusicShare.Services.Configuration;
 using MusicShare.Services.Configuration.MusicServices;
 using MusicShare.Services.Services;
 using MusicShare.Services.Services.Music;
+using MusicShare.Services.Services.Music.Apple;
 using MusicShare.Services.Services.Music.Spotify;
 using MusicShare.Services.Services.Music.YouTube;
 using YouTubeMusicAPI.Client;
@@ -68,7 +69,12 @@ public static class DependencyInjection
             .AddOptions<YouTubeMusicConfiguration>()
             .Bind(builder.Configuration.GetSection(YouTubeMusicConfiguration.SectionName));
 
+        // Register YouTube Music service
+        builder.Services.AddTransient<IYouTubeMusicService, YouTubeMusicService>();
+
+        // Register YouTube Music adapter
         builder.Services.AddTransient<IMusicServiceAdapter, YouTubeMusicAdapter>();
+
         builder.Services.AddHttpClient(nameof(YouTubeMusicClient), client =>
         {
             // TODO: Configure HttpClient if needed
@@ -100,13 +106,17 @@ public static class DependencyInjection
             .AddOptions<SpotifyConfiguration>()
             .Bind(builder.Configuration.GetSection(SpotifyConfiguration.SectionName));
 
+        // Register Spotify service
         builder
             .Services
-            .AddHttpClient<IMusicServiceAdapter, SpotifyMusicService>(config =>
+            .AddHttpClient<ISpotifyMusicService, SpotifyMusicServiceImpl>(config =>
             {
                 config.BaseAddress = new Uri("https://api.spotify.com/v1/");
             })
             .AddHttpMessageHandler<SpotifyAccessTokenHandler>();
+
+        // Register Spotify adapter
+        builder.Services.AddTransient<IMusicServiceAdapter, SpotifyMusicAdapter>();
 
         builder
             .Services
@@ -117,8 +127,11 @@ public static class DependencyInjection
 
     private static TBuilder AddAppleMusicAccess<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
-        // TODO: implement an apple music adapter
-        //builder.Services.AddSingleton<IMusicServiceAdapter, AppleMusicMockAdapter>();
+        // Register Apple Music service (mock implementation)
+        builder.Services.AddTransient<IAppleMusicService, AppleMusicServiceImpl>();
+
+        // Register Apple Music adapter (mock implementation)
+        builder.Services.AddTransient<IMusicServiceAdapter, AppleMusicMockAdapter>();
 
         return builder;
     }

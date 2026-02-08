@@ -1,44 +1,90 @@
+using Microsoft.Extensions.Logging;
 using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
+using MusicShare.Services.Models;
 using MusicShare.Services.Services.Music;
 
 namespace MusicShare.Services.Services.Music.Apple;
 
 /// <summary>
-/// Mock Apple Music adapter that returns deterministic fake data.
+/// Apple Music adapter that delegates to IAppleMusicService for API operations.
+/// Currently uses mock service returning deterministic fake data.
 /// TODO: Replace with real Apple Music API integration for production.
 /// </summary>
-public class AppleMusicMockAdapter : IMusicServiceAdapter
+public class AppleMusicMockAdapter(
+    IAppleMusicService appleMusicService,
+    ILogger<AppleMusicMockAdapter> logger) : IMusicServiceAdapter
 {
     public ServiceType ServiceType => ServiceType.AppleMusic;
 
-    public Task<SongMetadata?> ResolveMetadataAsync(string url, CancellationToken cancellationToken = default)
+    public async Task<SongMetadata?> ResolveMetadataAsync(string url, CancellationToken cancellationToken = default)
     {
-        var songId = ExtractSongId(url);
-        if (string.IsNullOrEmpty(songId))
-            return Task.FromResult<SongMetadata?>(null);
-
-        // Return deterministic fake data based on song ID
-        var metadata = new SongMetadata
+        var trackId = ExtractSongId(url);
+        if (string.IsNullOrEmpty(trackId))
         {
-            Title = $"Song {songId}",
-            Artists = new List<string> { "Artist A", "Artist B" },
-            Album = $"Album {songId}",
-            ArtworkUrl = $"https://is1-ssl.mzstatic.com/image/{songId}",
-            Duration = TimeSpan.FromMinutes(3).Add(TimeSpan.FromSeconds(30)),
-            IsExplicit = null
-        };
+            logger.LogWarning("Could not extract track ID from URL: {Url}", url);
+            return null;
+        }
 
-        return Task.FromResult<SongMetadata?>(metadata);
+        try
+        {
+            var track = await appleMusicService.GetTrackAsync(trackId, cancellationToken);
+            if (track == null)
+            {
+                logger.LogWarning("No track found for ID: {TrackId}", trackId);
+                return null;
+            }
+
+            return MapToSongMetadata(track);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error resolving metadata for track ID: {TrackId}", trackId);
+            return null;
+        }
     }
 
-    public Task<string?> FindSongAsync(SongMetadata metadata, CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<SongSearchResult> FindSongsAsync(
+        SongMetadata metadata,
+        CancellationToken cancellationToken = default)
     {
-        // Mock: Generate a deterministic Apple Music URL based on song title
-        var mockSongId = GenerateMockSongId(metadata.Title);
-        var url = $"https://music.apple.com/us/song/{mockSongId}";
+        var query = BuildSearchQuery(metadata);
+        logger.LogDebug("Searching Apple Music for: {Query}", query);
 
-        return Task.FromResult<string?>(url);
+        IReadOnlyList<AppleMusicTrack> results;
+        try
+        {
+            results = await appleMusicService.SearchTracksAsync(query, limit: 10, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error searching Apple Music for: {Query}", query);
+            yield break;
+        }
+
+        if (results == null || results.Count == 0)
+        {
+            logger.LogDebug("No Apple Music results found for query: {Query}", query);
+            yield break;
+        }
+
+        foreach (var track in results)
+        {
+            var url = $"https://music.apple.com/us/song/{track.Id}";
+            var foundMetadata = MapToSongMetadata(track);
+            yield return new SongSearchResult(url, foundMetadata);
+        }
+    }
+
+    [Obsolete("Use FindSongsAsync() instead. This method will be removed in a future version.")]
+    public async Task<string?> FindSongAsync(SongMetadata metadata, CancellationToken cancellationToken = default)
+    {
+        await foreach (var result in FindSongsAsync(metadata, cancellationToken))
+        {
+            return result.Url;
+        }
+
+        return null;
     }
 
     public string NormalizeUrl(string url)
@@ -81,10 +127,24 @@ public class AppleMusicMockAdapter : IMusicServiceAdapter
         return null;
     }
 
-    private static string GenerateMockSongId(string title)
+    private static string BuildSearchQuery(SongMetadata metadata)
     {
-        // Generate a deterministic numeric ID based on title
-        var hash = Math.Abs(title.GetHashCode());
-        return hash.ToString();
+        var artist = metadata.Artists.FirstOrDefault();
+        return string.IsNullOrEmpty(artist)
+            ? metadata.Title
+            : $"{metadata.Title} {artist}";
+    }
+
+    private static SongMetadata MapToSongMetadata(AppleMusicTrack track)
+    {
+        return new SongMetadata
+        {
+            Title = track.Name,
+            Artists = track.Artists,
+            Album = track.AlbumName,
+            ArtworkUrl = track.ArtworkUrl,
+            Duration = track.Duration,
+            IsExplicit = track.IsExplicit
+        };
     }
 }
