@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { type ShareResultResponse } from '../../../lib/api';
+import { durationToSeconds } from '../../../lib/utils';
 import { ResultPoller } from '../../../components/ResultPoller';
 
 export const revalidate = false; // cache indefinitely; revalidated on-demand by the Worker
@@ -29,8 +30,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const artistsString = data.song.artists.join(', ');
     const title = `${data.song.title} - ${artistsString}`;
     const description = `Listen to ${data.song.title} from ${artistsString} across multiple platforms`;
+    const durationSeconds = durationToSeconds(data.song.duration);
 
-    return {
+    const metadata: Metadata = {
       title,
       description,
       openGraph: {
@@ -48,6 +50,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         images: data.song.artworkUrl ? [data.song.artworkUrl] : [],
       },
     };
+
+    // Add music:duration meta tag if duration is available
+    if (durationSeconds !== null) {
+      metadata.other = {
+        'music:duration': durationSeconds.toString(),
+      };
+    }
+
+    return metadata;
   } catch {
     return {
       title: 'Share Result',

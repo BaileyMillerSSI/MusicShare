@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { api, type ShareResultResponse } from '../lib/api';
+import { formatDuration } from '../lib/utils';
 import { MusicServiceLink } from './MusicLinks';
 import NativeShare from './NativeShare';
 
@@ -93,6 +94,9 @@ export function ResultPoller({ shareId, initialData }: Readonly<Props>) {
               </div>
               <p className="text-gray-600">{song.artists.join(', ')}</p>
               {song.album && <p className="text-sm text-gray-500 mt-1">{song.album}</p>}
+              {song.duration && (
+                <p className="text-sm text-gray-500 mt-1">{formatDuration(song.duration)}</p>
+              )}
             </div>
           </div>
 
