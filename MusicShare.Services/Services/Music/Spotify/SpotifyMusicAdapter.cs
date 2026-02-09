@@ -47,45 +47,13 @@ public class SpotifyMusicAdapter(
         SongMetadata metadata,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var query = BuildSearchQuery(metadata);
-        logger.LogDebug("Searching Spotify for: {Query}", query);
-
-        SpotifySearchResponse? searchResponse;
-        try
-        {
-            searchResponse = await spotifyService.SearchAsync(query, limit: 10, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error searching Spotify for: {Query}", query);
-            yield break;
-        }
-
-        if (searchResponse?.tracks?.items == null || searchResponse.tracks.items.Length == 0)
-        {
-            logger.LogDebug("No Spotify results found for query: {Query}", query);
-            yield break;
-        }
-
-        foreach (var track in searchResponse.tracks.items)
+        await foreach (var track in GetSearchResponse(metadata, cancellationToken))
         {
             if (track?.external_urls?.spotify == null)
                 continue;
 
-            var foundMetadata = MapToSongMetadata(track);
-            yield return new SongSearchResult(track.external_urls.spotify, foundMetadata);
+            yield return new SongSearchResult(track.external_urls.spotify, MapToSongMetadata(track));
         }
-    }
-
-    [Obsolete("Use FindSongsAsync() instead. This method will be removed in a future version.")]
-    public async Task<string?> FindSongAsync(SongMetadata metadata, CancellationToken cancellationToken = default)
-    {
-        await foreach (var result in FindSongsAsync(metadata, cancellationToken))
-        {
-            return result.Url;
-        }
-
-        return null;
     }
 
     public string NormalizeUrl(string url)
@@ -120,17 +88,8 @@ public class SpotifyMusicAdapter(
         return null;
     }
 
-    private static string BuildSearchQuery(SongMetadata metadata)
-    {
-        var artist = metadata.Artists.FirstOrDefault();
-        return string.IsNullOrEmpty(artist)
-            ? $"track:{metadata.Title}"
-            : $"track:{metadata.Title} artist:{artist}";
-    }
-
-    private static SongMetadata MapToSongMetadata(SpotifyResponse track)
-    {
-        return new SongMetadata
+    private static SongMetadata MapToSongMetadata(SpotifyResponse track) =>
+        new SongMetadata
         {
             Title = track.name,
             Artists = track.artists?.Select(a => a.name) ?? [],
@@ -139,5 +98,17 @@ public class SpotifyMusicAdapter(
             Duration = TimeSpan.FromMilliseconds(track.Duration),
             IsExplicit = track.Explicit
         };
+
+    private async IAsyncEnumerable<SpotifyResponse> GetSearchResponse(SongMetadata metadata, [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var response = await spotifyService.SearchAsync(metadata, limit: 10, cancellationToken);
+
+        if (response?.tracks?.items != null)
+        {
+            foreach (var track in response.tracks.items)
+            {
+                yield return track;
+            }
+        }
     }
 }

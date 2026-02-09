@@ -1,19 +1,21 @@
+using Microsoft.Extensions.Options;
 using MusicShare.Contracts.Messages;
+using MusicShare.Services.Configuration.MusicServices;
 using MusicShare.Services.Models;
 
 namespace MusicShare.Services.Services;
 
 /// <summary>
 /// Service for calculating confidence scores when matching songs across different music platforms.
-/// Uses weighted scoring: Title (40%), Artist (35%), Album (15%), Duration (10%).
+/// Uses weighted scoring: Title (40%), Artist (25%), Album (25%), Duration (10%).
 /// </summary>
-public class ConfidenceScoreService : IConfidenceScoreService
+public class ConfidenceScoreService(IOptionsMonitor<MusicConfiguration> musicConfigurationMonitor) : IConfidenceScoreService
 {
     private const double TitleWeight = 0.40;
-    private const double ArtistWeight = 0.35;
-    private const double AlbumWeight = 0.15;
+    private const double ArtistWeight = 0.25;
+    private const double AlbumWeight = 0.25;
     private const double DurationWeight = 0.10;
-    private const double DefaultThreshold = 0.65;
+    private readonly double DefaultThreshold = musicConfigurationMonitor.CurrentValue.ConfidenceThreshold;
 
     /// <inheritdoc />
     public ConfidenceScore CalculateScore(SongMetadata source, SongMetadata candidate)

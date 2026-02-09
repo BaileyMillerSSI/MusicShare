@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using MusicShare.Contracts.Messages;
 using YouTubeMusicAPI.Client;
 using YouTubeMusicAPI.Models.Info;
 using YouTubeMusicAPI.Models.Search;
@@ -14,29 +15,23 @@ public class YouTubeMusicService(YouTubeMusicClient client, ILogger<YouTubeMusic
     private readonly YouTubeMusicClient _client = client;
     private readonly ILogger<YouTubeMusicService> _logger = logger;
 
-    public async Task<IReadOnlyList<SongSearchResult>> SearchSongsAsync(string query, int maxResults = 10, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<SongSearchResult>> SearchSongsAsync(SongMetadata metadata, int maxResults = 10, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogDebug("Searching YouTube Music for: {Query} (max: {MaxResults})", query, maxResults);
-
-            var searchResults = _client.SearchAsync(query, SearchCategory.Songs);
+            var searchResults = _client.SearchAsync(BuildSearchQuery(metadata), SearchCategory.Songs);
             var results = await searchResults.FetchItemsAsync(0, maxResults);
 
             if (results == null || results.Count == 0)
             {
-                _logger.LogDebug("No results found for query: {Query}", query);
-                return Array.Empty<SongSearchResult>();
+                return [];
             }
 
-            var songResults = results.OfType<SongSearchResult>().ToList();
-            _logger.LogDebug("Found {Count} song results for query: {Query}", songResults.Count, query);
-            return songResults;
+            return results.OfType<SongSearchResult>().ToList();
         }
-        catch (Exception ex)
+        catch
         {
-            _logger.LogError(ex, "Error searching YouTube Music for query: {Query}", query);
-            return Array.Empty<SongSearchResult>();
+            return [];
         }
     }
 
@@ -62,5 +57,13 @@ public class YouTubeMusicService(YouTubeMusicClient client, ILogger<YouTubeMusic
             _logger.LogError(ex, "Error fetching YouTube Music video info: {VideoId}", videoId);
             return null;
         }
+    }
+
+    private static string BuildSearchQuery(SongMetadata metadata)
+    {
+        var artist = metadata.Artists.FirstOrDefault();
+        return string.IsNullOrEmpty(artist)
+            ? metadata.Title
+            : $"{metadata.Title} {artist}";
     }
 }

@@ -1,5 +1,6 @@
 using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
+using MusicShare.Services.Models;
 using MusicShare.Services.Services.Music.Spotify;
 
 namespace MusicShare.Tests.Unit.Services.Music;
@@ -155,13 +156,13 @@ public class SpotifyMusicAdapterTests
         };
 
         mock.Mock<ISpotifyMusicService>()
-            .Setup(x => x.SearchAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.SearchAsync(It.IsAny<SongMetadata>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(searchResponse);
 
         var sut = mock.Create<SpotifyMusicAdapter>();
         var metadata = new SongMetadata { Title = "Test Song", Artists = ["Artist"] };
 
-        var results = new List<Services.Models.SongSearchResult>();
+        var results = new List<SongSearchResult>();
         await foreach (var result in sut.FindSongsAsync(metadata))
         {
             results.Add(result);
@@ -215,7 +216,7 @@ public class SpotifyMusicAdapterTests
         var sut = mock.Create<SpotifyMusicAdapter>();
         var metadata = new SongMetadata { Title = "Complete Song", Artists = ["Primary Artist"] };
 
-        var results = new List<Services.Models.SongSearchResult>();
+        var results = new List<SongSearchResult>();
         await foreach (var result in sut.FindSongsAsync(metadata))
         {
             results.Add(result);
@@ -265,7 +266,7 @@ public class SpotifyMusicAdapterTests
         var sut = mock.Create<SpotifyMusicAdapter>();
         var metadata = new SongMetadata { Title = "Song Title", Artists = ["Artist Name"] };
 
-        var results = new List<Services.Models.SongSearchResult>();
+        var results = new List<SongSearchResult>();
         await foreach (var result in sut.FindSongsAsync(metadata))
         {
             results.Add(result);
@@ -298,7 +299,7 @@ public class SpotifyMusicAdapterTests
         var sut = mock.Create<SpotifyMusicAdapter>();
         var metadata = new SongMetadata { Title = "Nonexistent Song", Artists = ["Unknown Artist"] };
 
-        var results = new List<Services.Models.SongSearchResult>();
+        var results = new List<SongSearchResult>();
         await foreach (var result in sut.FindSongsAsync(metadata))
         {
             results.Add(result);

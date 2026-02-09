@@ -4,7 +4,6 @@ using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
 using MusicShare.Services.Models;
 using YouTubeMusicAPI.Models;
-using YouTubeMusicAPI.Models.Search;
 
 namespace MusicShare.Services.Services.Music.YouTube;
 
@@ -48,52 +47,17 @@ public class YouTubeMusicAdapter(
         }
     }
 
-    public async IAsyncEnumerable<Models.SongSearchResult> FindSongsAsync(
+    public async IAsyncEnumerable<SongSearchResult> FindSongsAsync(
         SongMetadata metadata,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var query = BuildSearchQuery(metadata);
-        logger.LogDebug("Searching YouTube Music for: {Query}", query);
-
-        IReadOnlyList<YouTubeMusicAPI.Models.Search.SongSearchResult> results;
-        try
-        {
-            results = await youTubeService.SearchSongsAsync(query, maxResults: 10, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error searching YouTube Music for: {Query}", query);
-            yield break;
-        }
-
-        if (results == null || results.Count == 0)
-        {
-            logger.LogDebug("No YouTube Music results found for query: {Query}", query);
-            yield break;
-        }
-
-        foreach (var result in results)
+        foreach (var result in await youTubeService.SearchSongsAsync(metadata, maxResults: 10, cancellationToken))
         {
             if (result?.Id == null)
                 continue;
 
-            var url = $"https://music.youtube.com/watch?v={result.Id}";
-            var foundMetadata = MapToSongMetadata(result);
-            yield return new Models.SongSearchResult(url, foundMetadata);
+            yield return new SongSearchResult($"https://music.youtube.com/watch?v={result.Id}", MapToSongMetadata(result));
         }
-    }
-
-    [Obsolete("Use FindSongsAsync() instead. This method will be removed in a future version.")]
-    public async Task<string?> FindSongAsync(
-        SongMetadata metadata,
-        CancellationToken cancellationToken = default)
-    {
-        await foreach (var result in FindSongsAsync(metadata, cancellationToken))
-        {
-            return result.Url;
-        }
-
-        return null;
     }
 
     public string NormalizeUrl(string url)
@@ -131,17 +95,8 @@ public class YouTubeMusicAdapter(
         return null;
     }
 
-    private static string BuildSearchQuery(SongMetadata metadata)
-    {
-        var artist = metadata.Artists.FirstOrDefault();
-        return string.IsNullOrEmpty(artist)
-            ? metadata.Title
-            : $"{metadata.Title} {artist}";
-    }
-
-    private static SongMetadata MapToSongMetadata(YouTubeMusicAPI.Models.Search.SongSearchResult result)
-    {
-        return new SongMetadata
+    private static SongMetadata MapToSongMetadata(YouTubeMusicAPI.Models.Search.SongSearchResult result) =>
+        new()
         {
             Title = result.Name,
             Artists = result.Artists?.Select(a => a.Name) ?? [],
@@ -150,11 +105,9 @@ public class YouTubeMusicAdapter(
             Duration = result.Duration,
             IsExplicit = result.IsExplicit
         };
-    }
 
-    private static SongMetadata MapToSongMetadata(YouTubeMusicAPI.Models.Info.SongVideoInfo info)
-    {
-        return new SongMetadata
+    private static SongMetadata MapToSongMetadata(YouTubeMusicAPI.Models.Info.SongVideoInfo info) =>
+        new()
         {
             Title = info.Name,
             Artists = info.Artists?.Select(a => a.Name) ?? [],
@@ -163,12 +116,9 @@ public class YouTubeMusicAdapter(
             Duration = info.Duration,
             IsExplicit = info.IsExplicit
         };
-    }
 
-    private static string? GetBestThumbnail(IEnumerable<Thumbnail>? thumbnails)
-    {
-        return thumbnails?
+    private static string? GetBestThumbnail(IEnumerable<Thumbnail>? thumbnails) =>
+        thumbnails?
             .OrderByDescending(t => t.Width * t.Height)
             .FirstOrDefault()?.Url;
-    }
 }

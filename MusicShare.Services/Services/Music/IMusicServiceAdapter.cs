@@ -24,13 +24,6 @@ public interface IMusicServiceAdapter
     IAsyncEnumerable<SongSearchResult> FindSongsAsync(SongMetadata metadata, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Searches for a song on this service using metadata from another service.
-    /// Returns the URL if found.
-    /// </summary>
-    [Obsolete("Use FindSongsAsync() instead. This method will be removed in a future version.")]
-    Task<string?> FindSongAsync(SongMetadata metadata, CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Normalizes a service URL to a canonical format.
     /// </summary>
     string NormalizeUrl(string url);

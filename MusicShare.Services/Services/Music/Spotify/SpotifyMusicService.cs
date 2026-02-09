@@ -1,5 +1,6 @@
-﻿using System.Net.Http.Json;
-using System.Web;
+﻿using Flurl;
+using MusicShare.Contracts.Messages;
+using System.Net.Http.Json;
 
 namespace MusicShare.Services.Services.Music.Spotify;
 
@@ -12,26 +13,22 @@ public class SpotifyMusicService(HttpClient spotifyClient) : ISpotifyMusicServic
     private readonly HttpClient _httpClient = spotifyClient;
 
     public async Task<SpotifySearchResponse?> SearchAsync(
-        string query,
+        SongMetadata metadata,
         int limit = 5,
-        CancellationToken cancellationToken = default)
-    {
-        var encodedQuery = HttpUtility.UrlEncode(query);
-        var searchResult = await _httpClient.GetFromJsonAsync<SpotifySearchResponse>(
-            $"search?q={encodedQuery}&type=track&limit={limit}",
+        CancellationToken cancellationToken = default) =>
+        await _httpClient.GetFromJsonAsync<SpotifySearchResponse>(
+            new Url()
+            .SetQueryParam("search", string.IsNullOrEmpty(metadata.Artists.FirstOrDefault())
+            ? $"track:{metadata.Title}"
+            : $"track:{metadata.Title} artist:{metadata.Artists.FirstOrDefault()}")
+            .SetQueryParam("type", "track")
+            .SetQueryParam("limit", limit),
             cancellationToken);
-
-        return searchResult;
-    }
 
     public async Task<SpotifyResponse?> GetTrackAsync(
         string trackId,
-        CancellationToken cancellationToken = default)
-    {
-        var apiResponse = await _httpClient.GetFromJsonAsync<SpotifyResponse>(
+        CancellationToken cancellationToken = default) =>
+        await _httpClient.GetFromJsonAsync<SpotifyResponse>(
             $"tracks/{trackId}",
             cancellationToken);
-
-        return apiResponse;
-    }
 }

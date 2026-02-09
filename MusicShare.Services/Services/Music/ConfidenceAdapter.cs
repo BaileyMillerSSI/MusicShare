@@ -3,6 +3,8 @@ using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
 using MusicShare.Services.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using MusicShare.Services.Configuration.MusicServices;
 
 namespace MusicShare.Services.Services.Music;
 
@@ -13,8 +15,7 @@ namespace MusicShare.Services.Services.Music;
 public class ConfidenceAdapter(
     IMusicServiceAdapter innerAdapter,
     IConfidenceScoreService confidenceScoreService,
-    ILogger<ConfidenceAdapter> logger,
-    double confidenceThreshold = 0.65) : IMusicServiceAdapter
+    ILogger<ConfidenceAdapter> logger) : IMusicServiceAdapter
 {
     public ServiceType ServiceType => innerAdapter.ServiceType;
 
@@ -25,79 +26,13 @@ public class ConfidenceAdapter(
         SongMetadata metadata,
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var candidates = new List<(SongSearchResult Result, ConfidenceScore Score)>();
-
-        await foreach (var candidate in innerAdapter.FindSongsAsync(metadata, cancellationToken))
-        {
-            var score = confidenceScoreService.CalculateScore(metadata, candidate.FoundMetadata);
-            candidates.Add((candidate, score));
-
-            logger.LogDebug(
-                "Evaluated candidate for {Title} on {Service}: URL={Url}, Score={Score:P0}",
-                metadata.Title,
-                ServiceType,
-                candidate.Url,
-                score.TotalScore);
-        }
-
-        if (candidates.Count == 0)
-        {
-            logger.LogWarning(
-                "No candidates found for {Title} on {Service}",
-                metadata.Title,
-                ServiceType);
-            yield break;
-        }
-
-        var filteredCandidates = candidates
-            .Where(c => c.Score.TotalScore >= confidenceThreshold)
+        await foreach (var (Result, Score) in GetCandidatesWithScoresAsync(metadata, cancellationToken)
+            .Where(c => confidenceScoreService.MeetsThreshold(c.Score))
             .OrderByDescending(c => c.Score.TotalScore)
-            .ToList();
-
-        if (filteredCandidates.Count == 0)
+            .WithCancellation(cancellationToken))
         {
-            logger.LogWarning(
-                "All {Count} candidates for {Title} on {Service} filtered out (threshold={Threshold:P0}). Best score: {BestScore:P0}",
-                candidates.Count,
-                metadata.Title,
-                ServiceType,
-                confidenceThreshold,
-                candidates.Max(c => c.Score.TotalScore));
-            yield break;
+            yield return Result;
         }
-
-        logger.LogInformation(
-            "Evaluated {Total} candidates for {Title} on {Service}, {Filtered} meet threshold. Best match: {BestScore:P0}",
-            candidates.Count,
-            metadata.Title,
-            ServiceType,
-            filteredCandidates.Count,
-            filteredCandidates[0].Score.TotalScore);
-
-        foreach (var candidate in filteredCandidates)
-        {
-            yield return candidate.Result;
-        }
-    }
-
-    [Obsolete("Use FindSongsAsync() instead. This method will be removed in a future version.")]
-    public async Task<string?> FindSongAsync(SongMetadata metadata, CancellationToken cancellationToken = default)
-    {
-        await foreach (var result in FindSongsAsync(metadata, cancellationToken))
-        {
-            logger.LogDebug(
-                "Returning best match for {Title} on {Service}: {Url}",
-                metadata.Title,
-                ServiceType,
-                result.Url);
-            return result.Url;
-        }
-
-        logger.LogInformation(
-            "No matches above threshold for {Title} on {Service}",
-            metadata.Title,
-            ServiceType);
-        return null;
     }
 
     public string NormalizeUrl(string url)
@@ -105,4 +40,15 @@ public class ConfidenceAdapter(
 
     public string? ExtractSongId(string url)
         => innerAdapter.ExtractSongId(url);
+
+    private async IAsyncEnumerable<(SongSearchResult Result, ConfidenceScore Score)> GetCandidatesWithScoresAsync(
+        SongMetadata metadata,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        await foreach (var candidate in innerAdapter.FindSongsAsync(metadata, cancellationToken))
+        {
+            var score = confidenceScoreService.CalculateScore(metadata, candidate.FoundMetadata);
+            yield return (candidate, score);
+        }
+    }
 }
