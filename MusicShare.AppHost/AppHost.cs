@@ -10,7 +10,7 @@ var frontendMinReplicas = int.TryParse(Environment.GetEnvironmentVariable("AZURE
 var frontendMaxReplicas = int.TryParse(Environment.GetEnvironmentVariable("AZURE_FRONTEND_MAX_REPLICAS"), out var feMax) ? feMax : 1;
 
 // Infrastructure
-var mongodb = builder.AddMongoDB("mongodb").WithMongoExpress();
+IResourceBuilder<IResourceWithConnectionString> mongodb = null!;
 
 var messagingUsername = builder.AddParameter("rabbitmq-username", secret: true);
 var messagingPassword = builder.AddParameter("rabbitmq-password", secret: true);
@@ -62,22 +62,15 @@ builder.AddProject<Projects.MusicShare_Worker>("worker")
 // Dev tooling only when running locally
 if (!builder.ExecutionContext.IsPublishMode)
 {
-    //mongodb = 
+    mongodb = builder.AddMongoDB("mongodb").WithMongoExpress();
     rabbitmq.WithManagementPlugin();
 }else
 {
     builder.AddAzureContainerAppEnvironment("aca-env")
         .WithAzdResourceNaming();
 
-    //mongodb = builder.AddConnectionString("mongodb", "");
-
-    // Expose Mongo data temporarily
-    builder.AddContainer("mongo-express", "mongo-express", "1.0.2-20-alpine3.19")
-        .WithReference(mongodb)
-        .WithEnvironment(context => ConfigureMongoExpressContainer(context, mongodb.Resource))
-        .WithHttpEndpoint(targetPort: 8081, name: "http")
-        .WithParentRelationship(mongodb)
-        .WithExternalHttpEndpoints();
+    var mongodbUri = builder.AddParameter("mongodb-uri", secret: true);
+    mongodb = builder.AddConnectionString("mongodb", mongodbUri.Resource.Name);
 
     IResourceBuilder<ParameterResource> customDomain = builder.AddParameter("custom-domain");
     IResourceBuilder<ParameterResource> certificateName = null!;

@@ -124,6 +124,7 @@ jobs:
           AZURE_API_MAX_REPLICAS: ${{ vars.API_MAX_REPLICAS }}
           AZURE_FRONTEND_MIN_REPLICAS: ${{ vars.FRONTEND_MIN_REPLICAS }}
           AZURE_FRONTEND_MAX_REPLICAS: ${{ vars.FRONTEND_MAX_REPLICAS }}
+          AZURE_MONGODB_URI: ${{ secrets.MONGODB_URI }}
 
       - name: Deploy Application
         run: azd deploy --no-prompt
@@ -145,6 +146,7 @@ jobs:
           AZURE_API_MAX_REPLICAS: ${{ vars.API_MAX_REPLICAS }}
           AZURE_FRONTEND_MIN_REPLICAS: ${{ vars.FRONTEND_MIN_REPLICAS }}
           AZURE_FRONTEND_MAX_REPLICAS: ${{ vars.FRONTEND_MAX_REPLICAS }}
+          AZURE_MONGODB_URI: ${{ secrets.MONGODB_URI }}
 
       - name: Output deployment info
         run: |
