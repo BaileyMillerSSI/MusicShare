@@ -56,8 +56,6 @@ builder.AddProject<Projects.MusicShare_Worker>("worker")
     .WaitFor(rabbitmq)
     .WaitFor(frontend);
 
-rabbitmq.WithManagementPlugin();
-
 // Dev tooling only when running locally
 if (builder.ExecutionContext.IsPublishMode)
 {
