@@ -57,7 +57,7 @@ builder.AddProject<Projects.MusicShare_Worker>("worker")
     .WaitFor(frontend);
 
 // Dev tooling only when running locally
-if (builder.ExecutionContext.IsPublishMode)
+if (!builder.ExecutionContext.IsPublishMode)
 {
     rabbitmq.WithManagementPlugin();
 }else
