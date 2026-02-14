@@ -7,12 +7,8 @@ var frontendMinReplicas = int.TryParse(Environment.GetEnvironmentVariable("AZURE
 var frontendMaxReplicas = int.TryParse(Environment.GetEnvironmentVariable("AZURE_FRONTEND_MAX_REPLICAS"), out var feMax) ? feMax : 1;
 
 // Infrastructure
-var mongodb = builder.AddMongoDB("mongodb");
-
-var messagingUsername = builder.AddParameter("rabbitmq-username", secret: true);
-var messagingPassword = builder.AddParameter("rabbitmq-password", secret: true);
-
-var rabbitmq = builder.AddRabbitMQ("rabbitmq", messagingUsername, messagingPassword);
+var mongodb = ConfigureMongoDb();
+var rabbitmq = ConfigureRabbitMQ();
 
 // Spotify credentials
 var spotifyClientId = builder.AddParameter("spotify-clientid", secret: true);
@@ -57,15 +53,10 @@ builder.AddProject<Projects.MusicShare_Worker>("worker")
     .WaitFor(frontend);
 
 // Dev tooling only when running locally
-if (!builder.ExecutionContext.IsPublishMode)
-{
-    mongodb.WithMongoExpress();
-    rabbitmq.WithManagementPlugin();
-}else
+if (builder.ExecutionContext.IsPublishMode)
 {
     builder.AddAzureContainerAppEnvironment("aca-env")
         .WithAzdResourceNaming();
-
 
     IResourceBuilder<ParameterResource> customDomain = builder.AddParameter("custom-domain");
     IResourceBuilder<ParameterResource> certificateName = null!;
@@ -88,4 +79,31 @@ if (!builder.ExecutionContext.IsPublishMode)
         });
 }
 
-    builder.Build().Run();
+builder.Build().Run();
+
+IResourceBuilder<IResourceWithConnectionString> ConfigureMongoDb()
+{
+    if (!builder.ExecutionContext.IsPublishMode)
+    {
+        return builder.AddMongoDB("mongodb").WithMongoExpress();
+    }
+    else
+    {
+        return builder.AddConnectionString("mongodb");
+    }
+}
+
+IResourceBuilder<IResourceWithConnectionString> ConfigureRabbitMQ()
+{
+    var messagingUsername = builder.AddParameter("rabbitmq-username", secret: true);
+    var messagingPassword = builder.AddParameter("rabbitmq-password", secret: true);
+
+    if (!builder.ExecutionContext.IsPublishMode)
+    {
+        return builder.AddRabbitMQ("rabbitmq", messagingUsername, messagingPassword);
+    }
+    else
+    {
+        return builder.AddConnectionString("rabbitmq");
+    }
+}
