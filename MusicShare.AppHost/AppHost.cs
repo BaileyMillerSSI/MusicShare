@@ -1,3 +1,5 @@
+using System.Globalization;
+
 var builder = DistributedApplication.CreateBuilder(args);
 
 // Scaling configuration (defaults to 0/1 for development, configurable via environment variables for production)
@@ -7,7 +9,7 @@ var frontendMinReplicas = int.TryParse(Environment.GetEnvironmentVariable("AZURE
 var frontendMaxReplicas = int.TryParse(Environment.GetEnvironmentVariable("AZURE_FRONTEND_MAX_REPLICAS"), out var feMax) ? feMax : 1;
 
 // Infrastructure
-IResourceBuilder<IResourceWithConnectionString> mongodb = builder.AddMongoDB("mongodb").WithMongoExpress().WithExternalHttpEndpoints();
+var mongodb = builder.AddMongoDB("mongodb").WithMongoExpress();
 
 var messagingUsername = builder.AddParameter("rabbitmq-username", secret: true);
 var messagingPassword = builder.AddParameter("rabbitmq-password", secret: true);
@@ -68,6 +70,12 @@ if (!builder.ExecutionContext.IsPublishMode)
 
     //mongodb = builder.AddConnectionString("mongodb", "");
 
+    // Expose Mongo data temporarily
+    builder.AddContainer("mongo-express", "mongo-express", "1.0.2-20-alpine3.19")
+        .WithReference(mongodb)
+        .WithEnvironment(context => ConfigureMongoExpressContainer(context, mongodb.Resource))
+        .WithExternalHttpEndpoints();
+
     IResourceBuilder<ParameterResource> customDomain = builder.AddParameter("custom-domain");
     IResourceBuilder<ParameterResource> certificateName = null!;
 
@@ -90,3 +98,22 @@ if (!builder.ExecutionContext.IsPublishMode)
 }
 
 builder.Build().Run();
+
+
+static void ConfigureMongoExpressContainer(EnvironmentCallbackContext context, MongoDBServerResource resource)
+{
+    // Mongo Express assumes Mongo is being accessed over a default Aspire container network and hardcodes the resource address
+    // This will need to be refactored once updated service discovery APIs are available
+    context.EnvironmentVariables["ME_CONFIG_MONGODB_SERVER"] = resource.Name;
+    var targetPort = resource.PrimaryEndpoint.TargetPort;
+    if (targetPort is int targetPortValue)
+    {
+        context.EnvironmentVariables["ME_CONFIG_MONGODB_PORT"] = targetPortValue.ToString(CultureInfo.InvariantCulture);
+    }
+    context.EnvironmentVariables["ME_CONFIG_BASICAUTH"] = "false";
+    if (resource.PasswordParameter is not null)
+    {
+        context.EnvironmentVariables["ME_CONFIG_MONGODB_ADMINUSERNAME"] = resource.UserNameReference;
+        context.EnvironmentVariables["ME_CONFIG_MONGODB_ADMINPASSWORD"] = resource.PasswordParameter;
+    }
+}
