@@ -66,7 +66,7 @@ if (!builder.ExecutionContext.IsPublishMode)
     builder.AddAzureContainerAppEnvironment("aca-env")
         .WithAzdResourceNaming();
 
-    mongodb = builder.AddConnectionString("mongodb", "");
+    //mongodb = builder.AddConnectionString("mongodb", "");
 
     IResourceBuilder<ParameterResource> customDomain = builder.AddParameter("custom-domain");
     IResourceBuilder<ParameterResource> certificateName = null!;
