@@ -1,3 +1,4 @@
+using Aspire.Hosting;
 using System.Globalization;
 
 var builder = DistributedApplication.CreateBuilder(args);
@@ -74,6 +75,8 @@ if (!builder.ExecutionContext.IsPublishMode)
     builder.AddContainer("mongo-express", "mongo-express", "1.0.2-20-alpine3.19")
         .WithReference(mongodb)
         .WithEnvironment(context => ConfigureMongoExpressContainer(context, mongodb.Resource))
+        .WithHttpEndpoint(targetPort: 8081, name: "http")
+        .WithParentRelationship(mongodb)
         .WithExternalHttpEndpoints();
 
     IResourceBuilder<ParameterResource> customDomain = builder.AddParameter("custom-domain");
