@@ -10,7 +10,7 @@ var frontendMinReplicas = int.TryParse(Environment.GetEnvironmentVariable("AZURE
 var frontendMaxReplicas = int.TryParse(Environment.GetEnvironmentVariable("AZURE_FRONTEND_MAX_REPLICAS"), out var feMax) ? feMax : 1;
 
 // Infrastructure
-IResourceBuilder<IResourceWithConnectionString> mongodb = null!;
+var mongodb = ConfigureMongoDb();
 
 var messagingUsername = builder.AddParameter("rabbitmq-username", secret: true);
 var messagingPassword = builder.AddParameter("rabbitmq-password", secret: true);
@@ -69,9 +69,6 @@ if (!builder.ExecutionContext.IsPublishMode)
     builder.AddAzureContainerAppEnvironment("aca-env")
         .WithAzdResourceNaming();
 
-    var mongodbUri = builder.AddParameter("mongodb-uri", secret: true);
-    mongodb = builder.AddConnectionString("mongodb", mongodbUri.Resource.Name);
-
     IResourceBuilder<ParameterResource> customDomain = builder.AddParameter("custom-domain");
     IResourceBuilder<ParameterResource> certificateName = null!;
 
@@ -95,21 +92,15 @@ if (!builder.ExecutionContext.IsPublishMode)
 
 builder.Build().Run();
 
-
-static void ConfigureMongoExpressContainer(EnvironmentCallbackContext context, MongoDBServerResource resource)
+IResourceBuilder<IResourceWithConnectionString> ConfigureMongoDb()
 {
-    // Mongo Express assumes Mongo is being accessed over a default Aspire container network and hardcodes the resource address
-    // This will need to be refactored once updated service discovery APIs are available
-    context.EnvironmentVariables["ME_CONFIG_MONGODB_SERVER"] = resource.Name;
-    var targetPort = resource.PrimaryEndpoint.TargetPort;
-    if (targetPort is int targetPortValue)
+    if (!builder.ExecutionContext.IsPublishMode)
     {
-        context.EnvironmentVariables["ME_CONFIG_MONGODB_PORT"] = targetPortValue.ToString(CultureInfo.InvariantCulture);
+        return builder.AddMongoDB("mongodb").WithMongoExpress();
     }
-    context.EnvironmentVariables["ME_CONFIG_BASICAUTH"] = "false";
-    if (resource.PasswordParameter is not null)
+    else
     {
-        context.EnvironmentVariables["ME_CONFIG_MONGODB_ADMINUSERNAME"] = resource.UserNameReference;
-        context.EnvironmentVariables["ME_CONFIG_MONGODB_ADMINPASSWORD"] = resource.PasswordParameter;
+        var mongodbUri = builder.AddParameter("mongodb-uri", secret: true);
+        return builder.AddConnectionString("mongodb", mongodbUri.Resource.Name);
     }
 }
