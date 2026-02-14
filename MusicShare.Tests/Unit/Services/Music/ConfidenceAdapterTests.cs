@@ -9,13 +9,17 @@ namespace MusicShare.Tests.Unit.Services.Music;
 
 public class ConfidenceAdapterTests
 {
+    private static ConfidenceAdapter CreateSut(IMusicServiceAdapter innerAdapter, IConfidenceScoreService scoringService)
+        => new(innerAdapter, scoringService, Mock.Of<ILogger<ConfidenceAdapter>>());
+
+    private static ConfidenceAdapter CreateSut(IMusicServiceAdapter innerAdapter)
+        => new(innerAdapter, Mock.Of<IConfidenceScoreService>(), Mock.Of<ILogger<ConfidenceAdapter>>());
+
     #region Basic Filtering Tests
 
     [Fact]
     public async Task ItWillReturnHighestConfidenceMatch()
     {
-        using var mock = AutoMock.GetLoose();
-
         var sourceMetadata = new SongMetadata
         {
             Title = "Test Song",
@@ -82,7 +86,7 @@ public class ConfidenceAdapterTests
             .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>()))
             .Returns<ConfidenceScore>(score => score.TotalScore >= 0.65);
 
-        var sut = mock.Create<ConfidenceAdapter>();
+        var sut = CreateSut(innerAdapter.Object, scoringService.Object);
 
         var results = new List<SongSearchResult>();
         await foreach (var result in sut.FindSongsAsync(sourceMetadata, CancellationToken.None))
@@ -99,8 +103,6 @@ public class ConfidenceAdapterTests
     [Fact]
     public async Task ItWillReturnNullIfAllBelowThreshold()
     {
-        using var mock = AutoMock.GetLoose();
-
         var sourceMetadata = new SongMetadata
         {
             Title = "Test Song",
@@ -137,7 +139,7 @@ public class ConfidenceAdapterTests
             .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>()))
             .Returns<ConfidenceScore>(score => score.TotalScore >= 0.65);
 
-        var sut = mock.Create<ConfidenceAdapter>();
+        var sut = CreateSut(innerAdapter.Object, scoringService.Object);
 
         var results = new List<SongSearchResult>();
         await foreach (var result in sut.FindSongsAsync(sourceMetadata, CancellationToken.None))
@@ -151,8 +153,6 @@ public class ConfidenceAdapterTests
     [Fact]
     public async Task ItWillReturnFirstResultIfAboveThreshold()
     {
-        using var mock = AutoMock.GetLoose();
-
         var sourceMetadata = new SongMetadata
         {
             Title = "Test Song",
@@ -189,7 +189,7 @@ public class ConfidenceAdapterTests
             .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>()))
             .Returns<ConfidenceScore>(score => score.TotalScore >= 0.65);
 
-        var sut = mock.Create<ConfidenceAdapter>();
+        var sut = CreateSut(innerAdapter.Object, scoringService.Object);
 
         var results = new List<SongSearchResult>();
         await foreach (var result in sut.FindSongsAsync(sourceMetadata, CancellationToken.None))
@@ -204,8 +204,6 @@ public class ConfidenceAdapterTests
     [Fact]
     public async Task ItWillReturnNullForEmptyResults()
     {
-        using var mock = AutoMock.GetLoose();
-
         var sourceMetadata = new SongMetadata
         {
             Title = "Test Song",
@@ -222,7 +220,7 @@ public class ConfidenceAdapterTests
             .Setup(x => x.FindSongsAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
             .Returns(() => YieldResults()); // Empty results
 
-        var sut = mock.Create<ConfidenceAdapter>();
+        var sut = CreateSut(innerAdapter.Object);
 
         var results = new List<SongSearchResult>();
         await foreach (var result in sut.FindSongsAsync(sourceMetadata, CancellationToken.None))
@@ -240,8 +238,6 @@ public class ConfidenceAdapterTests
     [Fact]
     public async Task ItWillCallConfidenceScoreServiceForEachResult()
     {
-        using var mock = AutoMock.GetLoose();
-
         var sourceMetadata = new SongMetadata
         {
             Title = "Test Song",
@@ -280,7 +276,7 @@ public class ConfidenceAdapterTests
             .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>()))
             .Returns<ConfidenceScore>(s => s.TotalScore >= 0.65);
 
-        var sut = mock.Create<ConfidenceAdapter>();
+        var sut = CreateSut(innerAdapter.Object, scoringService.Object);
 
         await foreach (var _ in sut.FindSongsAsync(sourceMetadata, CancellationToken.None))
         {
@@ -295,8 +291,6 @@ public class ConfidenceAdapterTests
     [Fact]
     public async Task ItWillScoreEachCandidateBeforeFiltering()
     {
-        using var mock = AutoMock.GetLoose();
-
         var sourceMetadata = new SongMetadata
         {
             Title = "Test Song",
@@ -337,7 +331,7 @@ public class ConfidenceAdapterTests
             .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>()))
             .Returns<ConfidenceScore>(score => score.TotalScore >= 0.65);
 
-        var sut = mock.Create<ConfidenceAdapter>();
+        var sut = CreateSut(innerAdapter.Object, scoringService.Object);
 
         var results = new List<SongSearchResult>();
         await foreach (var result in sut.FindSongsAsync(sourceMetadata, CancellationToken.None))
@@ -357,8 +351,6 @@ public class ConfidenceAdapterTests
     [Fact]
     public async Task ItWillSortResultsByConfidenceDescending()
     {
-        using var mock = AutoMock.GetLoose();
-
         var sourceMetadata = new SongMetadata
         {
             Title = "Test Song",
@@ -402,7 +394,7 @@ public class ConfidenceAdapterTests
             .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>()))
             .Returns<ConfidenceScore>(score => score.TotalScore >= 0.65);
 
-        var sut = mock.Create<ConfidenceAdapter>();
+        var sut = CreateSut(innerAdapter.Object, scoringService.Object);
 
         var results = new List<SongSearchResult>();
         await foreach (var result in sut.FindSongsAsync(sourceMetadata, CancellationToken.None))
@@ -423,8 +415,6 @@ public class ConfidenceAdapterTests
     [Fact]
     public async Task ItWillFilterOutLowConfidenceResults()
     {
-        using var mock = AutoMock.GetLoose();
-
         var sourceMetadata = new SongMetadata
         {
             Title = "Test Song",
@@ -466,7 +456,7 @@ public class ConfidenceAdapterTests
             .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>()))
             .Returns<ConfidenceScore>(score => score.TotalScore >= 0.65);
 
-        var sut = mock.Create<ConfidenceAdapter>();
+        var sut = CreateSut(innerAdapter.Object, scoringService.Object);
 
         var results = new List<SongSearchResult>();
         await foreach (var result in sut.FindSongsAsync(sourceMetadata, CancellationToken.None))
@@ -483,8 +473,6 @@ public class ConfidenceAdapterTests
     [Fact]
     public async Task ItWillUseDefaultThreshold0_65()
     {
-        using var mock = AutoMock.GetLoose();
-
         var sourceMetadata = new SongMetadata
         {
             Title = "Test Song",
@@ -522,7 +510,7 @@ public class ConfidenceAdapterTests
             .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>()))
             .Returns<ConfidenceScore>(score => score.TotalScore >= 0.65);
 
-        var sut = mock.Create<ConfidenceAdapter>();
+        var sut = CreateSut(innerAdapter.Object, scoringService.Object);
 
         var results = new List<SongSearchResult>();
         await foreach (var result in sut.FindSongsAsync(sourceMetadata, CancellationToken.None))
@@ -537,8 +525,6 @@ public class ConfidenceAdapterTests
     [Fact]
     public async Task ItWillRespectCustomThreshold()
     {
-        using var mock = AutoMock.GetLoose();
-
         var sourceMetadata = new SongMetadata
         {
             Title = "Test Song",
@@ -569,7 +555,7 @@ public class ConfidenceAdapterTests
             .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>()))
             .Returns<ConfidenceScore>(s => s.TotalScore >= 0.80);
 
-        var sut = mock.Create<ConfidenceAdapter>();
+        var sut = CreateSut(innerAdapter.Object, scoringService.Object);
 
         var results = new List<SongSearchResult>();
         await foreach (var result in sut.FindSongsAsync(sourceMetadata, CancellationToken.None))
@@ -583,8 +569,6 @@ public class ConfidenceAdapterTests
     [Fact]
     public async Task ItWillReturnNullIfBestScoreJustBelowThreshold()
     {
-        using var mock = AutoMock.GetLoose();
-
         var sourceMetadata = new SongMetadata
         {
             Title = "Test Song",
@@ -614,7 +598,7 @@ public class ConfidenceAdapterTests
             .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>()))
             .Returns<ConfidenceScore>(score => score.TotalScore >= 0.65);
 
-        var sut = mock.Create<ConfidenceAdapter>();
+        var sut = CreateSut(innerAdapter.Object, scoringService.Object);
 
         var results = new List<SongSearchResult>();
         await foreach (var result in sut.FindSongsAsync(sourceMetadata, CancellationToken.None))
@@ -632,8 +616,6 @@ public class ConfidenceAdapterTests
     [Fact]
     public async Task ItWillDelegateToInnerAdapterFindSongs()
     {
-        using var mock = AutoMock.GetLoose();
-
         var sourceMetadata = new SongMetadata
         {
             Title = "Test Song",
@@ -650,7 +632,7 @@ public class ConfidenceAdapterTests
             .Setup(x => x.FindSongsAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
             .Returns(() => YieldResults());
 
-        var sut = mock.Create<ConfidenceAdapter>();
+        var sut = CreateSut(innerAdapter.Object);
 
         await foreach (var _ in sut.FindSongsAsync(sourceMetadata, CancellationToken.None))
         {
@@ -663,14 +645,12 @@ public class ConfidenceAdapterTests
     [Fact]
     public void ItWillDelegateDependentMethodsToInnerAdapter()
     {
-        using var mock = AutoMock.GetLoose();
-
         var innerAdapter = new Mock<IMusicServiceAdapter>();
         innerAdapter.Setup(x => x.ServiceType).Returns(ServiceType.AppleMusic);
         innerAdapter.Setup(x => x.NormalizeUrl("test-url")).Returns("normalized-url");
         innerAdapter.Setup(x => x.ExtractSongId("test-url")).Returns("song-123");
 
-        var sut = mock.Create<ConfidenceAdapter>();
+        var sut = CreateSut(innerAdapter.Object);
 
         sut.ServiceType.Should().Be(ServiceType.AppleMusic);
         sut.NormalizeUrl("test-url").Should().Be("normalized-url");
@@ -684,8 +664,6 @@ public class ConfidenceAdapterTests
     [Fact]
     public async Task ItWillPropagateInnerAdapterExceptions()
     {
-        using var mock = AutoMock.GetLoose();
-
         var sourceMetadata = new SongMetadata
         {
             Title = "Test Song",
@@ -702,7 +680,7 @@ public class ConfidenceAdapterTests
             .Setup(x => x.FindSongsAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
             .Returns(() => ThrowAsync());
 
-        var sut = mock.Create<ConfidenceAdapter>();
+        var sut = CreateSut(innerAdapter.Object);
 
         var act = async () =>
         {
@@ -719,8 +697,6 @@ public class ConfidenceAdapterTests
     [Fact]
     public async Task ItWillDelegateResolveMetadataAsync()
     {
-        using var mock = AutoMock.GetLoose();
-
         var expectedMetadata = new SongMetadata
         {
             Title = "Test Song",
@@ -734,7 +710,7 @@ public class ConfidenceAdapterTests
             .Setup(x => x.ResolveMetadataAsync("test-url", It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedMetadata);
 
-        var sut = mock.Create<ConfidenceAdapter>();
+        var sut = CreateSut(innerAdapter.Object);
 
         var result = await sut.ResolveMetadataAsync("test-url", CancellationToken.None);
 

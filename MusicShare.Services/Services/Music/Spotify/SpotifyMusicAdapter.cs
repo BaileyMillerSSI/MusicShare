@@ -101,7 +101,16 @@ public class SpotifyMusicAdapter(
 
     private async IAsyncEnumerable<SpotifyResponse> GetSearchResponse(SongMetadata metadata, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var response = await spotifyService.SearchAsync(metadata, limit: 10, cancellationToken);
+        SpotifySearchResponse? response;
+        try
+        {
+            response = await spotifyService.SearchAsync(metadata, limit: 10, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error searching Spotify for metadata: {Title}", metadata.Title);
+            yield break;
+        }
 
         if (response?.tracks?.items != null)
         {
