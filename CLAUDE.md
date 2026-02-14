@@ -153,6 +153,24 @@ azd deploy        # Deploy application
 azd up            # Both provision and deploy
 ```
 
+## MCP Tools - ALWAYS PREFER
+
+When working with .NET codebase, the following MCP tools (`mcp__vs-mcp__*`) provide semantic analysis via Roslyn and should ALWAYS be used instead of generic tools:
+
+| Instead of | Use MCP Tool | Why |
+|------------|--------------|-----|
+| `Grep` for symbols | `FindSymbols`, `FindSymbolUsages` | 10x faster, semantic accuracy |
+| `Glob` to explore projects | `GetSolutionTree` | Understands project structure |
+| Reading files to find code | `FindSymbolDefinition` then `Read` | Navigate directly to definitions |
+| Searching for method calls | `GetMethodCallers`, `GetMethodCalls` | Find all references with context |
+| Reading file structure | `GetDocumentOutline` | Parse classes, methods, properties |
+| Finding inheritance | `GetInheritance` | See base types and derived types |
+| Code navigation | `GetSymbolAtLocation` | Jump to symbol definition at cursor |
+| Refactoring names | `RenameSymbol` | Semantic rename across solution |
+| Building projects | `ExecuteCommand` | Compile projects with Roslyn analysis |
+
+**Example**: To find where `ShareRequestService` is used, use `FindSymbolUsages` with `symbolName: "ShareRequestService"` instead of `Grep`.
+
 ## Code Conventions
 
 ### C# / .NET
