@@ -1,6 +1,3 @@
-using Aspire.Hosting;
-using System.Globalization;
-
 var builder = DistributedApplication.CreateBuilder(args);
 
 // Scaling configuration (defaults to 0/1 for development, configurable via environment variables for production)
@@ -11,11 +8,7 @@ var frontendMaxReplicas = int.TryParse(Environment.GetEnvironmentVariable("AZURE
 
 // Infrastructure
 var mongodb = ConfigureMongoDb();
-
-var messagingUsername = builder.AddParameter("rabbitmq-username", secret: true);
-var messagingPassword = builder.AddParameter("rabbitmq-password", secret: true);
-
-var rabbitmq = builder.AddRabbitMQ("rabbitmq", messagingUsername, messagingPassword);
+var rabbitmq = ConfigureRabbitMQ();
 
 // Spotify credentials
 var spotifyClientId = builder.AddParameter("spotify-clientid", secret: true);
@@ -60,11 +53,7 @@ builder.AddProject<Projects.MusicShare_Worker>("worker")
     .WaitFor(frontend);
 
 // Dev tooling only when running locally
-if (!builder.ExecutionContext.IsPublishMode)
-{
-    mongodb = builder.AddMongoDB("mongodb").WithMongoExpress();
-    rabbitmq.WithManagementPlugin();
-}else
+if (builder.ExecutionContext.IsPublishMode)
 {
     builder.AddAzureContainerAppEnvironment("aca-env")
         .WithAzdResourceNaming();
@@ -100,7 +89,21 @@ IResourceBuilder<IResourceWithConnectionString> ConfigureMongoDb()
     }
     else
     {
-        var mongodbUri = builder.AddParameter("mongodb-uri", secret: true);
-        return builder.AddConnectionString("mongodb", mongodbUri.Resource.Name);
+        return builder.AddConnectionString("mongodb", "AZURE_MONGODB_URI");
+    }
+}
+
+IResourceBuilder<IResourceWithConnectionString> ConfigureRabbitMQ()
+{
+    var messagingUsername = builder.AddParameter("rabbitmq-username", secret: true);
+    var messagingPassword = builder.AddParameter("rabbitmq-password", secret: true);
+
+    if (!builder.ExecutionContext.IsPublishMode)
+    {
+        return builder.AddRabbitMQ("rabbitmq", messagingUsername, messagingPassword);
+    }
+    else
+    {
+        return builder.AddConnectionString("rabbitmq", "AZURE_RABBITMQ_URL");
     }
 }
