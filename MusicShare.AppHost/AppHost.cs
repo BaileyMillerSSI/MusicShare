@@ -7,7 +7,7 @@ var frontendMinReplicas = int.TryParse(Environment.GetEnvironmentVariable("AZURE
 var frontendMaxReplicas = int.TryParse(Environment.GetEnvironmentVariable("AZURE_FRONTEND_MAX_REPLICAS"), out var feMax) ? feMax : 1;
 
 // Infrastructure
-IResourceBuilder<MongoDBServerResource> mongodb = builder.AddMongoDB("mongodb").WithMongoExpress();
+IResourceBuilder<IResourceWithConnectionString> mongodb = builder.AddMongoDB("mongodb").WithMongoExpress().WithExternalHttpEndpoints();
 
 var messagingUsername = builder.AddParameter("rabbitmq-username", secret: true);
 var messagingPassword = builder.AddParameter("rabbitmq-password", secret: true);
@@ -59,11 +59,14 @@ builder.AddProject<Projects.MusicShare_Worker>("worker")
 // Dev tooling only when running locally
 if (!builder.ExecutionContext.IsPublishMode)
 {
+    //mongodb = 
     rabbitmq.WithManagementPlugin();
 }else
 {
     builder.AddAzureContainerAppEnvironment("aca-env")
         .WithAzdResourceNaming();
+
+    mongodb = builder.AddConnectionString("mongodb", "");
 
     IResourceBuilder<ParameterResource> customDomain = builder.AddParameter("custom-domain");
     IResourceBuilder<ParameterResource> certificateName = null!;
