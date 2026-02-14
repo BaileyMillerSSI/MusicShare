@@ -124,8 +124,8 @@ jobs:
           AZURE_API_MAX_REPLICAS: ${{ vars.API_MAX_REPLICAS }}
           AZURE_FRONTEND_MIN_REPLICAS: ${{ vars.FRONTEND_MIN_REPLICAS }}
           AZURE_FRONTEND_MAX_REPLICAS: ${{ vars.FRONTEND_MAX_REPLICAS }}
-          AZURE_MONGODB_URI: ${{ secrets.MONGODB_URI }}
-          AZURE_RABBITMQ_URL: ${{ secrets.RABBITMQ_URL }}
+          AZURE_MONGODB: ${{ secrets.MONGODB_URI }}
+          AZURE_RABBITMQ: ${{ secrets.RABBITMQ_URL }}
 
       - name: Deploy Application
         run: azd deploy --no-prompt
@@ -147,8 +147,8 @@ jobs:
           AZURE_API_MAX_REPLICAS: ${{ vars.API_MAX_REPLICAS }}
           AZURE_FRONTEND_MIN_REPLICAS: ${{ vars.FRONTEND_MIN_REPLICAS }}
           AZURE_FRONTEND_MAX_REPLICAS: ${{ vars.FRONTEND_MAX_REPLICAS }}
-          AZURE_MONGODB_URI: ${{ secrets.MONGODB_URI }}
-          AZURE_RABBITMQ_URL: ${{ secrets.RABBITMQ_URL }}
+          AZURE_MONGODB: ${{ secrets.MONGODB_URI }}
+          AZURE_RABBITMQ: ${{ secrets.RABBITMQ_URL }}
 
       - name: Output deployment info
         run: |

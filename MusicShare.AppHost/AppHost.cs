@@ -89,7 +89,7 @@ IResourceBuilder<IResourceWithConnectionString> ConfigureMongoDb()
     }
     else
     {
-        return builder.AddConnectionString("mongodb", "AZURE_MONGODB_URI");
+        return builder.AddConnectionString("mongodb", "AZURE_MONGODB");
     }
 }
 
@@ -104,6 +104,6 @@ IResourceBuilder<IResourceWithConnectionString> ConfigureRabbitMQ()
     }
     else
     {
-        return builder.AddConnectionString("rabbitmq", "AZURE_RABBITMQ_URL");
+        return builder.AddConnectionString("rabbitmq", "AZURE_RABBITMQ");
     }
 }
