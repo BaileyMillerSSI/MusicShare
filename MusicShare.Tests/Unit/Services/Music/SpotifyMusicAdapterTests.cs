@@ -2,6 +2,7 @@ using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
 using MusicShare.Services.Models;
 using MusicShare.Services.Services.Music.Spotify;
+using Microsoft.Extensions.Logging;
 
 namespace MusicShare.Tests.Unit.Services.Music;
 
@@ -162,11 +163,7 @@ public class SpotifyMusicAdapterTests
         var sut = mock.Create<SpotifyMusicAdapter>();
         var metadata = new SongMetadata { Title = "Test Song", Artists = ["Artist"] };
 
-        var results = new List<SongSearchResult>();
-        await foreach (var result in sut.FindSongsAsync(metadata))
-        {
-            results.Add(result);
-        }
+        var results = await sut.FindSongsAsync(metadata, TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
 
         results.Should().HaveCount(2);
         results[0].Url.Should().Be("https://open.spotify.com/track/track1");
@@ -210,17 +207,13 @@ public class SpotifyMusicAdapterTests
         };
 
         mock.Mock<ISpotifyMusicService>()
-            .Setup(x => x.SearchAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.SearchAsync(It.IsAny<SongMetadata>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(searchResponse);
 
         var sut = mock.Create<SpotifyMusicAdapter>();
         var metadata = new SongMetadata { Title = "Complete Song", Artists = ["Primary Artist"] };
 
-        var results = new List<SongSearchResult>();
-        await foreach (var result in sut.FindSongsAsync(metadata))
-        {
-            results.Add(result);
-        }
+        var results = await sut.FindSongsAsync(metadata, TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
 
         var firstResult = results.Should().ContainSingle().Subject;
         firstResult.Url.Should().Be("https://open.spotify.com/track/track1");
@@ -260,17 +253,13 @@ public class SpotifyMusicAdapterTests
         };
 
         mock.Mock<ISpotifyMusicService>()
-            .Setup(x => x.SearchAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.SearchAsync(It.IsAny<SongMetadata>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(searchResponse);
 
         var sut = mock.Create<SpotifyMusicAdapter>();
         var metadata = new SongMetadata { Title = "Song Title", Artists = ["Artist Name"] };
 
-        var results = new List<SongSearchResult>();
-        await foreach (var result in sut.FindSongsAsync(metadata))
-        {
-            results.Add(result);
-        }
+        var results = await sut.FindSongsAsync(metadata, TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
 
         var foundMetadata = results.First().FoundMetadata;
         foundMetadata.Title.Should().NotBeNullOrEmpty();
@@ -293,17 +282,13 @@ public class SpotifyMusicAdapterTests
         };
 
         mock.Mock<ISpotifyMusicService>()
-            .Setup(x => x.SearchAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.SearchAsync(It.IsAny<SongMetadata>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(searchResponse);
 
         var sut = mock.Create<SpotifyMusicAdapter>();
         var metadata = new SongMetadata { Title = "Nonexistent Song", Artists = ["Unknown Artist"] };
 
-        var results = new List<SongSearchResult>();
-        await foreach (var result in sut.FindSongsAsync(metadata))
-        {
-            results.Add(result);
-        }
+        var results = await sut.FindSongsAsync(metadata, TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
 
         results.Should().BeEmpty();
     }
@@ -312,11 +297,11 @@ public class SpotifyMusicAdapterTests
     public async Task ItWillBuildCorrectSearchQuery()
     {
         using var mock = AutoMock.GetLoose();
-        string? capturedQuery = null;
+        SongMetadata? capturedMetadata = null;
 
         mock.Mock<ISpotifyMusicService>()
-            .Setup(x => x.SearchAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-            .Callback<string, int, CancellationToken>((query, _, _) => capturedQuery = query)
+            .Setup(x => x.SearchAsync(It.IsAny<SongMetadata>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Callback<SongMetadata, int, CancellationToken>((metadata, _, _) => capturedMetadata = metadata)
             .ReturnsAsync(new SpotifySearchResponse
             {
                 tracks = new SpotifyTracksResult { items = [] }
@@ -325,12 +310,11 @@ public class SpotifyMusicAdapterTests
         var sut = mock.Create<SpotifyMusicAdapter>();
         var metadata = new SongMetadata { Title = "Song Title", Artists = ["Artist Name"] };
 
-        await foreach (var _ in sut.FindSongsAsync(metadata))
-        {
-            // Consume enumerable to trigger search
-        }
+        await sut.FindSongsAsync(metadata, TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
 
-        capturedQuery.Should().Be("track:Song Title artist:Artist Name");
+        capturedMetadata.Should().NotBeNull();
+        capturedMetadata!.Title.Should().Be("Song Title");
+        capturedMetadata.Artists.Should().Contain("Artist Name");
     }
 
     [Fact]
@@ -368,17 +352,13 @@ public class SpotifyMusicAdapterTests
         };
 
         mock.Mock<ISpotifyMusicService>()
-            .Setup(x => x.SearchAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.SearchAsync(It.IsAny<SongMetadata>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(searchResponse);
 
         var sut = mock.Create<SpotifyMusicAdapter>();
         var metadata = new SongMetadata { Title = "Test", Artists = ["Artist"] };
 
-        var results = new List<Services.Models.SongSearchResult>();
-        await foreach (var result in sut.FindSongsAsync(metadata))
-        {
-            results.Add(result);
-        }
+        var results = await sut.FindSongsAsync(metadata, TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
 
         results.Should().ContainSingle();
         results[0].FoundMetadata.Title.Should().Be("Valid Track");
@@ -390,17 +370,13 @@ public class SpotifyMusicAdapterTests
         using var mock = AutoMock.GetLoose();
 
         mock.Mock<ISpotifyMusicService>()
-            .Setup(x => x.SearchAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.SearchAsync(It.IsAny<SongMetadata>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((SpotifySearchResponse?)null);
 
         var sut = mock.Create<SpotifyMusicAdapter>();
         var metadata = new SongMetadata { Title = "Test", Artists = ["Artist"] };
 
-        var results = new List<Services.Models.SongSearchResult>();
-        await foreach (var result in sut.FindSongsAsync(metadata))
-        {
-            results.Add(result);
-        }
+        var results = await sut.FindSongsAsync(metadata, TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
 
         results.Should().BeEmpty();
     }
@@ -411,17 +387,13 @@ public class SpotifyMusicAdapterTests
         using var mock = AutoMock.GetLoose();
 
         mock.Mock<ISpotifyMusicService>()
-            .Setup(x => x.SearchAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.SearchAsync(It.IsAny<SongMetadata>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new HttpRequestException("API error"));
 
         var sut = mock.Create<SpotifyMusicAdapter>();
         var metadata = new SongMetadata { Title = "Test", Artists = ["Artist"] };
 
-        var results = new List<Services.Models.SongSearchResult>();
-        await foreach (var result in sut.FindSongsAsync(metadata))
-        {
-            results.Add(result);
-        }
+        var results = await sut.FindSongsAsync(metadata, TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
 
         results.Should().BeEmpty();
     }
@@ -460,17 +432,13 @@ public class SpotifyMusicAdapterTests
         };
 
         mock.Mock<ISpotifyMusicService>()
-            .Setup(x => x.SearchAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Setup(x => x.SearchAsync(It.IsAny<SongMetadata>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(searchResponse);
 
         var sut = mock.Create<SpotifyMusicAdapter>();
         var metadata = new SongMetadata { Title = "Song", Artists = ["Artist"] };
 
-        var results = new List<Services.Models.SongSearchResult>();
-        await foreach (var result in sut.FindSongsAsync(metadata))
-        {
-            results.Add(result);
-        }
+        var results = await sut.FindSongsAsync(metadata, TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
 
         results.First().FoundMetadata.ArtworkUrl.Should().Be("https://i.scdn.co/image/large.jpg");
     }

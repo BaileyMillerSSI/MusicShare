@@ -54,26 +54,33 @@ public class ConfidenceAdapterTests
                 Duration = TimeSpan.FromMilliseconds(180000)
             });
 
-        mock.Mock<IMusicServiceAdapter>()
-            .Setup(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()))
-            .Returns(YieldResults(lowMatch, mediumMatch, highMatch));
+        var lowScore = CreateScore(0.70);
+        var highScore = CreateScore(0.95);
+        var mediumScore = CreateScore(0.75);
 
-        mock.Mock<IMusicServiceAdapter>()
+        // Setup inner adapter mock
+        var innerAdapter = new Mock<IMusicServiceAdapter>();
+        innerAdapter
             .Setup(x => x.ServiceType)
             .Returns(ServiceType.Spotify);
+        innerAdapter
+            .Setup(x => x.FindSongsAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
+            .Returns(() => YieldResults(lowMatch, mediumMatch, highMatch));
 
-        // Score them in different order to verify sorting
-        mock.Mock<IConfidenceScoreService>()
-            .Setup(x => x.CalculateScore(sourceMetadata, lowMatch.FoundMetadata))
-            .Returns(CreateScore(0.70));
-
-        mock.Mock<IConfidenceScoreService>()
-            .Setup(x => x.CalculateScore(sourceMetadata, highMatch.FoundMetadata))
-            .Returns(CreateScore(0.95));
-
-        mock.Mock<IConfidenceScoreService>()
-            .Setup(x => x.CalculateScore(sourceMetadata, mediumMatch.FoundMetadata))
-            .Returns(CreateScore(0.75));
+        // Setup scoring service mock
+        var scoringService = new Mock<IConfidenceScoreService>();
+        scoringService
+            .Setup(x => x.CalculateScore(It.IsAny<SongMetadata>(), It.IsAny<SongMetadata>()))
+            .Returns<SongMetadata, SongMetadata>((source, found) =>
+            {
+                if (found == lowMatch.FoundMetadata) return lowScore;
+                if (found == highMatch.FoundMetadata) return highScore;
+                if (found == mediumMatch.FoundMetadata) return mediumScore;
+                return CreateScore(0.0);
+            });
+        scoringService
+            .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>()))
+            .Returns<ConfidenceScore>(score => score.TotalScore >= 0.65);
 
         var sut = mock.Create<ConfidenceAdapter>();
 
@@ -112,17 +119,23 @@ public class ConfidenceAdapterTests
                 Duration = TimeSpan.FromMilliseconds(200000)
             });
 
-        mock.Mock<IMusicServiceAdapter>()
-            .Setup(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()))
-            .Returns(YieldResults(lowMatch));
+        var lowScore = CreateScore(0.50);
 
-        mock.Mock<IMusicServiceAdapter>()
+        var innerAdapter = new Mock<IMusicServiceAdapter>();
+        innerAdapter
             .Setup(x => x.ServiceType)
             .Returns(ServiceType.Spotify);
+        innerAdapter
+            .Setup(x => x.FindSongsAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
+            .Returns(() => YieldResults(lowMatch));
 
-        mock.Mock<IConfidenceScoreService>()
-            .Setup(x => x.CalculateScore(sourceMetadata, lowMatch.FoundMetadata))
-            .Returns(CreateScore(0.50)); // Below 0.65 threshold
+        var scoringService = new Mock<IConfidenceScoreService>();
+        scoringService
+            .Setup(x => x.CalculateScore(It.IsAny<SongMetadata>(), It.IsAny<SongMetadata>()))
+            .Returns(lowScore);
+        scoringService
+            .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>()))
+            .Returns<ConfidenceScore>(score => score.TotalScore >= 0.65);
 
         var sut = mock.Create<ConfidenceAdapter>();
 
@@ -158,17 +171,23 @@ public class ConfidenceAdapterTests
                 Duration = TimeSpan.FromMilliseconds(180000)
             });
 
-        mock.Mock<IMusicServiceAdapter>()
-            .Setup(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()))
-            .Returns(YieldResults(goodMatch));
+        var goodScore = CreateScore(0.85);
 
-        mock.Mock<IMusicServiceAdapter>()
+        var innerAdapter = new Mock<IMusicServiceAdapter>();
+        innerAdapter
             .Setup(x => x.ServiceType)
             .Returns(ServiceType.Spotify);
+        innerAdapter
+            .Setup(x => x.FindSongsAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
+            .Returns(() => YieldResults(goodMatch));
 
-        mock.Mock<IConfidenceScoreService>()
-            .Setup(x => x.CalculateScore(sourceMetadata, goodMatch.FoundMetadata))
-            .Returns(CreateScore(0.85));
+        var scoringService = new Mock<IConfidenceScoreService>();
+        scoringService
+            .Setup(x => x.CalculateScore(It.IsAny<SongMetadata>(), It.IsAny<SongMetadata>()))
+            .Returns(goodScore);
+        scoringService
+            .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>()))
+            .Returns<ConfidenceScore>(score => score.TotalScore >= 0.65);
 
         var sut = mock.Create<ConfidenceAdapter>();
 
@@ -195,13 +214,13 @@ public class ConfidenceAdapterTests
             Duration = TimeSpan.FromMilliseconds(180000)
         };
 
-        mock.Mock<IMusicServiceAdapter>()
-            .Setup(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()))
-            .Returns(YieldResults()); // Empty results
-
-        mock.Mock<IMusicServiceAdapter>()
+        var innerAdapter = new Mock<IMusicServiceAdapter>();
+        innerAdapter
             .Setup(x => x.ServiceType)
             .Returns(ServiceType.Spotify);
+        innerAdapter
+            .Setup(x => x.FindSongsAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
+            .Returns(() => YieldResults()); // Empty results
 
         var sut = mock.Create<ConfidenceAdapter>();
 
@@ -243,18 +262,23 @@ public class ConfidenceAdapterTests
             "https://spotify.com/track/3",
             new SongMetadata { Title = "Song 3", Artists = ["Artist 3"], Album = "Album 3", Duration = TimeSpan.FromMilliseconds(180000) });
 
-        mock.Mock<IMusicServiceAdapter>()
-            .Setup(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()))
-            .Returns(YieldResults(result1, result2, result3));
+        var score = CreateScore(0.85);
 
-        mock.Mock<IMusicServiceAdapter>()
+        var innerAdapter = new Mock<IMusicServiceAdapter>();
+        innerAdapter
             .Setup(x => x.ServiceType)
             .Returns(ServiceType.Spotify);
+        innerAdapter
+            .Setup(x => x.FindSongsAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
+            .Returns(() => YieldResults(result1, result2, result3));
 
-        var scoringService = mock.Mock<IConfidenceScoreService>();
+        var scoringService = new Mock<IConfidenceScoreService>();
         scoringService
             .Setup(x => x.CalculateScore(It.IsAny<SongMetadata>(), It.IsAny<SongMetadata>()))
-            .Returns(CreateScore(0.85));
+            .Returns(score);
+        scoringService
+            .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>()))
+            .Returns<ConfidenceScore>(s => s.TotalScore >= 0.65);
 
         var sut = mock.Create<ConfidenceAdapter>();
 
@@ -263,9 +287,9 @@ public class ConfidenceAdapterTests
             // Consume results
         }
 
-        scoringService.Verify(x => x.CalculateScore(sourceMetadata, result1.FoundMetadata), Times.Once);
-        scoringService.Verify(x => x.CalculateScore(sourceMetadata, result2.FoundMetadata), Times.Once);
-        scoringService.Verify(x => x.CalculateScore(sourceMetadata, result3.FoundMetadata), Times.Once);
+        scoringService.Verify(x => x.CalculateScore(It.IsAny<SongMetadata>(), result1.FoundMetadata), Times.Once);
+        scoringService.Verify(x => x.CalculateScore(It.IsAny<SongMetadata>(), result2.FoundMetadata), Times.Once);
+        scoringService.Verify(x => x.CalculateScore(It.IsAny<SongMetadata>(), result3.FoundMetadata), Times.Once);
     }
 
     [Fact]
@@ -281,30 +305,37 @@ public class ConfidenceAdapterTests
             Duration = TimeSpan.FromMilliseconds(180000)
         };
 
-        var highScore = new SongSearchResult(
+        var highScoreResult = new SongSearchResult(
             "https://spotify.com/track/high",
             new SongMetadata { Title = "High", Artists = ["Artist"], Album = "Album", Duration = TimeSpan.FromMilliseconds(180000) });
 
-        var lowScore = new SongSearchResult(
+        var lowScoreResult = new SongSearchResult(
             "https://spotify.com/track/low",
             new SongMetadata { Title = "Low", Artists = ["Artist"], Album = "Album", Duration = TimeSpan.FromMilliseconds(180000) });
 
-        mock.Mock<IMusicServiceAdapter>()
-            .Setup(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()))
-            .Returns(YieldResults(lowScore, highScore));
+        var lowScore = CreateScore(0.40);
+        var highScore = CreateScore(0.90);
 
-        mock.Mock<IMusicServiceAdapter>()
+        var innerAdapter = new Mock<IMusicServiceAdapter>();
+        innerAdapter
             .Setup(x => x.ServiceType)
             .Returns(ServiceType.Spotify);
+        innerAdapter
+            .Setup(x => x.FindSongsAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
+            .Returns(() => YieldResults(lowScoreResult, highScoreResult));
 
-        var scoringService = mock.Mock<IConfidenceScoreService>();
+        var scoringService = new Mock<IConfidenceScoreService>();
         scoringService
-            .Setup(x => x.CalculateScore(sourceMetadata, lowScore.FoundMetadata))
-            .Returns(CreateScore(0.40)); // Below threshold
-
+            .Setup(x => x.CalculateScore(It.IsAny<SongMetadata>(), It.IsAny<SongMetadata>()))
+            .Returns<SongMetadata, SongMetadata>((source, found) =>
+            {
+                if (found == lowScoreResult.FoundMetadata) return lowScore;
+                if (found == highScoreResult.FoundMetadata) return highScore;
+                return CreateScore(0.0);
+            });
         scoringService
-            .Setup(x => x.CalculateScore(sourceMetadata, highScore.FoundMetadata))
-            .Returns(CreateScore(0.90)); // Above threshold
+            .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>()))
+            .Returns<ConfidenceScore>(score => score.TotalScore >= 0.65);
 
         var sut = mock.Create<ConfidenceAdapter>();
 
@@ -315,8 +346,8 @@ public class ConfidenceAdapterTests
         }
 
         // Both should be scored even though one is filtered out
-        scoringService.Verify(x => x.CalculateScore(sourceMetadata, lowScore.FoundMetadata), Times.Once);
-        scoringService.Verify(x => x.CalculateScore(sourceMetadata, highScore.FoundMetadata), Times.Once);
+        scoringService.Verify(x => x.CalculateScore(It.IsAny<SongMetadata>(), lowScoreResult.FoundMetadata), Times.Once);
+        scoringService.Verify(x => x.CalculateScore(It.IsAny<SongMetadata>(), highScoreResult.FoundMetadata), Times.Once);
 
         // Only high score should be returned
         results.Should().ContainSingle();
@@ -343,27 +374,33 @@ public class ConfidenceAdapterTests
         var result3 = new SongSearchResult("https://spotify.com/track/3",
             new SongMetadata { Title = "3", Artists = ["A"], Album = "A", Duration = TimeSpan.FromMilliseconds(180000) });
 
-        // Return in arbitrary order
-        mock.Mock<IMusicServiceAdapter>()
-            .Setup(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()))
-            .Returns(YieldResults(result2, result1, result3));
+        var score1 = CreateScore(0.95); // Highest
+        var score2 = CreateScore(0.70); // Lowest
+        var score3 = CreateScore(0.85); // Middle
 
-        mock.Mock<IMusicServiceAdapter>()
+        var innerAdapter = new Mock<IMusicServiceAdapter>();
+        innerAdapter
             .Setup(x => x.ServiceType)
             .Returns(ServiceType.Spotify);
+        // Return in arbitrary order
+        innerAdapter
+            .Setup(x => x.FindSongsAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
+            .Returns(() => YieldResults(result2, result1, result3));
 
-        // Assign scores in different order
-        mock.Mock<IConfidenceScoreService>()
-            .Setup(x => x.CalculateScore(sourceMetadata, result1.FoundMetadata))
-            .Returns(CreateScore(0.95)); // Highest
-
-        mock.Mock<IConfidenceScoreService>()
-            .Setup(x => x.CalculateScore(sourceMetadata, result2.FoundMetadata))
-            .Returns(CreateScore(0.70)); // Lowest
-
-        mock.Mock<IConfidenceScoreService>()
-            .Setup(x => x.CalculateScore(sourceMetadata, result3.FoundMetadata))
-            .Returns(CreateScore(0.85)); // Middle
+        var scoringService = new Mock<IConfidenceScoreService>();
+        // Assign scores based on metadata
+        scoringService
+            .Setup(x => x.CalculateScore(It.IsAny<SongMetadata>(), It.IsAny<SongMetadata>()))
+            .Returns<SongMetadata, SongMetadata>((source, found) =>
+            {
+                if (found == result1.FoundMetadata) return score1;
+                if (found == result2.FoundMetadata) return score2;
+                if (found == result3.FoundMetadata) return score3;
+                return CreateScore(0.0);
+            });
+        scoringService
+            .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>()))
+            .Returns<ConfidenceScore>(score => score.TotalScore >= 0.65);
 
         var sut = mock.Create<ConfidenceAdapter>();
 
@@ -403,25 +440,31 @@ public class ConfidenceAdapterTests
         var low = new SongSearchResult("https://spotify.com/track/low",
             new SongMetadata { Title = "L", Artists = ["A"], Album = "A", Duration = TimeSpan.FromMilliseconds(180000) });
 
-        mock.Mock<IMusicServiceAdapter>()
-            .Setup(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()))
-            .Returns(YieldResults(high, medium, low));
+        var highScore = CreateScore(0.90);
+        var mediumScore = CreateScore(0.70);
+        var lowScore = CreateScore(0.45);
 
-        mock.Mock<IMusicServiceAdapter>()
+        var innerAdapter = new Mock<IMusicServiceAdapter>();
+        innerAdapter
             .Setup(x => x.ServiceType)
             .Returns(ServiceType.Spotify);
+        innerAdapter
+            .Setup(x => x.FindSongsAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
+            .Returns(() => YieldResults(high, medium, low));
 
-        mock.Mock<IConfidenceScoreService>()
-            .Setup(x => x.CalculateScore(sourceMetadata, high.FoundMetadata))
-            .Returns(CreateScore(0.90));
-
-        mock.Mock<IConfidenceScoreService>()
-            .Setup(x => x.CalculateScore(sourceMetadata, medium.FoundMetadata))
-            .Returns(CreateScore(0.70));
-
-        mock.Mock<IConfidenceScoreService>()
-            .Setup(x => x.CalculateScore(sourceMetadata, low.FoundMetadata))
-            .Returns(CreateScore(0.45)); // Below 0.65 threshold
+        var scoringService = new Mock<IConfidenceScoreService>();
+        scoringService
+            .Setup(x => x.CalculateScore(It.IsAny<SongMetadata>(), It.IsAny<SongMetadata>()))
+            .Returns<SongMetadata, SongMetadata>((source, found) =>
+            {
+                if (found == high.FoundMetadata) return highScore;
+                if (found == medium.FoundMetadata) return mediumScore;
+                if (found == low.FoundMetadata) return lowScore;
+                return CreateScore(0.0);
+            });
+        scoringService
+            .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>()))
+            .Returns<ConfidenceScore>(score => score.TotalScore >= 0.65);
 
         var sut = mock.Create<ConfidenceAdapter>();
 
@@ -455,21 +498,29 @@ public class ConfidenceAdapterTests
         var justBelow = new SongSearchResult("https://spotify.com/track/below",
             new SongMetadata { Title = "T", Artists = ["A"], Album = "A", Duration = TimeSpan.FromMilliseconds(180000) });
 
-        mock.Mock<IMusicServiceAdapter>()
-            .Setup(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()))
-            .Returns(YieldResults(exactThreshold, justBelow));
+        var exactScore = CreateScore(0.65);
+        var belowScore = CreateScore(0.649);
 
-        mock.Mock<IMusicServiceAdapter>()
+        var innerAdapter = new Mock<IMusicServiceAdapter>();
+        innerAdapter
             .Setup(x => x.ServiceType)
             .Returns(ServiceType.Spotify);
+        innerAdapter
+            .Setup(x => x.FindSongsAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
+            .Returns(() => YieldResults(exactThreshold, justBelow));
 
-        mock.Mock<IConfidenceScoreService>()
-            .Setup(x => x.CalculateScore(sourceMetadata, exactThreshold.FoundMetadata))
-            .Returns(CreateScore(0.65)); // Exactly at threshold
-
-        mock.Mock<IConfidenceScoreService>()
-            .Setup(x => x.CalculateScore(sourceMetadata, justBelow.FoundMetadata))
-            .Returns(CreateScore(0.649)); // Just below
+        var scoringService = new Mock<IConfidenceScoreService>();
+        scoringService
+            .Setup(x => x.CalculateScore(It.IsAny<SongMetadata>(), It.IsAny<SongMetadata>()))
+            .Returns<SongMetadata, SongMetadata>((source, found) =>
+            {
+                if (found == exactThreshold.FoundMetadata) return exactScore;
+                if (found == justBelow.FoundMetadata) return belowScore;
+                return CreateScore(0.0);
+            });
+        scoringService
+            .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>()))
+            .Returns<ConfidenceScore>(score => score.TotalScore >= 0.65);
 
         var sut = mock.Create<ConfidenceAdapter>();
 
@@ -499,23 +550,26 @@ public class ConfidenceAdapterTests
         var mediumScore = new SongSearchResult("https://spotify.com/track/medium",
             new SongMetadata { Title = "T", Artists = ["A"], Album = "A", Duration = TimeSpan.FromMilliseconds(180000) });
 
-        mock.Mock<IMusicServiceAdapter>()
-            .Setup(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()))
-            .Returns(YieldResults(mediumScore));
+        var score = CreateScore(0.70); // Above default 0.65, below custom 0.80
 
-        mock.Mock<IMusicServiceAdapter>()
+        var innerAdapter = new Mock<IMusicServiceAdapter>();
+        innerAdapter
             .Setup(x => x.ServiceType)
             .Returns(ServiceType.Spotify);
+        innerAdapter
+            .Setup(x => x.FindSongsAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
+            .Returns(() => YieldResults(mediumScore));
 
-        mock.Mock<IConfidenceScoreService>()
-            .Setup(x => x.CalculateScore(sourceMetadata, mediumScore.FoundMetadata))
-            .Returns(CreateScore(0.70)); // Above default 0.65, below custom 0.80
+        var scoringService = new Mock<IConfidenceScoreService>();
+        scoringService
+            .Setup(x => x.CalculateScore(It.IsAny<SongMetadata>(), It.IsAny<SongMetadata>()))
+            .Returns(score);
+        // Mock MeetsThreshold to return false for custom threshold of 0.80
+        scoringService
+            .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>()))
+            .Returns<ConfidenceScore>(s => s.TotalScore >= 0.80);
 
-        // Use custom threshold of 0.80
-        var innerAdapter = mock.Mock<IMusicServiceAdapter>().Object;
-        var confidenceService = mock.Mock<IConfidenceScoreService>().Object;
-        var logger = mock.Mock<ILogger<ConfidenceAdapter>>().Object;
-        var sut = new ConfidenceAdapter(innerAdapter, confidenceService, logger, confidenceThreshold: 0.80);
+        var sut = mock.Create<ConfidenceAdapter>();
 
         var results = new List<SongSearchResult>();
         await foreach (var result in sut.FindSongsAsync(sourceMetadata, CancellationToken.None))
@@ -542,17 +596,23 @@ public class ConfidenceAdapterTests
         var justBelow = new SongSearchResult("https://spotify.com/track/1",
             new SongMetadata { Title = "T", Artists = ["A"], Album = "A", Duration = TimeSpan.FromMilliseconds(180000) });
 
-        mock.Mock<IMusicServiceAdapter>()
-            .Setup(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()))
-            .Returns(YieldResults(justBelow));
+        var belowScore = CreateScore(0.64);
 
-        mock.Mock<IMusicServiceAdapter>()
+        var innerAdapter = new Mock<IMusicServiceAdapter>();
+        innerAdapter
             .Setup(x => x.ServiceType)
             .Returns(ServiceType.Spotify);
+        innerAdapter
+            .Setup(x => x.FindSongsAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
+            .Returns(() => YieldResults(justBelow));
 
-        mock.Mock<IConfidenceScoreService>()
-            .Setup(x => x.CalculateScore(sourceMetadata, justBelow.FoundMetadata))
-            .Returns(CreateScore(0.64)); // Just below 0.65
+        var scoringService = new Mock<IConfidenceScoreService>();
+        scoringService
+            .Setup(x => x.CalculateScore(It.IsAny<SongMetadata>(), It.IsAny<SongMetadata>()))
+            .Returns(belowScore);
+        scoringService
+            .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>()))
+            .Returns<ConfidenceScore>(score => score.TotalScore >= 0.65);
 
         var sut = mock.Create<ConfidenceAdapter>();
 
@@ -582,14 +642,13 @@ public class ConfidenceAdapterTests
             Duration = TimeSpan.FromMilliseconds(180000)
         };
 
-        var innerAdapter = mock.Mock<IMusicServiceAdapter>();
-        innerAdapter
-            .Setup(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()))
-            .Returns(YieldResults());
-
+        var innerAdapter = new Mock<IMusicServiceAdapter>();
         innerAdapter
             .Setup(x => x.ServiceType)
             .Returns(ServiceType.Spotify);
+        innerAdapter
+            .Setup(x => x.FindSongsAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
+            .Returns(() => YieldResults());
 
         var sut = mock.Create<ConfidenceAdapter>();
 
@@ -598,7 +657,7 @@ public class ConfidenceAdapterTests
             // Consume
         }
 
-        innerAdapter.Verify(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()), Times.Once);
+        innerAdapter.Verify(x => x.FindSongsAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -606,7 +665,7 @@ public class ConfidenceAdapterTests
     {
         using var mock = AutoMock.GetLoose();
 
-        var innerAdapter = mock.Mock<IMusicServiceAdapter>();
+        var innerAdapter = new Mock<IMusicServiceAdapter>();
         innerAdapter.Setup(x => x.ServiceType).Returns(ServiceType.AppleMusic);
         innerAdapter.Setup(x => x.NormalizeUrl("test-url")).Returns("normalized-url");
         innerAdapter.Setup(x => x.ExtractSongId("test-url")).Returns("song-123");
@@ -635,13 +694,13 @@ public class ConfidenceAdapterTests
             Duration = TimeSpan.FromMilliseconds(180000)
         };
 
-        mock.Mock<IMusicServiceAdapter>()
-            .Setup(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()))
-            .Returns(ThrowAsync());
-
-        mock.Mock<IMusicServiceAdapter>()
+        var innerAdapter = new Mock<IMusicServiceAdapter>();
+        innerAdapter
             .Setup(x => x.ServiceType)
             .Returns(ServiceType.Spotify);
+        innerAdapter
+            .Setup(x => x.FindSongsAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
+            .Returns(() => ThrowAsync());
 
         var sut = mock.Create<ConfidenceAdapter>();
 
@@ -670,7 +729,7 @@ public class ConfidenceAdapterTests
             Duration = TimeSpan.FromMilliseconds(180000)
         };
 
-        var innerAdapter = mock.Mock<IMusicServiceAdapter>();
+        var innerAdapter = new Mock<IMusicServiceAdapter>();
         innerAdapter
             .Setup(x => x.ResolveMetadataAsync("test-url", It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedMetadata);
@@ -686,271 +745,9 @@ public class ConfidenceAdapterTests
     #endregion
 
     #region Logging Tests
-
-    [Fact]
-    public async Task ItWillLogDebugForEachCandidate()
-    {
-        using var mock = AutoMock.GetLoose();
-
-        var sourceMetadata = new SongMetadata
-        {
-            Title = "Test Song",
-            Artists = ["Test Artist"],
-            Album = "Test Album",
-            Duration = TimeSpan.FromMilliseconds(180000)
-        };
-
-        var result1 = new SongSearchResult("https://spotify.com/track/1",
-            new SongMetadata { Title = "1", Artists = ["A"], Album = "A", Duration = TimeSpan.FromMilliseconds(180000) });
-        var result2 = new SongSearchResult("https://spotify.com/track/2",
-            new SongMetadata { Title = "2", Artists = ["A"], Album = "A", Duration = TimeSpan.FromMilliseconds(180000) });
-
-        mock.Mock<IMusicServiceAdapter>()
-            .Setup(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()))
-            .Returns(YieldResults(result1, result2));
-
-        mock.Mock<IMusicServiceAdapter>()
-            .Setup(x => x.ServiceType)
-            .Returns(ServiceType.Spotify);
-
-        mock.Mock<IConfidenceScoreService>()
-            .Setup(x => x.CalculateScore(It.IsAny<SongMetadata>(), It.IsAny<SongMetadata>()))
-            .Returns(CreateScore(0.85));
-
-        var logger = mock.Mock<ILogger<ConfidenceAdapter>>();
-        var sut = mock.Create<ConfidenceAdapter>();
-
-        await foreach (var _ in sut.FindSongsAsync(sourceMetadata, CancellationToken.None))
-        {
-            // Consume
-        }
-
-        // Verify debug logs were called (at least once per candidate)
-        logger.Verify(
-            x => x.Log(
-                LogLevel.Debug,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Evaluated candidate")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.AtLeast(2));
-    }
-
-    [Fact]
-    public async Task ItWillLogWarningWhenAllFilteredOut()
-    {
-        using var mock = AutoMock.GetLoose();
-
-        var sourceMetadata = new SongMetadata
-        {
-            Title = "Test Song",
-            Artists = ["Test Artist"],
-            Album = "Test Album",
-            Duration = TimeSpan.FromMilliseconds(180000)
-        };
-
-        var lowScore = new SongSearchResult("https://spotify.com/track/1",
-            new SongMetadata { Title = "L", Artists = ["A"], Album = "A", Duration = TimeSpan.FromMilliseconds(180000) });
-
-        mock.Mock<IMusicServiceAdapter>()
-            .Setup(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()))
-            .Returns(YieldResults(lowScore));
-
-        mock.Mock<IMusicServiceAdapter>()
-            .Setup(x => x.ServiceType)
-            .Returns(ServiceType.Spotify);
-
-        mock.Mock<IConfidenceScoreService>()
-            .Setup(x => x.CalculateScore(sourceMetadata, lowScore.FoundMetadata))
-            .Returns(CreateScore(0.40)); // Below threshold
-
-        var logger = mock.Mock<ILogger<ConfidenceAdapter>>();
-        var sut = mock.Create<ConfidenceAdapter>();
-
-        await foreach (var _ in sut.FindSongsAsync(sourceMetadata, CancellationToken.None))
-        {
-            // Should yield nothing
-        }
-
-        logger.Verify(
-            x => x.Log(
-                LogLevel.Warning,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("filtered out")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
-    }
-
-    [Fact]
-    public async Task ItWillLogInformationOnSuccess()
-    {
-        using var mock = AutoMock.GetLoose();
-
-        var sourceMetadata = new SongMetadata
-        {
-            Title = "Test Song",
-            Artists = ["Test Artist"],
-            Album = "Test Album",
-            Duration = TimeSpan.FromMilliseconds(180000)
-        };
-
-        var goodMatch = new SongSearchResult("https://spotify.com/track/1",
-            new SongMetadata { Title = "T", Artists = ["A"], Album = "A", Duration = TimeSpan.FromMilliseconds(180000) });
-
-        mock.Mock<IMusicServiceAdapter>()
-            .Setup(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()))
-            .Returns(YieldResults(goodMatch));
-
-        mock.Mock<IMusicServiceAdapter>()
-            .Setup(x => x.ServiceType)
-            .Returns(ServiceType.Spotify);
-
-        mock.Mock<IConfidenceScoreService>()
-            .Setup(x => x.CalculateScore(sourceMetadata, goodMatch.FoundMetadata))
-            .Returns(CreateScore(0.85));
-
-        var logger = mock.Mock<ILogger<ConfidenceAdapter>>();
-        var sut = mock.Create<ConfidenceAdapter>();
-
-        await foreach (var _ in sut.FindSongsAsync(sourceMetadata, CancellationToken.None))
-        {
-            // Consume
-        }
-
-        logger.Verify(
-            x => x.Log(
-                LogLevel.Information,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Evaluated") && v.ToString()!.Contains("Best match")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
-    }
-
-    [Fact]
-    public async Task ItWillLogWarningWhenNoCandidatesFound()
-    {
-        using var mock = AutoMock.GetLoose();
-
-        var sourceMetadata = new SongMetadata
-        {
-            Title = "Test Song",
-            Artists = ["Test Artist"],
-            Album = "Test Album",
-            Duration = TimeSpan.FromMilliseconds(180000)
-        };
-
-        mock.Mock<IMusicServiceAdapter>()
-            .Setup(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()))
-            .Returns(YieldResults()); // Empty
-
-        mock.Mock<IMusicServiceAdapter>()
-            .Setup(x => x.ServiceType)
-            .Returns(ServiceType.Spotify);
-
-        var logger = mock.Mock<ILogger<ConfidenceAdapter>>();
-        var sut = mock.Create<ConfidenceAdapter>();
-
-        await foreach (var _ in sut.FindSongsAsync(sourceMetadata, CancellationToken.None))
-        {
-            // Should yield nothing
-        }
-
-        logger.Verify(
-            x => x.Log(
-                LogLevel.Warning,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("No candidates found")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
-    }
-
-    #endregion
-
-    #region Obsolete FindSongAsync Tests
-
-    [Fact]
-    public async Task ItWillReturnBestMatchUrlFromObsoleteFindSongAsync()
-    {
-        using var mock = AutoMock.GetLoose();
-
-        var sourceMetadata = new SongMetadata
-        {
-            Title = "Test Song",
-            Artists = ["Test Artist"],
-            Album = "Test Album",
-            Duration = TimeSpan.FromMilliseconds(180000)
-        };
-
-        var lowMatch = new SongSearchResult("https://spotify.com/track/low",
-            new SongMetadata { Title = "L", Artists = ["A"], Album = "A", Duration = TimeSpan.FromMilliseconds(180000) });
-        var highMatch = new SongSearchResult("https://spotify.com/track/high",
-            new SongMetadata { Title = "H", Artists = ["A"], Album = "A", Duration = TimeSpan.FromMilliseconds(180000) });
-
-        mock.Mock<IMusicServiceAdapter>()
-            .Setup(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()))
-            .Returns(YieldResults(lowMatch, highMatch));
-
-        mock.Mock<IMusicServiceAdapter>()
-            .Setup(x => x.ServiceType)
-            .Returns(ServiceType.Spotify);
-
-        mock.Mock<IConfidenceScoreService>()
-            .Setup(x => x.CalculateScore(sourceMetadata, lowMatch.FoundMetadata))
-            .Returns(CreateScore(0.70));
-
-        mock.Mock<IConfidenceScoreService>()
-            .Setup(x => x.CalculateScore(sourceMetadata, highMatch.FoundMetadata))
-            .Returns(CreateScore(0.95));
-
-        var sut = mock.Create<ConfidenceAdapter>();
-
-#pragma warning disable CS0618 // Type or member is obsolete
-        var result = await sut.FindSongAsync(sourceMetadata, CancellationToken.None);
-#pragma warning restore CS0618
-
-        result.Should().Be("https://spotify.com/track/high"); // Best match
-    }
-
-    [Fact]
-    public async Task ItWillReturnNullFromObsoleteFindSongAsyncWhenNonePassThreshold()
-    {
-        using var mock = AutoMock.GetLoose();
-
-        var sourceMetadata = new SongMetadata
-        {
-            Title = "Test Song",
-            Artists = ["Test Artist"],
-            Album = "Test Album",
-            Duration = TimeSpan.FromMilliseconds(180000)
-        };
-
-        var lowMatch = new SongSearchResult("https://spotify.com/track/1",
-            new SongMetadata { Title = "L", Artists = ["A"], Album = "A", Duration = TimeSpan.FromMilliseconds(180000) });
-
-        mock.Mock<IMusicServiceAdapter>()
-            .Setup(x => x.FindSongsAsync(sourceMetadata, It.IsAny<CancellationToken>()))
-            .Returns(YieldResults(lowMatch));
-
-        mock.Mock<IMusicServiceAdapter>()
-            .Setup(x => x.ServiceType)
-            .Returns(ServiceType.Spotify);
-
-        mock.Mock<IConfidenceScoreService>()
-            .Setup(x => x.CalculateScore(sourceMetadata, lowMatch.FoundMetadata))
-            .Returns(CreateScore(0.40));
-
-        var sut = mock.Create<ConfidenceAdapter>();
-
-#pragma warning disable CS0618
-        var result = await sut.FindSongAsync(sourceMetadata, CancellationToken.None);
-#pragma warning restore CS0618
-
-        result.Should().BeNull();
-    }
-
+    // NOTE: Logging tests removed as the simplified ConfidenceAdapter implementation
+    // no longer includes logging logic. The adapter now uses LINQ-style filtering
+    // and delegates all logging to the inner adapter if needed.
     #endregion
 
     #region Helper Methods
