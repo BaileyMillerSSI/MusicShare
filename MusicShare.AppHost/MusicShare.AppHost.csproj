@@ -2,7 +2,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MusicShare.Api\MusicShare.Api.csproj" />
-    <ProjectReference Include="..\MusicShare.Worker\MusicShare.Worker.csproj" />
   </ItemGroup>
 
   <ItemGroup>

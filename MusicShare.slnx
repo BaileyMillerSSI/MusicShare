@@ -6,5 +6,4 @@
   <Project Path="MusicShare.Services/MusicShare.Services.csproj" />
   <Project Path="MusicShare.ServiceDefaults/MusicShare.ServiceDefaults.csproj" Id="0a03109d-df90-4027-bfab-49331c71eb02" />
   <Project Path="MusicShare.Tests/MusicShare.Tests.csproj" />
-  <Project Path="MusicShare.Worker/MusicShare.Worker.csproj" />
 </Solution>

@@ -6,7 +6,7 @@ using MusicShare.Persistence.Entities;
 using MusicShare.Persistence.Repositories;
 using MusicShare.Services.Services;
 using MusicShare.Services.Services.Music;
-using MusicShare.Worker.Consumers;
+using MusicShare.Api.Consumers;
 
 namespace MusicShare.Tests.Unit.Worker.Consumers;
 

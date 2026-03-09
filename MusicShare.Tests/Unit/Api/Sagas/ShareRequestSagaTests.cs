@@ -5,8 +5,8 @@ using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
 using MusicShare.Services.Services;
 using MusicShare.Services.Services.Music;
-using MusicShare.Worker.Sagas.ShareRequest;
-using MusicShare.Worker.Sagas.ShareRequest.Activities;
+using MusicShare.Api.Sagas.ShareRequest;
+using MusicShare.Api.Sagas.ShareRequest.Activities;
 
 namespace MusicShare.Tests.Unit.Worker.Sagas;
 

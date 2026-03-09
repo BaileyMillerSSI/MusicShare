@@ -2,7 +2,7 @@ using MassTransit;
 using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
 
-namespace MusicShare.Worker.Sagas.ShareRequest;
+namespace MusicShare.Api.Sagas.ShareRequest;
 
 /// <summary>
 /// State for the ShareRequest saga, persisted to MongoDB.

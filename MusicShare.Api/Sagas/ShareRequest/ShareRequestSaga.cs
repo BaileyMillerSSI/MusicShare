@@ -1,9 +1,9 @@
 using MassTransit;
 using MusicShare.Contracts.Messages;
 using MusicShare.Services.Services;
-using MusicShare.Worker.Sagas.ShareRequest.Activities;
+using MusicShare.Api.Sagas.ShareRequest.Activities;
 
-namespace MusicShare.Worker.Sagas.ShareRequest;
+namespace MusicShare.Api.Sagas.ShareRequest;
 
 /// <summary>
 /// Saga state machine that orchestrates the share request workflow.
