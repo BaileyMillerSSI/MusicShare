@@ -35,7 +35,6 @@
     <ProjectReference Include="..\MusicShare.Contracts\MusicShare.Contracts.csproj" />
     <ProjectReference Include="..\MusicShare.Persistence\MusicShare.Persistence.csproj" />
     <ProjectReference Include="..\MusicShare.Services\MusicShare.Services.csproj" />
-    <ProjectReference Include="..\MusicShare.Worker\MusicShare.Worker.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -2,13 +2,13 @@ using MassTransit;
 using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
 
-namespace MusicShare.Worker.Consumers;
+namespace MusicShare.Api.Consumers;
 
-public class SpotifyLinkConsumerDefinition : ConsumerDefinition<SpotifyLinkConsumer>
+public class AppleMusicLinkConsumerDefinition : ConsumerDefinition<AppleMusicLinkConsumer>
 {
     protected override void ConfigureConsumer(
         IReceiveEndpointConfigurator endpointConfigurator,
-        IConsumerConfigurator<SpotifyLinkConsumer> consumerConfigurator,
+        IConsumerConfigurator<AppleMusicLinkConsumer> consumerConfigurator,
         IRegistrationContext context)
     {
         if (endpointConfigurator is IRabbitMqReceiveEndpointConfigurator rabbitMq)
@@ -16,7 +16,7 @@ public class SpotifyLinkConsumerDefinition : ConsumerDefinition<SpotifyLinkConsu
             rabbitMq.Bind<ResolveServiceLink>(b =>
             {
                 b.ExchangeType = "direct";
-                b.RoutingKey = ServiceType.Spotify.ToRoutingKey();
+                b.RoutingKey = ServiceType.AppleMusic.ToRoutingKey();
             });
         }
     }
