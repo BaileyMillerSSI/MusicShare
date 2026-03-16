@@ -17,14 +17,7 @@ public interface IConfidenceScoreService
     ConfidenceScore CalculateScore(SongMetadata source, SongMetadata candidate);
 
     /// <summary>
-    /// Determines if the calculated score meets the default threshold (0.65).
-    /// </summary>
-    /// <param name="score">The confidence score to check.</param>
-    /// <returns>True if the score meets the threshold, false otherwise.</returns>
-    bool MeetsThreshold(ConfidenceScore score);
-
-    /// <summary>
-    /// Determines if the calculated score meets a custom threshold.
+    /// Determines if the calculated score meets the given threshold.
     /// </summary>
     /// <param name="score">The confidence score to check.</param>
     /// <param name="threshold">The threshold value (0.0 to 1.0).</param>

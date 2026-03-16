@@ -3,7 +3,7 @@ using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
 using MusicShare.Services.Services;
 
-namespace MusicShare.Worker.Sagas.ShareRequest.Activities;
+namespace MusicShare.Api.Sagas.ShareRequest.Activities;
 
 /// <summary>
 /// Activity that handles saga failure by updating ShareRequest status.

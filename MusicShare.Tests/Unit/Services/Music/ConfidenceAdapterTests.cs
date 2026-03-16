@@ -9,11 +9,11 @@ namespace MusicShare.Tests.Unit.Services.Music;
 
 public class ConfidenceAdapterTests
 {
-    private static ConfidenceAdapter CreateSut(IMusicServiceAdapter innerAdapter, IConfidenceScoreService scoringService)
-        => new(innerAdapter, scoringService, Mock.Of<ILogger<ConfidenceAdapter>>());
+    private static ConfidenceAdapter CreateSut(IMusicServiceAdapter innerAdapter, IConfidenceScoreService scoringService, double threshold = 0.65)
+        => new(innerAdapter, scoringService, threshold);
 
     private static ConfidenceAdapter CreateSut(IMusicServiceAdapter innerAdapter)
-        => new(innerAdapter, Mock.Of<IConfidenceScoreService>(), Mock.Of<ILogger<ConfidenceAdapter>>());
+        => new(innerAdapter, Mock.Of<IConfidenceScoreService>(), 0.65);
 
     #region Basic Filtering Tests
 
@@ -83,8 +83,8 @@ public class ConfidenceAdapterTests
                 return CreateScore(0.0);
             });
         scoringService
-            .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>()))
-            .Returns<ConfidenceScore>(score => score.TotalScore >= 0.65);
+            .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>(), It.IsAny<double>()))
+            .Returns<ConfidenceScore, double>((score, t) => score.TotalScore >= t);
 
         var sut = CreateSut(innerAdapter.Object, scoringService.Object);
 
@@ -136,8 +136,8 @@ public class ConfidenceAdapterTests
             .Setup(x => x.CalculateScore(It.IsAny<SongMetadata>(), It.IsAny<SongMetadata>()))
             .Returns(lowScore);
         scoringService
-            .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>()))
-            .Returns<ConfidenceScore>(score => score.TotalScore >= 0.65);
+            .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>(), It.IsAny<double>()))
+            .Returns<ConfidenceScore, double>((score, t) => score.TotalScore >= t);
 
         var sut = CreateSut(innerAdapter.Object, scoringService.Object);
 
@@ -186,8 +186,8 @@ public class ConfidenceAdapterTests
             .Setup(x => x.CalculateScore(It.IsAny<SongMetadata>(), It.IsAny<SongMetadata>()))
             .Returns(goodScore);
         scoringService
-            .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>()))
-            .Returns<ConfidenceScore>(score => score.TotalScore >= 0.65);
+            .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>(), It.IsAny<double>()))
+            .Returns<ConfidenceScore, double>((score, t) => score.TotalScore >= t);
 
         var sut = CreateSut(innerAdapter.Object, scoringService.Object);
 
@@ -273,8 +273,8 @@ public class ConfidenceAdapterTests
             .Setup(x => x.CalculateScore(It.IsAny<SongMetadata>(), It.IsAny<SongMetadata>()))
             .Returns(score);
         scoringService
-            .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>()))
-            .Returns<ConfidenceScore>(s => s.TotalScore >= 0.65);
+            .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>(), It.IsAny<double>()))
+            .Returns<ConfidenceScore, double>((s, t) => s.TotalScore >= t);
 
         var sut = CreateSut(innerAdapter.Object, scoringService.Object);
 
@@ -328,8 +328,8 @@ public class ConfidenceAdapterTests
                 return CreateScore(0.0);
             });
         scoringService
-            .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>()))
-            .Returns<ConfidenceScore>(score => score.TotalScore >= 0.65);
+            .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>(), It.IsAny<double>()))
+            .Returns<ConfidenceScore, double>((score, t) => score.TotalScore >= t);
 
         var sut = CreateSut(innerAdapter.Object, scoringService.Object);
 
@@ -391,8 +391,8 @@ public class ConfidenceAdapterTests
                 return CreateScore(0.0);
             });
         scoringService
-            .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>()))
-            .Returns<ConfidenceScore>(score => score.TotalScore >= 0.65);
+            .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>(), It.IsAny<double>()))
+            .Returns<ConfidenceScore, double>((score, t) => score.TotalScore >= t);
 
         var sut = CreateSut(innerAdapter.Object, scoringService.Object);
 
@@ -453,8 +453,8 @@ public class ConfidenceAdapterTests
                 return CreateScore(0.0);
             });
         scoringService
-            .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>()))
-            .Returns<ConfidenceScore>(score => score.TotalScore >= 0.65);
+            .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>(), It.IsAny<double>()))
+            .Returns<ConfidenceScore, double>((score, t) => score.TotalScore >= t);
 
         var sut = CreateSut(innerAdapter.Object, scoringService.Object);
 
@@ -507,8 +507,8 @@ public class ConfidenceAdapterTests
                 return CreateScore(0.0);
             });
         scoringService
-            .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>()))
-            .Returns<ConfidenceScore>(score => score.TotalScore >= 0.65);
+            .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>(), It.IsAny<double>()))
+            .Returns<ConfidenceScore, double>((score, t) => score.TotalScore >= t);
 
         var sut = CreateSut(innerAdapter.Object, scoringService.Object);
 
@@ -552,10 +552,10 @@ public class ConfidenceAdapterTests
             .Returns(score);
         // Mock MeetsThreshold to return false for custom threshold of 0.80
         scoringService
-            .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>()))
-            .Returns<ConfidenceScore>(s => s.TotalScore >= 0.80);
+            .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>(), It.IsAny<double>()))
+            .Returns<ConfidenceScore, double>((s, t) => s.TotalScore >= t);
 
-        var sut = CreateSut(innerAdapter.Object, scoringService.Object);
+        var sut = CreateSut(innerAdapter.Object, scoringService.Object, threshold: 0.80);
 
         var results = new List<SongSearchResult>();
         await foreach (var result in sut.FindSongsAsync(sourceMetadata, CancellationToken.None))
@@ -595,8 +595,8 @@ public class ConfidenceAdapterTests
             .Setup(x => x.CalculateScore(It.IsAny<SongMetadata>(), It.IsAny<SongMetadata>()))
             .Returns(belowScore);
         scoringService
-            .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>()))
-            .Returns<ConfidenceScore>(score => score.TotalScore >= 0.65);
+            .Setup(x => x.MeetsThreshold(It.IsAny<ConfidenceScore>(), It.IsAny<double>()))
+            .Returns<ConfidenceScore, double>((score, t) => score.TotalScore >= t);
 
         var sut = CreateSut(innerAdapter.Object, scoringService.Object);
 

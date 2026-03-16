@@ -7,9 +7,9 @@ using MusicShare.Persistence.Repositories;
 using MusicShare.Services.Models;
 using MusicShare.Services.Services;
 using MusicShare.Services.Services.Music;
-using MusicShare.Worker.Consumers;
+using MusicShare.Api.Consumers;
 
-namespace MusicShare.Tests.Unit.Worker.Consumers;
+namespace MusicShare.Tests.Unit.Api.Consumers;
 
 /// <summary>
 /// Tests the ServiceLinkConsumerBase logic through SpotifyLinkConsumer as a concrete implementation.

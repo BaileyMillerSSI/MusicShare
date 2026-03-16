@@ -5,10 +5,10 @@ using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
 using MusicShare.Services.Services;
 using MusicShare.Services.Services.Music;
-using MusicShare.Worker.Sagas.ShareRequest;
-using MusicShare.Worker.Sagas.ShareRequest.Activities;
+using MusicShare.Api.Sagas.ShareRequest;
+using MusicShare.Api.Sagas.ShareRequest.Activities;
 
-namespace MusicShare.Tests.Unit.Worker.Sagas;
+namespace MusicShare.Tests.Unit.Api.Sagas;
 
 public class ShareRequestSagaTests
 {
@@ -116,9 +116,9 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceUrl = "https://open.spotify.com/track/abc",
             SourceService = ServiceType.Spotify
-        });
+        }, TestContext.Current.CancellationToken);
 
-        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>()).Should().BeTrue();
+        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         var instance = ctx.SagaHarness.Created.ContainsInState(
             correlationId, ctx.SagaHarness.StateMachine, ctx.SagaHarness.StateMachine.ResolvingMetadata);
@@ -137,9 +137,9 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceUrl = "https://open.spotify.com/track/abc",
             SourceService = ServiceType.Spotify
-        });
+        }, TestContext.Current.CancellationToken);
 
-        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>()).Should().BeTrue();
+        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         var instance = ctx.SagaHarness.Sagas.ContainsInState(
             correlationId, ctx.SagaHarness.StateMachine, ctx.SagaHarness.StateMachine.ResolvingMetadata);
@@ -158,9 +158,9 @@ public class ShareRequestSagaTests
             ShareId = "share-xyz",
             SourceUrl = "https://open.spotify.com/track/abc",
             SourceService = ServiceType.Spotify
-        });
+        }, TestContext.Current.CancellationToken);
 
-        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>()).Should().BeTrue();
+        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         var instance = ctx.SagaHarness.Sagas.ContainsInState(
             correlationId, ctx.SagaHarness.StateMachine, ctx.SagaHarness.StateMachine.ResolvingMetadata);
@@ -180,9 +180,9 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceUrl = "https://open.spotify.com/track/abc",
             SourceService = ServiceType.Spotify
-        });
+        }, TestContext.Current.CancellationToken);
 
-        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>()).Should().BeTrue();
+        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         var instance = ctx.SagaHarness.Sagas.ContainsInState(
             correlationId, ctx.SagaHarness.StateMachine, ctx.SagaHarness.StateMachine.ResolvingMetadata);
@@ -202,9 +202,9 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceUrl = "https://open.spotify.com/track/abc",
             SourceService = ServiceType.Spotify
-        });
+        }, TestContext.Current.CancellationToken);
 
-        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>()).Should().BeTrue();
+        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         var instance = ctx.SagaHarness.Sagas.ContainsInState(
             correlationId, ctx.SagaHarness.StateMachine, ctx.SagaHarness.StateMachine.ResolvingMetadata);
@@ -225,15 +225,15 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceUrl = "https://open.spotify.com/track/abc",
             SourceService = ServiceType.Spotify
-        });
+        }, TestContext.Current.CancellationToken);
 
-        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>()).Should().BeTrue();
+        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         (await ctx.Harness.Published.Any<ResolveSourceMetadata>(x =>
             x.Context.Message.CorrelationId == correlationId &&
             x.Context.Message.ShareId == "share-123" &&
             x.Context.Message.SourceUrl == "https://open.spotify.com/track/abc" &&
-            x.Context.Message.SourceService == ServiceType.Spotify)).Should().BeTrue();
+            x.Context.Message.SourceService == ServiceType.Spotify, TestContext.Current.CancellationToken)).Should().BeTrue();
     }
 
     [Fact]
@@ -249,9 +249,9 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceUrl = "https://open.spotify.com/track/abc",
             SourceService = ServiceType.Spotify
-        });
+        }, TestContext.Current.CancellationToken);
 
-        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>()).Should().BeTrue();
+        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         var instance = ctx.SagaHarness.Sagas.ContainsInState(
             correlationId, ctx.SagaHarness.StateMachine, ctx.SagaHarness.StateMachine.ResolvingMetadata);
@@ -276,8 +276,8 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceUrl = "https://open.spotify.com/track/abc",
             SourceService = ServiceType.Spotify
-        });
-        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>()).Should().BeTrue();
+        }, TestContext.Current.CancellationToken);
+        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         await ctx.Harness.Bus.Publish(new SourceMetadataResolved
         {
@@ -286,8 +286,8 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceService = ServiceType.Spotify,
             Metadata = CreateTestMetadata()
-        });
-        (await ctx.SagaHarness.Consumed.Any<SourceMetadataResolved>()).Should().BeTrue();
+        }, TestContext.Current.CancellationToken);
+        (await ctx.SagaHarness.Consumed.Any<SourceMetadataResolved>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         var instance = ctx.SagaHarness.Sagas.ContainsInState(
             correlationId, ctx.SagaHarness.StateMachine, ctx.SagaHarness.StateMachine.AwaitingServiceLinks);
@@ -306,8 +306,8 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceUrl = "https://open.spotify.com/track/abc",
             SourceService = ServiceType.Spotify
-        });
-        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>()).Should().BeTrue();
+        }, TestContext.Current.CancellationToken);
+        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         await ctx.Harness.Bus.Publish(new SourceMetadataResolved
         {
@@ -316,8 +316,8 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceService = ServiceType.Spotify,
             Metadata = CreateTestMetadata()
-        });
-        (await ctx.SagaHarness.Consumed.Any<SourceMetadataResolved>()).Should().BeTrue();
+        }, TestContext.Current.CancellationToken);
+        (await ctx.SagaHarness.Consumed.Any<SourceMetadataResolved>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         var instance = ctx.SagaHarness.Sagas.ContainsInState(
             correlationId, ctx.SagaHarness.StateMachine, ctx.SagaHarness.StateMachine.AwaitingServiceLinks);
@@ -338,8 +338,8 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceUrl = "https://open.spotify.com/track/abc",
             SourceService = ServiceType.Spotify
-        });
-        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>()).Should().BeTrue();
+        }, TestContext.Current.CancellationToken);
+        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         await ctx.Harness.Bus.Publish(new SourceMetadataResolved
         {
@@ -348,8 +348,8 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceService = ServiceType.Spotify,
             Metadata = metadata
-        });
-        (await ctx.SagaHarness.Consumed.Any<SourceMetadataResolved>()).Should().BeTrue();
+        }, TestContext.Current.CancellationToken);
+        (await ctx.SagaHarness.Consumed.Any<SourceMetadataResolved>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         var instance = ctx.SagaHarness.Sagas.ContainsInState(
             correlationId, ctx.SagaHarness.StateMachine, ctx.SagaHarness.StateMachine.AwaitingServiceLinks);
@@ -371,8 +371,8 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceUrl = "https://open.spotify.com/track/abc",
             SourceService = ServiceType.Spotify
-        });
-        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>()).Should().BeTrue();
+        }, TestContext.Current.CancellationToken);
+        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         await ctx.Harness.Bus.Publish(new SourceMetadataResolved
         {
@@ -381,16 +381,16 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceService = ServiceType.Spotify,
             Metadata = CreateTestMetadata()
-        });
-        (await ctx.SagaHarness.Consumed.Any<SourceMetadataResolved>()).Should().BeTrue();
+        }, TestContext.Current.CancellationToken);
+        (await ctx.SagaHarness.Consumed.Any<SourceMetadataResolved>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         (await ctx.Harness.Published.Any<ResolveServiceLink>(x =>
             x.Context.Message.CorrelationId == correlationId &&
-            x.Context.Message.TargetService == ServiceType.AppleMusic)).Should().BeTrue();
+            x.Context.Message.TargetService == ServiceType.AppleMusic, TestContext.Current.CancellationToken)).Should().BeTrue();
 
         (await ctx.Harness.Published.Any<ResolveServiceLink>(x =>
             x.Context.Message.CorrelationId == correlationId &&
-            x.Context.Message.TargetService == ServiceType.YouTubeMusic)).Should().BeTrue();
+            x.Context.Message.TargetService == ServiceType.YouTubeMusic, TestContext.Current.CancellationToken)).Should().BeTrue();
     }
 
     #endregion
@@ -409,8 +409,8 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceUrl = "https://open.spotify.com/track/abc",
             SourceService = ServiceType.Spotify
-        });
-        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>()).Should().BeTrue();
+        }, TestContext.Current.CancellationToken);
+        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         await ctx.Harness.Bus.Publish(new SourceMetadataResolved
         {
@@ -419,8 +419,8 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceService = ServiceType.Spotify,
             Metadata = CreateTestMetadata()
-        });
-        (await ctx.SagaHarness.Consumed.Any<SourceMetadataResolved>()).Should().BeTrue();
+        }, TestContext.Current.CancellationToken);
+        (await ctx.SagaHarness.Consumed.Any<SourceMetadataResolved>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         var instance = ctx.SagaHarness.Sagas.ContainsInState(
             correlationId, ctx.SagaHarness.StateMachine, ctx.SagaHarness.StateMachine.Final);
@@ -439,8 +439,8 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceUrl = "https://open.spotify.com/track/abc",
             SourceService = ServiceType.Spotify
-        });
-        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>()).Should().BeTrue();
+        }, TestContext.Current.CancellationToken);
+        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         await ctx.Harness.Bus.Publish(new SourceMetadataResolved
         {
@@ -449,10 +449,10 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceService = ServiceType.Spotify,
             Metadata = CreateTestMetadata()
-        });
-        (await ctx.SagaHarness.Consumed.Any<SourceMetadataResolved>()).Should().BeTrue();
+        }, TestContext.Current.CancellationToken);
+        (await ctx.SagaHarness.Consumed.Any<SourceMetadataResolved>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
-        (await ctx.Harness.Published.Any<ResolveServiceLink>()).Should().BeFalse();
+        (await ctx.Harness.Published.Any<ResolveServiceLink>(TestContext.Current.CancellationToken)).Should().BeFalse();
     }
 
     #endregion
@@ -471,16 +471,16 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceUrl = "https://open.spotify.com/track/abc",
             SourceService = ServiceType.Spotify
-        });
-        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>()).Should().BeTrue();
+        }, TestContext.Current.CancellationToken);
+        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         await ctx.Harness.Bus.Publish(new SourceMetadataFailed
         {
             CorrelationId = correlationId,
             ShareId = "share-123",
             ErrorMessage = "Could not resolve metadata"
-        });
-        (await ctx.SagaHarness.Consumed.Any<SourceMetadataFailed>()).Should().BeTrue();
+        }, TestContext.Current.CancellationToken);
+        (await ctx.SagaHarness.Consumed.Any<SourceMetadataFailed>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         var instance = ctx.SagaHarness.Sagas.ContainsInState(
             correlationId, ctx.SagaHarness.StateMachine, ctx.SagaHarness.StateMachine.Final);
@@ -499,18 +499,18 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceUrl = "https://open.spotify.com/track/abc",
             SourceService = ServiceType.Spotify
-        });
-        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>()).Should().BeTrue();
+        }, TestContext.Current.CancellationToken);
+        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         await ctx.Harness.Bus.Publish(new SourceMetadataFailed
         {
             CorrelationId = correlationId,
             ShareId = "share-123",
             ErrorMessage = "Could not resolve metadata"
-        });
-        (await ctx.SagaHarness.Consumed.Any<SourceMetadataFailed>()).Should().BeTrue();
+        }, TestContext.Current.CancellationToken);
+        (await ctx.SagaHarness.Consumed.Any<SourceMetadataFailed>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
-        (await ctx.Harness.Published.Any<ResolveServiceLink>()).Should().BeFalse();
+        (await ctx.Harness.Published.Any<ResolveServiceLink>(TestContext.Current.CancellationToken)).Should().BeFalse();
     }
 
     #endregion
@@ -529,8 +529,8 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceUrl = "https://open.spotify.com/track/abc",
             SourceService = ServiceType.Spotify
-        });
-        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>()).Should().BeTrue();
+        }, TestContext.Current.CancellationToken);
+        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         await ctx.Harness.Bus.Publish(new SourceMetadataResolved
         {
@@ -539,8 +539,8 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceService = ServiceType.Spotify,
             Metadata = CreateTestMetadata()
-        });
-        (await ctx.SagaHarness.Consumed.Any<SourceMetadataResolved>()).Should().BeTrue();
+        }, TestContext.Current.CancellationToken);
+        (await ctx.SagaHarness.Consumed.Any<SourceMetadataResolved>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         await ctx.Harness.Bus.Publish(new ServiceLinkResolved
         {
@@ -548,9 +548,9 @@ public class ShareRequestSagaTests
             SongId = "song-1",
             ServiceType = ServiceType.AppleMusic,
             ResolvedUrl = "https://music.apple.com/track/123"
-        });
+        }, TestContext.Current.CancellationToken);
         (await ctx.SagaHarness.Consumed.Any<ServiceLinkResolved>(x =>
-            x.Context.Message.ServiceType == ServiceType.AppleMusic)).Should().BeTrue();
+            x.Context.Message.ServiceType == ServiceType.AppleMusic, TestContext.Current.CancellationToken)).Should().BeTrue();
 
         await ctx.Harness.Bus.Publish(new ServiceLinkResolved
         {
@@ -558,9 +558,9 @@ public class ShareRequestSagaTests
             SongId = "song-1",
             ServiceType = ServiceType.YouTubeMusic,
             ResolvedUrl = "https://music.youtube.com/watch?v=xyz"
-        });
+        }, TestContext.Current.CancellationToken);
         (await ctx.SagaHarness.Consumed.Any<ServiceLinkResolved>(x =>
-            x.Context.Message.ServiceType == ServiceType.YouTubeMusic)).Should().BeTrue();
+            x.Context.Message.ServiceType == ServiceType.YouTubeMusic, TestContext.Current.CancellationToken)).Should().BeTrue();
 
         var instance = ctx.SagaHarness.Sagas.ContainsInState(
             correlationId, ctx.SagaHarness.StateMachine, ctx.SagaHarness.StateMachine.Final);
@@ -579,8 +579,8 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceUrl = "https://open.spotify.com/track/abc",
             SourceService = ServiceType.Spotify
-        });
-        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>()).Should().BeTrue();
+        }, TestContext.Current.CancellationToken);
+        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         await ctx.Harness.Bus.Publish(new SourceMetadataResolved
         {
@@ -589,8 +589,8 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceService = ServiceType.Spotify,
             Metadata = CreateTestMetadata()
-        });
-        (await ctx.SagaHarness.Consumed.Any<SourceMetadataResolved>()).Should().BeTrue();
+        }, TestContext.Current.CancellationToken);
+        (await ctx.SagaHarness.Consumed.Any<SourceMetadataResolved>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         await ctx.Harness.Bus.Publish(new ServiceLinkResolved
         {
@@ -598,9 +598,9 @@ public class ShareRequestSagaTests
             SongId = "song-1",
             ServiceType = ServiceType.AppleMusic,
             ResolvedUrl = "https://music.apple.com/track/123"
-        });
+        }, TestContext.Current.CancellationToken);
         (await ctx.SagaHarness.Consumed.Any<ServiceLinkResolved>(x =>
-            x.Context.Message.ServiceType == ServiceType.AppleMusic)).Should().BeTrue();
+            x.Context.Message.ServiceType == ServiceType.AppleMusic, TestContext.Current.CancellationToken)).Should().BeTrue();
 
         await ctx.Harness.Bus.Publish(new ServiceLinkResolved
         {
@@ -608,9 +608,9 @@ public class ShareRequestSagaTests
             SongId = "song-1",
             ServiceType = ServiceType.YouTubeMusic,
             ResolvedUrl = "https://music.youtube.com/watch?v=xyz"
-        });
+        }, TestContext.Current.CancellationToken);
         (await ctx.SagaHarness.Consumed.Any<ServiceLinkResolved>(x =>
-            x.Context.Message.ServiceType == ServiceType.YouTubeMusic)).Should().BeTrue();
+            x.Context.Message.ServiceType == ServiceType.YouTubeMusic, TestContext.Current.CancellationToken)).Should().BeTrue();
 
         var instance = ctx.SagaHarness.Sagas.ContainsInState(
             correlationId, ctx.SagaHarness.StateMachine, ctx.SagaHarness.StateMachine.Final);
@@ -631,8 +631,8 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceUrl = "https://open.spotify.com/track/abc",
             SourceService = ServiceType.Spotify
-        });
-        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>()).Should().BeTrue();
+        }, TestContext.Current.CancellationToken);
+        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         await ctx.Harness.Bus.Publish(new SourceMetadataResolved
         {
@@ -641,8 +641,8 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceService = ServiceType.Spotify,
             Metadata = CreateTestMetadata()
-        });
-        (await ctx.SagaHarness.Consumed.Any<SourceMetadataResolved>()).Should().BeTrue();
+        }, TestContext.Current.CancellationToken);
+        (await ctx.SagaHarness.Consumed.Any<SourceMetadataResolved>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         // Resolve only one service - should stay in AwaitingServiceLinks
         await ctx.Harness.Bus.Publish(new ServiceLinkResolved
@@ -651,9 +651,9 @@ public class ShareRequestSagaTests
             SongId = "song-1",
             ServiceType = ServiceType.AppleMusic,
             ResolvedUrl = "https://music.apple.com/track/123"
-        });
+        }, TestContext.Current.CancellationToken);
         (await ctx.SagaHarness.Consumed.Any<ServiceLinkResolved>(x =>
-            x.Context.Message.ServiceType == ServiceType.AppleMusic)).Should().BeTrue();
+            x.Context.Message.ServiceType == ServiceType.AppleMusic, TestContext.Current.CancellationToken)).Should().BeTrue();
 
         var instance = ctx.SagaHarness.Sagas.ContainsInState(
             correlationId, ctx.SagaHarness.StateMachine, ctx.SagaHarness.StateMachine.AwaitingServiceLinks);
@@ -678,8 +678,8 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceUrl = "https://open.spotify.com/track/abc",
             SourceService = ServiceType.Spotify
-        });
-        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>()).Should().BeTrue();
+        }, TestContext.Current.CancellationToken);
+        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         await ctx.Harness.Bus.Publish(new SourceMetadataResolved
         {
@@ -688,8 +688,8 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceService = ServiceType.Spotify,
             Metadata = CreateTestMetadata()
-        });
-        (await ctx.SagaHarness.Consumed.Any<SourceMetadataResolved>()).Should().BeTrue();
+        }, TestContext.Current.CancellationToken);
+        (await ctx.SagaHarness.Consumed.Any<SourceMetadataResolved>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         await ctx.Harness.Bus.Publish(new ServiceLinkFailed
         {
@@ -697,9 +697,9 @@ public class ShareRequestSagaTests
             SongId = "song-1",
             ServiceType = ServiceType.AppleMusic,
             ErrorMessage = "Not found"
-        });
+        }, TestContext.Current.CancellationToken);
         (await ctx.SagaHarness.Consumed.Any<ServiceLinkFailed>(x =>
-            x.Context.Message.ServiceType == ServiceType.AppleMusic)).Should().BeTrue();
+            x.Context.Message.ServiceType == ServiceType.AppleMusic, TestContext.Current.CancellationToken)).Should().BeTrue();
 
         await ctx.Harness.Bus.Publish(new ServiceLinkFailed
         {
@@ -707,9 +707,9 @@ public class ShareRequestSagaTests
             SongId = "song-1",
             ServiceType = ServiceType.YouTubeMusic,
             ErrorMessage = "Not found"
-        });
+        }, TestContext.Current.CancellationToken);
         (await ctx.SagaHarness.Consumed.Any<ServiceLinkFailed>(x =>
-            x.Context.Message.ServiceType == ServiceType.YouTubeMusic)).Should().BeTrue();
+            x.Context.Message.ServiceType == ServiceType.YouTubeMusic, TestContext.Current.CancellationToken)).Should().BeTrue();
 
         var instance = ctx.SagaHarness.Sagas.ContainsInState(
             correlationId, ctx.SagaHarness.StateMachine, ctx.SagaHarness.StateMachine.Final);
@@ -728,8 +728,8 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceUrl = "https://open.spotify.com/track/abc",
             SourceService = ServiceType.Spotify
-        });
-        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>()).Should().BeTrue();
+        }, TestContext.Current.CancellationToken);
+        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         await ctx.Harness.Bus.Publish(new SourceMetadataResolved
         {
@@ -738,8 +738,8 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceService = ServiceType.Spotify,
             Metadata = CreateTestMetadata()
-        });
-        (await ctx.SagaHarness.Consumed.Any<SourceMetadataResolved>()).Should().BeTrue();
+        }, TestContext.Current.CancellationToken);
+        (await ctx.SagaHarness.Consumed.Any<SourceMetadataResolved>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         await ctx.Harness.Bus.Publish(new ServiceLinkFailed
         {
@@ -747,9 +747,9 @@ public class ShareRequestSagaTests
             SongId = "song-1",
             ServiceType = ServiceType.AppleMusic,
             ErrorMessage = "Not found"
-        });
+        }, TestContext.Current.CancellationToken);
         (await ctx.SagaHarness.Consumed.Any<ServiceLinkFailed>(x =>
-            x.Context.Message.ServiceType == ServiceType.AppleMusic)).Should().BeTrue();
+            x.Context.Message.ServiceType == ServiceType.AppleMusic, TestContext.Current.CancellationToken)).Should().BeTrue();
 
         await ctx.Harness.Bus.Publish(new ServiceLinkFailed
         {
@@ -757,9 +757,9 @@ public class ShareRequestSagaTests
             SongId = "song-1",
             ServiceType = ServiceType.YouTubeMusic,
             ErrorMessage = "Not found"
-        });
+        }, TestContext.Current.CancellationToken);
         (await ctx.SagaHarness.Consumed.Any<ServiceLinkFailed>(x =>
-            x.Context.Message.ServiceType == ServiceType.YouTubeMusic)).Should().BeTrue();
+            x.Context.Message.ServiceType == ServiceType.YouTubeMusic, TestContext.Current.CancellationToken)).Should().BeTrue();
 
         var instance = ctx.SagaHarness.Sagas.ContainsInState(
             correlationId, ctx.SagaHarness.StateMachine, ctx.SagaHarness.StateMachine.Final);
@@ -784,8 +784,8 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceUrl = "https://open.spotify.com/track/abc",
             SourceService = ServiceType.Spotify
-        });
-        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>()).Should().BeTrue();
+        }, TestContext.Current.CancellationToken);
+        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         await ctx.Harness.Bus.Publish(new SourceMetadataResolved
         {
@@ -794,8 +794,8 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceService = ServiceType.Spotify,
             Metadata = CreateTestMetadata()
-        });
-        (await ctx.SagaHarness.Consumed.Any<SourceMetadataResolved>()).Should().BeTrue();
+        }, TestContext.Current.CancellationToken);
+        (await ctx.SagaHarness.Consumed.Any<SourceMetadataResolved>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         await ctx.Harness.Bus.Publish(new ServiceLinkResolved
         {
@@ -803,9 +803,9 @@ public class ShareRequestSagaTests
             SongId = "song-1",
             ServiceType = ServiceType.AppleMusic,
             ResolvedUrl = "https://music.apple.com/track/123"
-        });
+        }, TestContext.Current.CancellationToken);
         (await ctx.SagaHarness.Consumed.Any<ServiceLinkResolved>(x =>
-            x.Context.Message.ServiceType == ServiceType.AppleMusic)).Should().BeTrue();
+            x.Context.Message.ServiceType == ServiceType.AppleMusic, TestContext.Current.CancellationToken)).Should().BeTrue();
 
         await ctx.Harness.Bus.Publish(new ServiceLinkFailed
         {
@@ -813,9 +813,9 @@ public class ShareRequestSagaTests
             SongId = "song-1",
             ServiceType = ServiceType.YouTubeMusic,
             ErrorMessage = "Not found"
-        });
+        }, TestContext.Current.CancellationToken);
         (await ctx.SagaHarness.Consumed.Any<ServiceLinkFailed>(x =>
-            x.Context.Message.ServiceType == ServiceType.YouTubeMusic)).Should().BeTrue();
+            x.Context.Message.ServiceType == ServiceType.YouTubeMusic, TestContext.Current.CancellationToken)).Should().BeTrue();
 
         var instance = ctx.SagaHarness.Sagas.ContainsInState(
             correlationId, ctx.SagaHarness.StateMachine, ctx.SagaHarness.StateMachine.Final);
@@ -834,8 +834,8 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceUrl = "https://open.spotify.com/track/abc",
             SourceService = ServiceType.Spotify
-        });
-        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>()).Should().BeTrue();
+        }, TestContext.Current.CancellationToken);
+        (await ctx.SagaHarness.Consumed.Any<SongShareSubmitted>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         await ctx.Harness.Bus.Publish(new SourceMetadataResolved
         {
@@ -844,8 +844,8 @@ public class ShareRequestSagaTests
             ShareId = "share-123",
             SourceService = ServiceType.Spotify,
             Metadata = CreateTestMetadata()
-        });
-        (await ctx.SagaHarness.Consumed.Any<SourceMetadataResolved>()).Should().BeTrue();
+        }, TestContext.Current.CancellationToken);
+        (await ctx.SagaHarness.Consumed.Any<SourceMetadataResolved>(TestContext.Current.CancellationToken)).Should().BeTrue();
 
         await ctx.Harness.Bus.Publish(new ServiceLinkResolved
         {
@@ -853,9 +853,9 @@ public class ShareRequestSagaTests
             SongId = "song-1",
             ServiceType = ServiceType.AppleMusic,
             ResolvedUrl = "https://music.apple.com/track/123"
-        });
+        }, TestContext.Current.CancellationToken);
         (await ctx.SagaHarness.Consumed.Any<ServiceLinkResolved>(x =>
-            x.Context.Message.ServiceType == ServiceType.AppleMusic)).Should().BeTrue();
+            x.Context.Message.ServiceType == ServiceType.AppleMusic, TestContext.Current.CancellationToken)).Should().BeTrue();
 
         await ctx.Harness.Bus.Publish(new ServiceLinkFailed
         {
@@ -863,9 +863,9 @@ public class ShareRequestSagaTests
             SongId = "song-1",
             ServiceType = ServiceType.YouTubeMusic,
             ErrorMessage = "Not found"
-        });
+        }, TestContext.Current.CancellationToken);
         (await ctx.SagaHarness.Consumed.Any<ServiceLinkFailed>(x =>
-            x.Context.Message.ServiceType == ServiceType.YouTubeMusic)).Should().BeTrue();
+            x.Context.Message.ServiceType == ServiceType.YouTubeMusic, TestContext.Current.CancellationToken)).Should().BeTrue();
 
         var instance = ctx.SagaHarness.Sagas.ContainsInState(
             correlationId, ctx.SagaHarness.StateMachine, ctx.SagaHarness.StateMachine.Final);

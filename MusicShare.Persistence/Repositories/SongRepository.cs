@@ -3,14 +3,9 @@ using MusicShare.Persistence.Entities;
 
 namespace MusicShare.Persistence.Repositories;
 
-public class SongRepository : ISongRepository
+public class SongRepository(IMusicShareDbContext context) : ISongRepository
 {
-    private readonly IMongoCollection<Song> _songs;
-
-    public SongRepository(IMusicShareDbContext context)
-    {
-        _songs = context.Songs;
-    }
+    private readonly IMongoCollection<Song> _songs = context.Songs;
 
     public async Task<Song?> GetByIdAsync(string id, CancellationToken cancellationToken = default)
     {

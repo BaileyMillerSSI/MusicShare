@@ -1,6 +1,4 @@
-using Microsoft.Extensions.Options;
 using MusicShare.Contracts.Messages;
-using MusicShare.Services.Configuration.MusicServices;
 using MusicShare.Services.Models;
 
 namespace MusicShare.Services.Services;
@@ -9,13 +7,12 @@ namespace MusicShare.Services.Services;
 /// Service for calculating confidence scores when matching songs across different music platforms.
 /// Uses weighted scoring: Title (40%), Artist (25%), Album (25%), Duration (10%).
 /// </summary>
-public class ConfidenceScoreService(IOptionsMonitor<MusicConfiguration> musicConfigurationMonitor) : IConfidenceScoreService
+public class ConfidenceScoreService : IConfidenceScoreService
 {
     private const double TitleWeight = 0.40;
     private const double ArtistWeight = 0.25;
     private const double AlbumWeight = 0.25;
     private const double DurationWeight = 0.10;
-    private readonly double DefaultThreshold = musicConfigurationMonitor.CurrentValue.ConfidenceThreshold;
 
     /// <inheritdoc />
     public ConfidenceScore CalculateScore(SongMetadata source, SongMetadata candidate)
@@ -39,9 +36,6 @@ public class ConfidenceScoreService(IOptionsMonitor<MusicConfiguration> musicCon
             DurationScore = durationScore
         };
     }
-
-    /// <inheritdoc />
-    public bool MeetsThreshold(ConfidenceScore score) => MeetsThreshold(score, DefaultThreshold);
 
     /// <inheritdoc />
     public bool MeetsThreshold(ConfidenceScore score, double threshold) => score.MeetsThreshold(threshold);
@@ -120,14 +114,14 @@ public class ConfidenceScoreService(IOptionsMonitor<MusicConfiguration> musicCon
 
     /// <summary>
     /// Calculates album similarity score with fuzzy matching.
-    /// Returns 0.5 (neutral) if either album is missing.
+    /// Returns 0.2 (low) if either album is missing, penalizing missing album data.
     /// </summary>
     private static double CalculateAlbumScore(string? sourceAlbum, string? candidateAlbum)
     {
-        // If either album is missing, return neutral score
+        // If either album is missing, return low score to penalize missing data
         if (string.IsNullOrWhiteSpace(sourceAlbum) || string.IsNullOrWhiteSpace(candidateAlbum))
         {
-            return 0.5;
+            return 0.2;
         }
 
         var normalizedSource = NormalizeString(sourceAlbum);
@@ -145,7 +139,7 @@ public class ConfidenceScoreService(IOptionsMonitor<MusicConfiguration> musicCon
 
         if (maxLength == 0)
         {
-            return 0.5; // Both empty after normalization
+            return 0.2; // Both empty after normalization
         }
 
         var similarity = 1.0 - ((double)distance / maxLength);

@@ -27,7 +27,7 @@ public class YouTubeMusicService(YouTubeMusicClient client, ILogger<YouTubeMusic
                 return [];
             }
 
-            return results.OfType<SongSearchResult>().ToList();
+            return [.. results.OfType<SongSearchResult>()];
         }
         catch
         {
@@ -62,8 +62,14 @@ public class YouTubeMusicService(YouTubeMusicClient client, ILogger<YouTubeMusic
     private static string BuildSearchQuery(SongMetadata metadata)
     {
         var artist = metadata.Artists.FirstOrDefault();
-        return string.IsNullOrEmpty(artist)
-            ? metadata.Title
-            : $"{metadata.Title} {artist}";
+        var parts = new List<string> { metadata.Title };
+
+        if (!string.IsNullOrEmpty(artist))
+            parts.Add(artist);
+
+        if (!string.IsNullOrEmpty(metadata.Album))
+            parts.Add(metadata.Album);
+
+        return string.Join(" ", parts);
     }
 }

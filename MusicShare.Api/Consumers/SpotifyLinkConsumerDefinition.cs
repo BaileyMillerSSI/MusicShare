@@ -2,13 +2,13 @@ using MassTransit;
 using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
 
-namespace MusicShare.Worker.Consumers;
+namespace MusicShare.Api.Consumers;
 
-public class YouTubeMusicLinkConsumerDefinition : ConsumerDefinition<YouTubeMusicLinkConsumer>
+public class SpotifyLinkConsumerDefinition : ConsumerDefinition<SpotifyLinkConsumer>
 {
     protected override void ConfigureConsumer(
         IReceiveEndpointConfigurator endpointConfigurator,
-        IConsumerConfigurator<YouTubeMusicLinkConsumer> consumerConfigurator,
+        IConsumerConfigurator<SpotifyLinkConsumer> consumerConfigurator,
         IRegistrationContext context)
     {
         if (endpointConfigurator is IRabbitMqReceiveEndpointConfigurator rabbitMq)
@@ -16,7 +16,7 @@ public class YouTubeMusicLinkConsumerDefinition : ConsumerDefinition<YouTubeMusi
             rabbitMq.Bind<ResolveServiceLink>(b =>
             {
                 b.ExchangeType = "direct";
-                b.RoutingKey = ServiceType.YouTubeMusic.ToRoutingKey();
+                b.RoutingKey = ServiceType.Spotify.ToRoutingKey();
             });
         }
     }

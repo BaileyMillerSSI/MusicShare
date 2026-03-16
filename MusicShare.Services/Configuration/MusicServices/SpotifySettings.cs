@@ -7,5 +7,7 @@
         public string ClientId { get; set; } = string.Empty;
 
         public string ClientSecret { get; set; } = string.Empty;
+
+        public double ConfidenceThreshold { get; set; } = 0.80;
     }
 }

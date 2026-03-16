@@ -1,7 +1,4 @@
-using Autofac.Extras.Moq;
-using Microsoft.Extensions.Options;
 using MusicShare.Contracts.Messages;
-using MusicShare.Services.Configuration.MusicServices;
 using MusicShare.Services.Models;
 using MusicShare.Services.Services;
 
@@ -15,18 +12,12 @@ public class ConfidenceScoreServiceTests
     public void ItWillReturnPerfectScoreForIdenticalMetadata()
     {
         // Arrange
-        using var mock = AutoMock.GetLoose();
-        var optionsMonitor = mock.Mock<IOptionsMonitor<MusicConfiguration>>();
-        optionsMonitor
-            .Setup(x => x.CurrentValue)
-            .Returns(new MusicConfiguration { ConfidenceThreshold = 0.65 });
-
-        var sut = mock.Create<ConfidenceScoreService>();
+        var sut = new ConfidenceScoreService();
 
         var source = new SongMetadata
         {
             Title = "Bohemian Rhapsody",
-            Artists = new[] { "Queen" },
+            Artists = ["Queen"],
             Album = "A Night at the Opera",
             Duration = TimeSpan.FromMinutes(5).Add(TimeSpan.FromSeconds(55))
         };
@@ -34,7 +25,7 @@ public class ConfidenceScoreServiceTests
         var candidate = new SongMetadata
         {
             Title = "Bohemian Rhapsody",
-            Artists = new[] { "Queen" },
+            Artists = ["Queen"],
             Album = "A Night at the Opera",
             Duration = TimeSpan.FromMinutes(5).Add(TimeSpan.FromSeconds(55))
         };
@@ -55,18 +46,12 @@ public class ConfidenceScoreServiceTests
     public void ItWillReturnHighScoreForExactMatches()
     {
         // Arrange
-        using var mock = AutoMock.GetLoose();
-        var optionsMonitor = mock.Mock<IOptionsMonitor<MusicConfiguration>>();
-        optionsMonitor
-            .Setup(x => x.CurrentValue)
-            .Returns(new MusicConfiguration { ConfidenceThreshold = 0.65 });
-
-        var sut = mock.Create<ConfidenceScoreService>();
+        var sut = new ConfidenceScoreService();
 
         var source = new SongMetadata
         {
             Title = "Hotel California",
-            Artists = new[] { "Eagles" },
+            Artists = ["Eagles"],
             Album = "Hotel California",
             Duration = TimeSpan.FromMinutes(6).Add(TimeSpan.FromSeconds(30))
         };
@@ -74,7 +59,7 @@ public class ConfidenceScoreServiceTests
         var candidate = new SongMetadata
         {
             Title = "Hotel California",
-            Artists = new[] { "Eagles" },
+            Artists = ["Eagles"],
             Album = "Hotel California",
             Duration = TimeSpan.FromMinutes(6).Add(TimeSpan.FromSeconds(30))
         };
@@ -95,18 +80,12 @@ public class ConfidenceScoreServiceTests
     public void ItWillReturnHighScoreForRemixVersions()
     {
         // Arrange
-        using var mock = AutoMock.GetLoose();
-        var optionsMonitor = mock.Mock<IOptionsMonitor<MusicConfiguration>>();
-        optionsMonitor
-            .Setup(x => x.CurrentValue)
-            .Returns(new MusicConfiguration { ConfidenceThreshold = 0.65 });
-
-        var sut = mock.Create<ConfidenceScoreService>();
+        var sut = new ConfidenceScoreService();
 
         var source = new SongMetadata
         {
             Title = "Blinding Lights",
-            Artists = new[] { "The Weeknd" },
+            Artists = ["The Weeknd"],
             Album = "After Hours",
             Duration = TimeSpan.FromMinutes(3).Add(TimeSpan.FromSeconds(20))
         };
@@ -114,7 +93,7 @@ public class ConfidenceScoreServiceTests
         var candidate = new SongMetadata
         {
             Title = "Blinding Lights (Remix)",
-            Artists = new[] { "The Weeknd" },
+            Artists = ["The Weeknd"],
             Album = "After Hours",
             Duration = TimeSpan.FromMinutes(3).Add(TimeSpan.FromSeconds(22))
         };
@@ -134,18 +113,12 @@ public class ConfidenceScoreServiceTests
     public void ItWillReturnHighScoreForRemasteredVersions()
     {
         // Arrange
-        using var mock = AutoMock.GetLoose();
-        var optionsMonitor = mock.Mock<IOptionsMonitor<MusicConfiguration>>();
-        optionsMonitor
-            .Setup(x => x.CurrentValue)
-            .Returns(new MusicConfiguration { ConfidenceThreshold = 0.65 });
-
-        var sut = mock.Create<ConfidenceScoreService>();
+        var sut = new ConfidenceScoreService();
 
         var source = new SongMetadata
         {
             Title = "Stairway to Heaven",
-            Artists = new[] { "Led Zeppelin" },
+            Artists = ["Led Zeppelin"],
             Album = "Led Zeppelin IV",
             Duration = TimeSpan.FromMinutes(8).Add(TimeSpan.FromSeconds(2))
         };
@@ -153,7 +126,7 @@ public class ConfidenceScoreServiceTests
         var candidate = new SongMetadata
         {
             Title = "Stairway to Heaven - Remastered",
-            Artists = new[] { "Led Zeppelin" },
+            Artists = ["Led Zeppelin"],
             Album = "Led Zeppelin IV (Remastered)",
             Duration = TimeSpan.FromMinutes(8).Add(TimeSpan.FromSeconds(3))
         };
@@ -172,18 +145,12 @@ public class ConfidenceScoreServiceTests
     public void ItWillReturnMediumScoreForSlightlyDifferentTitles()
     {
         // Arrange
-        using var mock = AutoMock.GetLoose();
-        var optionsMonitor = mock.Mock<IOptionsMonitor<MusicConfiguration>>();
-        optionsMonitor
-            .Setup(x => x.CurrentValue)
-            .Returns(new MusicConfiguration { ConfidenceThreshold = 0.65 });
-
-        var sut = mock.Create<ConfidenceScoreService>();
+        var sut = new ConfidenceScoreService();
 
         var source = new SongMetadata
         {
             Title = "Don't Stop Believin'",
-            Artists = new[] { "Journey" },
+            Artists = ["Journey"],
             Album = "Escape",
             Duration = TimeSpan.FromMinutes(4).Add(TimeSpan.FromSeconds(10))
         };
@@ -191,7 +158,7 @@ public class ConfidenceScoreServiceTests
         var candidate = new SongMetadata
         {
             Title = "Dont Stop Believing", // Missing apostrophes
-            Artists = new[] { "Journey" },
+            Artists = ["Journey"],
             Album = "Escape",
             Duration = TimeSpan.FromMinutes(4).Add(TimeSpan.FromSeconds(11))
         };
@@ -213,18 +180,12 @@ public class ConfidenceScoreServiceTests
     public void ItWillReturnLowScoreForDifferentArtist()
     {
         // Arrange
-        using var mock = AutoMock.GetLoose();
-        var optionsMonitor = mock.Mock<IOptionsMonitor<MusicConfiguration>>();
-        optionsMonitor
-            .Setup(x => x.CurrentValue)
-            .Returns(new MusicConfiguration { ConfidenceThreshold = 0.65 });
-
-        var sut = mock.Create<ConfidenceScoreService>();
+        var sut = new ConfidenceScoreService();
 
         var source = new SongMetadata
         {
             Title = "Hurt",
-            Artists = new[] { "Nine Inch Nails" },
+            Artists = ["Nine Inch Nails"],
             Album = "The Downward Spiral",
             Duration = TimeSpan.FromMinutes(3).Add(TimeSpan.FromSeconds(50))
         };
@@ -232,7 +193,7 @@ public class ConfidenceScoreServiceTests
         var candidate = new SongMetadata
         {
             Title = "Hurt", // Same title but different artist (Johnny Cash cover)
-            Artists = new[] { "Johnny Cash" },
+            Artists = ["Johnny Cash"],
             Album = "American IV: The Man Comes Around",
             Duration = TimeSpan.FromMinutes(3).Add(TimeSpan.FromSeconds(38))
         };
@@ -251,18 +212,12 @@ public class ConfidenceScoreServiceTests
     public void ItWillReturnHighScoreForMultipleArtistsWithPartialMatch()
     {
         // Arrange
-        using var mock = AutoMock.GetLoose();
-        var optionsMonitor = mock.Mock<IOptionsMonitor<MusicConfiguration>>();
-        optionsMonitor
-            .Setup(x => x.CurrentValue)
-            .Returns(new MusicConfiguration { ConfidenceThreshold = 0.65 });
-
-        var sut = mock.Create<ConfidenceScoreService>();
+        var sut = new ConfidenceScoreService();
 
         var source = new SongMetadata
         {
             Title = "Beautiful",
-            Artists = new[] { "Eminem", "Sia" },
+            Artists = ["Eminem", "Sia"],
             Album = "Revival",
             Duration = TimeSpan.FromMinutes(4).Add(TimeSpan.FromSeconds(10))
         };
@@ -270,7 +225,7 @@ public class ConfidenceScoreServiceTests
         var candidate = new SongMetadata
         {
             Title = "Beautiful",
-            Artists = new[] { "Eminem", "Sia", "Delta Heavy" }, // Has matching artists plus extra
+            Artists = ["Eminem", "Sia", "Delta Heavy"], // Has matching artists plus extra
             Album = "Revival",
             Duration = TimeSpan.FromMinutes(4).Add(TimeSpan.FromSeconds(10))
         };
@@ -288,13 +243,7 @@ public class ConfidenceScoreServiceTests
     public void ItWillReturnPerfectArtistScoreForEmptyArtistLists()
     {
         // Arrange
-        using var mock = AutoMock.GetLoose();
-        var optionsMonitor = mock.Mock<IOptionsMonitor<MusicConfiguration>>();
-        optionsMonitor
-            .Setup(x => x.CurrentValue)
-            .Returns(new MusicConfiguration { ConfidenceThreshold = 0.65 });
-
-        var sut = mock.Create<ConfidenceScoreService>();
+        var sut = new ConfidenceScoreService();
 
         var source = new SongMetadata
         {
@@ -328,18 +277,12 @@ public class ConfidenceScoreServiceTests
     public void ItWillReturnHighScoreForExactAlbumMatch()
     {
         // Arrange
-        using var mock = AutoMock.GetLoose();
-        var optionsMonitor = mock.Mock<IOptionsMonitor<MusicConfiguration>>();
-        optionsMonitor
-            .Setup(x => x.CurrentValue)
-            .Returns(new MusicConfiguration { ConfidenceThreshold = 0.65 });
-
-        var sut = mock.Create<ConfidenceScoreService>();
+        var sut = new ConfidenceScoreService();
 
         var source = new SongMetadata
         {
             Title = "Thriller",
-            Artists = new[] { "Michael Jackson" },
+            Artists = ["Michael Jackson"],
             Album = "Thriller",
             Duration = TimeSpan.FromMinutes(5).Add(TimeSpan.FromSeconds(57))
         };
@@ -347,7 +290,7 @@ public class ConfidenceScoreServiceTests
         var candidate = new SongMetadata
         {
             Title = "Thriller",
-            Artists = new[] { "Michael Jackson" },
+            Artists = ["Michael Jackson"],
             Album = "Thriller",
             Duration = TimeSpan.FromMinutes(5).Add(TimeSpan.FromSeconds(57))
         };
@@ -364,18 +307,12 @@ public class ConfidenceScoreServiceTests
     public void ItWillReturnHighScoreForAlbumVariations()
     {
         // Arrange
-        using var mock = AutoMock.GetLoose();
-        var optionsMonitor = mock.Mock<IOptionsMonitor<MusicConfiguration>>();
-        optionsMonitor
-            .Setup(x => x.CurrentValue)
-            .Returns(new MusicConfiguration { ConfidenceThreshold = 0.65 });
-
-        var sut = mock.Create<ConfidenceScoreService>();
+        var sut = new ConfidenceScoreService();
 
         var source = new SongMetadata
         {
             Title = "Rolling in the Deep",
-            Artists = new[] { "Adele" },
+            Artists = ["Adele"],
             Album = "21",
             Duration = TimeSpan.FromMinutes(3).Add(TimeSpan.FromSeconds(48))
         };
@@ -383,7 +320,7 @@ public class ConfidenceScoreServiceTests
         var candidate = new SongMetadata
         {
             Title = "Rolling in the Deep",
-            Artists = new[] { "Adele" },
+            Artists = ["Adele"],
             Album = "21 (Deluxe Edition)",
             Duration = TimeSpan.FromMinutes(3).Add(TimeSpan.FromSeconds(49))
         };
@@ -401,21 +338,15 @@ public class ConfidenceScoreServiceTests
     }
 
     [Fact]
-    public void ItWillReturnNeutralScoreForMissingAlbum()
+    public void ItWillReturnLowScoreForMissingAlbum()
     {
         // Arrange
-        using var mock = AutoMock.GetLoose();
-        var optionsMonitor = mock.Mock<IOptionsMonitor<MusicConfiguration>>();
-        optionsMonitor
-            .Setup(x => x.CurrentValue)
-            .Returns(new MusicConfiguration { ConfidenceThreshold = 0.65 });
-
-        var sut = mock.Create<ConfidenceScoreService>();
+        var sut = new ConfidenceScoreService();
 
         var source = new SongMetadata
         {
             Title = "Single Song",
-            Artists = new[] { "Artist Name" },
+            Artists = ["Artist Name"],
             Album = "Album Name",
             Duration = TimeSpan.FromMinutes(3).Add(TimeSpan.FromSeconds(0))
         };
@@ -423,7 +354,7 @@ public class ConfidenceScoreServiceTests
         var candidate = new SongMetadata
         {
             Title = "Single Song",
-            Artists = new[] { "Artist Name" },
+            Artists = ["Artist Name"],
             Album = null, // Missing album
             Duration = TimeSpan.FromMinutes(3).Add(TimeSpan.FromSeconds(0))
         };
@@ -432,8 +363,68 @@ public class ConfidenceScoreServiceTests
         var result = sut.CalculateScore(source, candidate);
 
         // Assert
-        // Missing album should return 0.5 neutral score
-        result.AlbumScore.Should().Be(0.5);
+        // Missing album should return 0.2 to penalize missing data (not neutral 0.5)
+        result.AlbumScore.Should().Be(0.2);
+    }
+
+    [Fact]
+    public void ItWillReturnLowAlbumScoreWhenSourceAlbumIsNull()
+    {
+        // Arrange
+        var sut = new ConfidenceScoreService();
+
+        var source = new SongMetadata
+        {
+            Title = "Single Song",
+            Artists = ["Artist Name"],
+            Album = null, // Source album missing
+            Duration = TimeSpan.FromMinutes(3).Add(TimeSpan.FromSeconds(0))
+        };
+
+        var candidate = new SongMetadata
+        {
+            Title = "Single Song",
+            Artists = ["Artist Name"],
+            Album = "Album Name",
+            Duration = TimeSpan.FromMinutes(3).Add(TimeSpan.FromSeconds(0))
+        };
+
+        // Act
+        var result = sut.CalculateScore(source, candidate);
+
+        // Assert
+        // Missing source album should also return 0.2
+        result.AlbumScore.Should().Be(0.2);
+    }
+
+    [Fact]
+    public void ItWillReturnLowAlbumScoreWhenBothAlbumsAreEmpty()
+    {
+        // Arrange
+        var sut = new ConfidenceScoreService();
+
+        var source = new SongMetadata
+        {
+            Title = "Single Song",
+            Artists = ["Artist Name"],
+            Album = null,
+            Duration = TimeSpan.FromMinutes(3).Add(TimeSpan.FromSeconds(0))
+        };
+
+        var candidate = new SongMetadata
+        {
+            Title = "Single Song",
+            Artists = ["Artist Name"],
+            Album = string.Empty,
+            Duration = TimeSpan.FromMinutes(3).Add(TimeSpan.FromSeconds(0))
+        };
+
+        // Act
+        var result = sut.CalculateScore(source, candidate);
+
+        // Assert
+        // Both albums missing should return 0.2, not neutral or perfect
+        result.AlbumScore.Should().Be(0.2);
     }
 
     #endregion
@@ -444,18 +435,12 @@ public class ConfidenceScoreServiceTests
     public void ItWillReturnPerfectScoreForIdenticalDuration()
     {
         // Arrange
-        using var mock = AutoMock.GetLoose();
-        var optionsMonitor = mock.Mock<IOptionsMonitor<MusicConfiguration>>();
-        optionsMonitor
-            .Setup(x => x.CurrentValue)
-            .Returns(new MusicConfiguration { ConfidenceThreshold = 0.65 });
-
-        var sut = mock.Create<ConfidenceScoreService>();
+        var sut = new ConfidenceScoreService();
 
         var source = new SongMetadata
         {
             Title = "Test Song",
-            Artists = new[] { "Test Artist" },
+            Artists = ["Test Artist"],
             Album = "Test Album",
             Duration = TimeSpan.FromSeconds(195)
         };
@@ -463,7 +448,7 @@ public class ConfidenceScoreServiceTests
         var candidate = new SongMetadata
         {
             Title = "Test Song",
-            Artists = new[] { "Test Artist" },
+            Artists = ["Test Artist"],
             Album = "Test Album",
             Duration = TimeSpan.FromSeconds(195)
         };
@@ -479,18 +464,12 @@ public class ConfidenceScoreServiceTests
     public void ItWillReturn095ScoreFor2SecondsDifference()
     {
         // Arrange
-        using var mock = AutoMock.GetLoose();
-        var optionsMonitor = mock.Mock<IOptionsMonitor<MusicConfiguration>>();
-        optionsMonitor
-            .Setup(x => x.CurrentValue)
-            .Returns(new MusicConfiguration { ConfidenceThreshold = 0.65 });
-
-        var sut = mock.Create<ConfidenceScoreService>();
+        var sut = new ConfidenceScoreService();
 
         var source = new SongMetadata
         {
             Title = "Radio Edit",
-            Artists = new[] { "Artist" },
+            Artists = ["Artist"],
             Album = "Album",
             Duration = TimeSpan.FromSeconds(180)
         };
@@ -498,7 +477,7 @@ public class ConfidenceScoreServiceTests
         var candidate = new SongMetadata
         {
             Title = "Radio Edit",
-            Artists = new[] { "Artist" },
+            Artists = ["Artist"],
             Album = "Album",
             Duration = TimeSpan.FromSeconds(182) // 2 seconds difference
         };
@@ -514,18 +493,12 @@ public class ConfidenceScoreServiceTests
     public void ItWillReturn085ScoreFor10SecondsDifference()
     {
         // Arrange
-        using var mock = AutoMock.GetLoose();
-        var optionsMonitor = mock.Mock<IOptionsMonitor<MusicConfiguration>>();
-        optionsMonitor
-            .Setup(x => x.CurrentValue)
-            .Returns(new MusicConfiguration { ConfidenceThreshold = 0.65 });
-
-        var sut = mock.Create<ConfidenceScoreService>();
+        var sut = new ConfidenceScoreService();
 
         var source = new SongMetadata
         {
             Title = "Extended Version",
-            Artists = new[] { "Artist" },
+            Artists = ["Artist"],
             Album = "Album",
             Duration = TimeSpan.FromSeconds(200)
         };
@@ -533,7 +506,7 @@ public class ConfidenceScoreServiceTests
         var candidate = new SongMetadata
         {
             Title = "Extended Version",
-            Artists = new[] { "Artist" },
+            Artists = ["Artist"],
             Album = "Album",
             Duration = TimeSpan.FromSeconds(210) // 10 seconds difference
         };
@@ -549,18 +522,12 @@ public class ConfidenceScoreServiceTests
     public void ItWillReturn070ScoreFor30SecondsDifference()
     {
         // Arrange
-        using var mock = AutoMock.GetLoose();
-        var optionsMonitor = mock.Mock<IOptionsMonitor<MusicConfiguration>>();
-        optionsMonitor
-            .Setup(x => x.CurrentValue)
-            .Returns(new MusicConfiguration { ConfidenceThreshold = 0.65 });
-
-        var sut = mock.Create<ConfidenceScoreService>();
+        var sut = new ConfidenceScoreService();
 
         var source = new SongMetadata
         {
             Title = "Live Version",
-            Artists = new[] { "Artist" },
+            Artists = ["Artist"],
             Album = "Live Album",
             Duration = TimeSpan.FromSeconds(240)
         };
@@ -568,7 +535,7 @@ public class ConfidenceScoreServiceTests
         var candidate = new SongMetadata
         {
             Title = "Live Version",
-            Artists = new[] { "Artist" },
+            Artists = ["Artist"],
             Album = "Live Album",
             Duration = TimeSpan.FromSeconds(270) // 30 seconds difference
         };
@@ -584,18 +551,12 @@ public class ConfidenceScoreServiceTests
     public void ItWillReturnLowScoreForLargeDurationDifference()
     {
         // Arrange
-        using var mock = AutoMock.GetLoose();
-        var optionsMonitor = mock.Mock<IOptionsMonitor<MusicConfiguration>>();
-        optionsMonitor
-            .Setup(x => x.CurrentValue)
-            .Returns(new MusicConfiguration { ConfidenceThreshold = 0.65 });
-
-        var sut = mock.Create<ConfidenceScoreService>();
+        var sut = new ConfidenceScoreService();
 
         var source = new SongMetadata
         {
             Title = "Song",
-            Artists = new[] { "Artist" },
+            Artists = ["Artist"],
             Album = "Album",
             Duration = TimeSpan.FromSeconds(180)
         };
@@ -603,7 +564,7 @@ public class ConfidenceScoreServiceTests
         var candidate = new SongMetadata
         {
             Title = "Song",
-            Artists = new[] { "Artist" },
+            Artists = ["Artist"],
             Album = "Album",
             Duration = TimeSpan.FromSeconds(300) // 120 seconds (2 minutes) difference
         };
@@ -624,18 +585,12 @@ public class ConfidenceScoreServiceTests
     public void ItWillHandleMissingDuration()
     {
         // Arrange
-        using var mock = AutoMock.GetLoose();
-        var optionsMonitor = mock.Mock<IOptionsMonitor<MusicConfiguration>>();
-        optionsMonitor
-            .Setup(x => x.CurrentValue)
-            .Returns(new MusicConfiguration { ConfidenceThreshold = 0.65 });
-
-        var sut = mock.Create<ConfidenceScoreService>();
+        var sut = new ConfidenceScoreService();
 
         var source = new SongMetadata
         {
             Title = "Song Without Duration",
-            Artists = new[] { "Artist" },
+            Artists = ["Artist"],
             Album = "Album",
             Duration = null
         };
@@ -643,7 +598,7 @@ public class ConfidenceScoreServiceTests
         var candidate = new SongMetadata
         {
             Title = "Song Without Duration",
-            Artists = new[] { "Artist" },
+            Artists = ["Artist"],
             Album = "Album",
             Duration = TimeSpan.FromSeconds(180)
         };
@@ -660,13 +615,7 @@ public class ConfidenceScoreServiceTests
     public void ItWillHandleEmptyArtistLists()
     {
         // Arrange
-        using var mock = AutoMock.GetLoose();
-        var optionsMonitor = mock.Mock<IOptionsMonitor<MusicConfiguration>>();
-        optionsMonitor
-            .Setup(x => x.CurrentValue)
-            .Returns(new MusicConfiguration { ConfidenceThreshold = 0.65 });
-
-        var sut = mock.Create<ConfidenceScoreService>();
+        var sut = new ConfidenceScoreService();
 
         var source = new SongMetadata
         {
@@ -679,7 +628,7 @@ public class ConfidenceScoreServiceTests
         var candidate = new SongMetadata
         {
             Title = "Instrumental",
-            Artists = new[] { "Various Artists" }, // One has artists, one doesn't
+            Artists = ["Various Artists"], // One has artists, one doesn't
             Album = "Compilation",
             Duration = TimeSpan.FromSeconds(180)
         };
@@ -696,13 +645,7 @@ public class ConfidenceScoreServiceTests
     public void ItWillCorrectlyThresholdAtBoundary()
     {
         // Arrange
-        using var mock = AutoMock.GetLoose();
-        var optionsMonitor = mock.Mock<IOptionsMonitor<MusicConfiguration>>();
-        optionsMonitor
-            .Setup(x => x.CurrentValue)
-            .Returns(new MusicConfiguration { ConfidenceThreshold = 0.65 });
-
-        var sut = mock.Create<ConfidenceScoreService>();
+        var sut = new ConfidenceScoreService();
 
         var exactlyAtThreshold = new ConfidenceScore
         {
@@ -723,8 +666,8 @@ public class ConfidenceScoreServiceTests
         };
 
         // Act
-        var atThresholdResult = sut.MeetsThreshold(exactlyAtThreshold);
-        var belowThresholdResult = sut.MeetsThreshold(justBelowThreshold);
+        var atThresholdResult = sut.MeetsThreshold(exactlyAtThreshold, 0.65);
+        var belowThresholdResult = sut.MeetsThreshold(justBelowThreshold, 0.65);
 
         // Assert
         atThresholdResult.Should().BeTrue();
@@ -732,21 +675,63 @@ public class ConfidenceScoreServiceTests
     }
 
     [Fact]
+    public void ItWillFailThresholdWhenArtistScoreBelowMinimumEvenIfTotalScorePasses()
+    {
+        // Arrange
+        var sut = new ConfidenceScoreService();
+
+        // Scenario: same title, different artist, no album on YouTube
+        // Title(1.0×0.40) + Artist(0.0×0.25) + Album(0.2×0.25) + Duration(0.95×0.10) = 0.545
+        // Even if total was high enough, artist gate should prevent a false positive
+        var scoreWithLowArtist = new ConfidenceScore
+        {
+            TotalScore = 0.70, // Would pass total threshold on its own
+            TitleScore = 1.0,
+            ArtistScore = 0.3, // Below MinimumArtistScore of 0.5
+            AlbumScore = 0.2,
+            DurationScore = 0.95
+        };
+
+        // Act
+        var result = sut.MeetsThreshold(scoreWithLowArtist, 0.65);
+
+        // Assert
+        // Should fail because ArtistScore (0.3) < MinimumArtistScore (0.5)
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ItWillPassThresholdWhenArtistScoreMeetsMinimumAndTotalScorePassesThreshold()
+    {
+        // Arrange
+        var sut = new ConfidenceScoreService();
+
+        var scoreWithSufficientArtist = new ConfidenceScore
+        {
+            TotalScore = 0.70,
+            TitleScore = 0.80,
+            ArtistScore = 0.5, // Exactly at MinimumArtistScore
+            AlbumScore = 0.70,
+            DurationScore = 0.80
+        };
+
+        // Act
+        var result = sut.MeetsThreshold(scoreWithSufficientArtist, 0.65);
+
+        // Assert
+        result.Should().BeTrue();
+    }
+
+    [Fact]
     public void ItWillCorrectlyCalculateConfidenceLevelLow()
     {
         // Arrange
-        using var mock = AutoMock.GetLoose();
-        var optionsMonitor = mock.Mock<IOptionsMonitor<MusicConfiguration>>();
-        optionsMonitor
-            .Setup(x => x.CurrentValue)
-            .Returns(new MusicConfiguration { ConfidenceThreshold = 0.65 });
-
-        var sut = mock.Create<ConfidenceScoreService>();
+        var sut = new ConfidenceScoreService();
 
         var source = new SongMetadata
         {
             Title = "Song A",
-            Artists = new[] { "Artist X" },
+            Artists = ["Artist X"],
             Album = "Album 1",
             Duration = TimeSpan.FromSeconds(180)
         };
@@ -754,7 +739,7 @@ public class ConfidenceScoreServiceTests
         var candidate = new SongMetadata
         {
             Title = "Completely Different Song",
-            Artists = new[] { "Different Artist" },
+            Artists = ["Different Artist"],
             Album = "Different Album",
             Duration = TimeSpan.FromSeconds(400)
         };
@@ -771,19 +756,13 @@ public class ConfidenceScoreServiceTests
     public void ItWillCorrectlyCalculateConfidenceLevelMedium()
     {
         // Arrange
-        using var mock = AutoMock.GetLoose();
-        var optionsMonitor = mock.Mock<IOptionsMonitor<MusicConfiguration>>();
-        optionsMonitor
-            .Setup(x => x.CurrentValue)
-            .Returns(new MusicConfiguration { ConfidenceThreshold = 0.65 });
-
-        var sut = mock.Create<ConfidenceScoreService>();
+        var sut = new ConfidenceScoreService();
 
         // Create a scenario with good match but not perfect
         var source = new SongMetadata
         {
             Title = "Shape of You",
-            Artists = new[] { "Ed Sheeran" },
+            Artists = ["Ed Sheeran"],
             Album = "Divide",
             Duration = TimeSpan.FromSeconds(233)
         };
@@ -791,7 +770,7 @@ public class ConfidenceScoreServiceTests
         var candidate = new SongMetadata
         {
             Title = "Shape of You",
-            Artists = new[] { "Ed Sheeran" },
+            Artists = ["Ed Sheeran"],
             Album = null, // Missing album will give neutral 0.5
             Duration = TimeSpan.FromSeconds(245) // 12 seconds off = 0.85 duration score
         };
@@ -801,11 +780,10 @@ public class ConfidenceScoreServiceTests
 
         // Assert
         // Title: 1.0 * 0.40 = 0.40
-        // Artist: 1.0 * 0.35 = 0.35
-        // Album: 0.5 * 0.15 = 0.075
-        // Duration: 0.85 * 0.10 = 0.085
-        // Total: 0.91 (should be High actually)
-        // Let's adjust for Medium range (0.65-0.84)
+        // Artist: 1.0 * 0.25 = 0.25
+        // Album: 0.2 * 0.25 = 0.05 (missing album → 0.2 penalty, not neutral)
+        // Duration: 0.85 * 0.10 = 0.085 (12 seconds off)
+        // Total: ~0.785 → Medium
         result.Level.Should().BeOneOf(ConfidenceLevel.Medium, ConfidenceLevel.High);
     }
 
@@ -813,18 +791,12 @@ public class ConfidenceScoreServiceTests
     public void ItWillCorrectlyCalculateConfidenceLevelHigh()
     {
         // Arrange
-        using var mock = AutoMock.GetLoose();
-        var optionsMonitor = mock.Mock<IOptionsMonitor<MusicConfiguration>>();
-        optionsMonitor
-            .Setup(x => x.CurrentValue)
-            .Returns(new MusicConfiguration { ConfidenceThreshold = 0.65 });
-
-        var sut = mock.Create<ConfidenceScoreService>();
+        var sut = new ConfidenceScoreService();
 
         var source = new SongMetadata
         {
             Title = "Smells Like Teen Spirit",
-            Artists = new[] { "Nirvana" },
+            Artists = ["Nirvana"],
             Album = "Nevermind",
             Duration = TimeSpan.FromSeconds(301)
         };
@@ -832,7 +804,7 @@ public class ConfidenceScoreServiceTests
         var candidate = new SongMetadata
         {
             Title = "Smells Like Teen Spirit",
-            Artists = new[] { "Nirvana" },
+            Artists = ["Nirvana"],
             Album = "Nevermind",
             Duration = TimeSpan.FromSeconds(302) // 1 second off
         };
@@ -849,13 +821,7 @@ public class ConfidenceScoreServiceTests
     public void ItWillHandleMeetsThresholdWithCustomThreshold()
     {
         // Arrange
-        using var mock = AutoMock.GetLoose();
-        var optionsMonitor = mock.Mock<IOptionsMonitor<MusicConfiguration>>();
-        optionsMonitor
-            .Setup(x => x.CurrentValue)
-            .Returns(new MusicConfiguration { ConfidenceThreshold = 0.65 });
-
-        var sut = mock.Create<ConfidenceScoreService>();
+        var sut = new ConfidenceScoreService();
 
         var score = new ConfidenceScore
         {
@@ -867,12 +833,10 @@ public class ConfidenceScoreServiceTests
         };
 
         // Act
-        var meetsDefault = sut.MeetsThreshold(score); // 0.65 default
         var meetsHigher = sut.MeetsThreshold(score, 0.80); // Custom higher threshold
         var meetsLower = sut.MeetsThreshold(score, 0.50); // Custom lower threshold
 
         // Assert
-        meetsDefault.Should().BeTrue(); // 0.75 >= 0.65
         meetsHigher.Should().BeFalse(); // 0.75 < 0.80
         meetsLower.Should().BeTrue(); // 0.75 >= 0.50
     }
@@ -885,19 +849,13 @@ public class ConfidenceScoreServiceTests
     public void ItWillMatchBohemianRhapsodyAcrossPlatforms()
     {
         // Arrange
-        using var mock = AutoMock.GetLoose();
-        var optionsMonitor = mock.Mock<IOptionsMonitor<MusicConfiguration>>();
-        optionsMonitor
-            .Setup(x => x.CurrentValue)
-            .Returns(new MusicConfiguration { ConfidenceThreshold = 0.65 });
-
-        var sut = mock.Create<ConfidenceScoreService>();
+        var sut = new ConfidenceScoreService();
 
         // Spotify metadata
         var spotify = new SongMetadata
         {
             Title = "Bohemian Rhapsody",
-            Artists = new[] { "Queen" },
+            Artists = ["Queen"],
             Album = "A Night at the Opera",
             Duration = TimeSpan.FromSeconds(354)
         };
@@ -906,7 +864,7 @@ public class ConfidenceScoreServiceTests
         var appleMusic = new SongMetadata
         {
             Title = "Bohemian Rhapsody",
-            Artists = new[] { "Queen" },
+            Artists = ["Queen"],
             Album = "A Night at the Opera (2011 Remaster)",
             Duration = TimeSpan.FromSeconds(355)
         };
@@ -925,19 +883,13 @@ public class ConfidenceScoreServiceTests
     public void ItWillRejectCoverVersions()
     {
         // Arrange
-        using var mock = AutoMock.GetLoose();
-        var optionsMonitor = mock.Mock<IOptionsMonitor<MusicConfiguration>>();
-        optionsMonitor
-            .Setup(x => x.CurrentValue)
-            .Returns(new MusicConfiguration { ConfidenceThreshold = 0.65 });
-
-        var sut = mock.Create<ConfidenceScoreService>();
+        var sut = new ConfidenceScoreService();
 
         // Original version
         var original = new SongMetadata
         {
             Title = "Hallelujah",
-            Artists = new[] { "Leonard Cohen" },
+            Artists = ["Leonard Cohen"],
             Album = "Various Positions",
             Duration = TimeSpan.FromSeconds(272)
         };
@@ -946,7 +898,7 @@ public class ConfidenceScoreServiceTests
         var cover = new SongMetadata
         {
             Title = "Hallelujah",
-            Artists = new[] { "Jeff Buckley" },
+            Artists = ["Jeff Buckley"],
             Album = "Grace",
             Duration = TimeSpan.FromSeconds(413)
         };
@@ -965,18 +917,12 @@ public class ConfidenceScoreServiceTests
     public void ItWillMatchRadioEditToAlbumVersion()
     {
         // Arrange
-        using var mock = AutoMock.GetLoose();
-        var optionsMonitor = mock.Mock<IOptionsMonitor<MusicConfiguration>>();
-        optionsMonitor
-            .Setup(x => x.CurrentValue)
-            .Returns(new MusicConfiguration { ConfidenceThreshold = 0.65 });
-
-        var sut = mock.Create<ConfidenceScoreService>();
+        var sut = new ConfidenceScoreService();
 
         var albumVersion = new SongMetadata
         {
             Title = "Purple Rain",
-            Artists = new[] { "Prince" },
+            Artists = ["Prince"],
             Album = "Purple Rain",
             Duration = TimeSpan.FromSeconds(523) // 8:43
         };
@@ -984,7 +930,7 @@ public class ConfidenceScoreServiceTests
         var radioEdit = new SongMetadata
         {
             Title = "Purple Rain (Radio Edit)",
-            Artists = new[] { "Prince" },
+            Artists = ["Prince"],
             Album = "Purple Rain",
             Duration = TimeSpan.FromSeconds(242) // 4:02
         };
@@ -1007,18 +953,12 @@ public class ConfidenceScoreServiceTests
     public void ItWillMatchCompilationAlbumVariations()
     {
         // Arrange
-        using var mock = AutoMock.GetLoose();
-        var optionsMonitor = mock.Mock<IOptionsMonitor<MusicConfiguration>>();
-        optionsMonitor
-            .Setup(x => x.CurrentValue)
-            .Returns(new MusicConfiguration { ConfidenceThreshold = 0.65 });
-
-        var sut = mock.Create<ConfidenceScoreService>();
+        var sut = new ConfidenceScoreService();
 
         var original = new SongMetadata
         {
             Title = "Sweet Child O' Mine",
-            Artists = new[] { "Guns N' Roses" },
+            Artists = ["Guns N' Roses"],
             Album = "Appetite for Destruction",
             Duration = TimeSpan.FromSeconds(356)
         };
@@ -1026,7 +966,7 @@ public class ConfidenceScoreServiceTests
         var compilation = new SongMetadata
         {
             Title = "Sweet Child O' Mine",
-            Artists = new[] { "Guns N' Roses" },
+            Artists = ["Guns N' Roses"],
             Album = "Greatest Hits", // Different album (compilation)
             Duration = TimeSpan.FromSeconds(356)
         };
@@ -1049,13 +989,7 @@ public class ConfidenceScoreServiceTests
     public void ItWillHandleFeaturedArtistVariations()
     {
         // Arrange
-        using var mock = AutoMock.GetLoose();
-        var optionsMonitor = mock.Mock<IOptionsMonitor<MusicConfiguration>>();
-        optionsMonitor
-            .Setup(x => x.CurrentValue)
-            .Returns(new MusicConfiguration { ConfidenceThreshold = 0.65 });
-
-        var sut = mock.Create<ConfidenceScoreService>();
+        var sut = new ConfidenceScoreService();
 
         // Some platforms list featured artists separately
         var version1 = new SongMetadata

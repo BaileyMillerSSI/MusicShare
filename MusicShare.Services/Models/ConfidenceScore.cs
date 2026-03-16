@@ -16,6 +16,12 @@ public enum ConfidenceLevel
 public record ConfidenceScore
 {
     /// <summary>
+    /// Minimum artist score required for a match to be considered valid.
+    /// Even if total score passes threshold, artist score must meet this minimum.
+    /// </summary>
+    public const double MinimumArtistScore = 0.5;
+
+    /// <summary>
     /// Overall weighted confidence score (0.0 to 1.0).
     /// </summary>
     public required double TotalScore { get; init; }
@@ -52,6 +58,7 @@ public record ConfidenceScore
 
     /// <summary>
     /// Determines if the score meets the specified threshold.
+    /// Requires both the total score to meet the threshold AND the artist score to meet MinimumArtistScore.
     /// </summary>
-    public bool MeetsThreshold(double threshold) => TotalScore >= threshold;
+    public bool MeetsThreshold(double threshold) => TotalScore >= threshold && ArtistScore >= MinimumArtistScore;
 }

@@ -32,7 +32,7 @@ public class GetAllShareIdsHandlerTests
         using var mock = AutoMock.GetLoose();
         mock.Mock<IShareRequestService>()
             .Setup(x => x.GetAllCompletedShareIdsAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<string>());
+            .ReturnsAsync([]);
 
         var sut = mock.Create<GetAllShareIds.Handler>();
 
@@ -70,7 +70,7 @@ public class GetAllShareIdsHandlerTests
         var cts = new CancellationTokenSource();
         mock.Mock<IShareRequestService>()
             .Setup(x => x.GetAllCompletedShareIdsAsync(cts.Token))
-            .ReturnsAsync(new List<string>());
+            .ReturnsAsync([]);
 
         var sut = mock.Create<GetAllShareIds.Handler>();
 
@@ -90,7 +90,7 @@ public class GetAllShareIdsHandlerTests
         using var mock = AutoMock.GetLoose();
         mock.Mock<IShareRequestService>()
             .Setup(x => x.GetAllCompletedShareIdsAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<string> { "id1", "id2" });
+            .ReturnsAsync(["id1", "id2"]);
 
         var sut = mock.Create<GetAllShareIds.Handler>();
 

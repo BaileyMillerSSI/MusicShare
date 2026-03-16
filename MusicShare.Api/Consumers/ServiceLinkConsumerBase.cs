@@ -5,7 +5,7 @@ using MusicShare.Persistence.Entities;
 using MusicShare.Persistence.Repositories;
 using MusicShare.Services.Services.Music;
 
-namespace MusicShare.Worker.Consumers;
+namespace MusicShare.Api.Consumers;
 
 /// <summary>
 /// Base class for service-specific link resolution consumers.

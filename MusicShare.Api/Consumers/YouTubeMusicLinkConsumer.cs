@@ -3,7 +3,7 @@ using MusicShare.Persistence.Repositories;
 using MusicShare.Services.Services;
 using MusicShare.Services.Services.Music;
 
-namespace MusicShare.Worker.Consumers;
+namespace MusicShare.Api.Consumers;
 
 /// <summary>
 /// Consumer that resolves songs on YouTube Music.

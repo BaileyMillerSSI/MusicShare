@@ -21,7 +21,7 @@ MusicShare is a full-stack web application that allows users to share music URLs
 ## Architecture
 
 **Stack:**
-- **Backend**: .NET 10 with ASP.NET Core API and background Worker
+- **Backend**: .NET 10 with ASP.NET Core API
 - **Frontend**: Next.js 16 + React 19 + TypeScript
 - **Database**: MongoDB
 - **Messaging**: RabbitMQ (via MassTransit)
@@ -37,11 +37,16 @@ MusicShare is a full-stack web application that allows users to share music URLs
 
 ```
 MusicShare/
-├── MusicShare.Api/              # REST API (Controllers, Commands, Queries)
+├── MusicShare.Api/              # REST API (Controllers, Commands, Queries, Consumers, Sagas)
 │   ├── Controllers/             # ShareController.cs - REST endpoints
 │   ├── Commands/                # CQRS commands (SubmitShare.cs - static class with nested Request/Handler/Response)
 │   ├── Queries/                 # CQRS queries (GetShareResult.cs - static class with nested Query/Handler/Result)
-│   └── Program.cs               # Service configuration
+│   ├── Consumers/               # MassTransit consumers (SourceMetadataConsumer, service link consumers)
+│   ├── Sagas/ShareRequest/      # ShareRequestSaga.cs, state, activities
+│   │   ├── ShareRequestSaga.cs  # State machine orchestrator
+│   │   ├── ShareRequestSagaState.cs
+│   │   └── Activities/          # CompleteSagaActivity, FailSagaActivity
+│   └── Program.cs               # Service configuration, MassTransit + saga setup
 ├── MusicShare.Services/         # Domain services, music adapters, models
 │   ├── Configuration/           # Service-specific settings (Spotify, YouTube, Frontend)
 │   ├── Models/                  # Response DTOs (ServiceLink, ShareResultResponse, SongDetails, SubmitShareResponse)
@@ -62,13 +67,6 @@ MusicShare/
 │   │       ├── YouTube/         # YouTubeMusicAdapter, mock adapter
 │   │       └── Apple/           # AppleMusicMockAdapter
 │   └── DependencyInjection.cs   # AddDomainServices() + AddFrontendRevalidateService()
-├── MusicShare.Worker/           # Background processor (Consumers, Sagas)
-│   ├── Sagas/ShareRequest/      # ShareRequestSaga.cs, state, activities
-│   │   ├── ShareRequestSaga.cs  # State machine orchestrator
-│   │   ├── ShareRequestSagaState.cs
-│   │   └── Activities/          # CompleteSagaActivity, FailSagaActivity
-│   ├── Consumers/               # Service-specific message consumers
-│   └── Program.cs               # Worker configuration
 ├── MusicShare.Frontend/         # Next.js SPA
 │   ├── src/
 │   │   ├── app/                 # Next.js App Router
@@ -138,7 +136,7 @@ dotnet test MusicShare.slnx                            # Run tests
 dotnet run --project MusicShare.AppHost           # Start full stack
 ```
 
-This starts MongoDB, RabbitMQ, API, Worker, and Frontend with dev tooling (Mongo Express, RabbitMQ Management).
+This starts MongoDB, RabbitMQ, API, and Frontend with dev tooling (Mongo Express, RabbitMQ Management).
 
 **Local endpoints:**
 - API: `http://localhost:5078` or `https://localhost:7125`
@@ -206,18 +204,18 @@ When working with .NET codebase, the following MCP tools (`mcp__vs-mcp__*`) prov
 - **Endpoints**:
   - `POST /api/share` - Submit a music URL for resolution
   - `GET /api/share/{shareId}` - Get resolution results
-- **ISR Revalidation**: `POST /api/revalidate` - Triggered by Worker on completion, authenticated via `X-API-KEY` header
+- **ISR Revalidation**: `POST /api/revalidate` - Triggered by the saga on completion, authenticated via `X-API-KEY` header
 
 ## Key Files to Know
 
 | Area | File | Purpose |
 |------|------|---------|
-| API Entry | `MusicShare.Api/Program.cs` | Service configuration, MediatR, MassTransit setup |
+| API Entry | `MusicShare.Api/Program.cs` | Service configuration, MediatR, MassTransit + saga setup |
 | API Controller | `MusicShare.Api/Controllers/ShareController.cs` | REST endpoints |
 | CQRS Command | `MusicShare.Api/Commands/SubmitShare.cs` | Static class with nested Request/Handler/Response |
 | CQRS Query | `MusicShare.Api/Queries/GetShareResult.cs` | Static class with nested Query/Handler/Result |
-| Worker Entry | `MusicShare.Worker/Program.cs` | Background service config with MongoDB state |
-| Saga | `MusicShare.Worker/Sagas/ShareRequest/ShareRequestSaga.cs` | Async workflow orchestration |
+| Saga | `MusicShare.Api/Sagas/ShareRequest/ShareRequestSaga.cs` | Async workflow orchestration |
+| Consumers | `MusicShare.Api/Consumers/` | MassTransit message consumers for metadata and service links |
 | Frontend Layout | `MusicShare.Frontend/src/app/layout.tsx` | Root layout, metadata, QueryClient |
 | Share Page | `MusicShare.Frontend/src/app/share/[shareId]/page.tsx` | Dynamic result page |
 | API Client | `MusicShare.Frontend/src/lib/api.ts` | Backend communication |
@@ -238,7 +236,7 @@ When working with .NET codebase, the following MCP tools (`mcp__vs-mcp__*`) prov
 
 1. User submits URL on home page → `POST /api/share`
 2. API validates URL, detects service type via `MusicServiceResolver`, creates `ShareRequest`, publishes `SongShareSubmitted` event
-3. Worker's `ShareRequestSaga` orchestrates resolution:
+3. API's `ShareRequestSaga` orchestrates resolution:
    - State machine: `ResolvingMetadata` → `AwaitingServiceLinks` → `Completed`/`Failed`
    - Publishes `ResolveSourceMetadata` to extract metadata from source URL
    - On `SourceMetadataResolved`, publishes parallel `ResolveServiceLink` commands for other services
@@ -398,7 +396,7 @@ public class MyHandlerTests
 2. Implement `IMusicServiceAdapter` interface
 3. Add enum value to `ServiceType` in `MusicShare.Contracts/`
 4. Register in DI via `MusicShare.Services/DependencyInjection.cs`
-5. Add consumer in Worker for the new service
+5. Add consumer in `MusicShare.Api/Consumers/` for the new service
 6. Update Saga to include the new service in parallel resolution
 7. Add frontend link component in `src/components/MusicLinks/`
 
@@ -422,8 +420,8 @@ public class MyHandlerTests
 ### Adding a new message type
 
 1. Create record type in `MusicShare.Contracts/Messages/`
-2. Create consumer in `MusicShare.Worker/Consumers/`
-3. Register consumer in Worker's `Program.cs` MassTransit configuration
+2. Create consumer in `MusicShare.Api/Consumers/`
+3. Consumers are auto-registered via assembly scanning in `MusicShare.Api/Program.cs`
 4. Update Saga if message is part of workflow
 
 ## Observability

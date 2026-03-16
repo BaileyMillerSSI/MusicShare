@@ -1,9 +1,9 @@
 using MassTransit;
 using MusicShare.Contracts.Messages;
 using MusicShare.Services.Services;
-using MusicShare.Worker.Sagas.ShareRequest.Activities;
+using MusicShare.Api.Sagas.ShareRequest.Activities;
 
-namespace MusicShare.Worker.Sagas.ShareRequest;
+namespace MusicShare.Api.Sagas.ShareRequest;
 
 /// <summary>
 /// Saga state machine that orchestrates the share request workflow.
@@ -55,10 +55,9 @@ public class ShareRequestSaga : MassTransitStateMachine<ShareRequestSagaState>
                     ctx.Saga.CreatedAt = DateTime.UtcNow;
 
                     // Determine which services we'll need to resolve (exclude source)
-                    ctx.Saga.PendingServices = serviceResolver.GetAllAdapters()
+                    ctx.Saga.PendingServices = [.. serviceResolver.GetAllAdapters()
                         .Select(a => a.ServiceType)
-                        .Where(s => s != ctx.Message.SourceService)
-                        .ToList();
+                        .Where(s => s != ctx.Message.SourceService)];
                 })
                 .Publish(ctx => new ResolveSourceMetadata
                 {

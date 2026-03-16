@@ -52,11 +52,6 @@ public static class DependencyInjection
 
     private static TBuilder AddMusicServices<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
-        builder
-            .Services
-            .AddOptions<MusicConfiguration>()
-            .Bind(builder.Configuration.GetSection(MusicConfiguration.SectionName));
-
         // Register the confidence scoring service (used by ConfidenceAdapter)
         builder.Services.AddSingleton<IConfidenceScoreService, ConfidenceScoreService>();
 
@@ -79,9 +74,16 @@ public static class DependencyInjection
         // Register YouTube Music service
         builder.Services.AddTransient<IYouTubeMusicService, YouTubeMusicService>();
 
-        // Register YouTube Music adapter
-        builder.Services.AddTransient<IMusicServiceAdapter, YouTubeMusicAdapter>()
-            .Decorate<IMusicServiceAdapter, ConfidenceAdapter>();
+        // Register YouTube Music adapter wrapped with per-service confidence threshold
+        builder.Services.AddTransient<YouTubeMusicAdapter>();
+        builder.Services.AddTransient<IMusicServiceAdapter>(sp =>
+        {
+            var config = sp.GetRequiredService<IOptions<YouTubeMusicConfiguration>>().Value;
+            return new ConfidenceAdapter(
+                sp.GetRequiredService<YouTubeMusicAdapter>(),
+                sp.GetRequiredService<IConfidenceScoreService>(),
+                config.ConfidenceThreshold);
+        });
 
         builder.Services.AddHttpClient(nameof(YouTubeMusicClient), client =>
         {
@@ -123,9 +125,16 @@ public static class DependencyInjection
             })
             .AddHttpMessageHandler<SpotifyAccessTokenHandler>();
 
-        // Register Spotify adapter
-        builder.Services.AddTransient<IMusicServiceAdapter, SpotifyMusicAdapter>()
-            .Decorate<IMusicServiceAdapter, ConfidenceAdapter>();
+        // Register Spotify adapter wrapped with per-service confidence threshold
+        builder.Services.AddTransient<SpotifyMusicAdapter>();
+        builder.Services.AddTransient<IMusicServiceAdapter>(sp =>
+        {
+            var config = sp.GetRequiredService<IOptions<SpotifyConfiguration>>().Value;
+            return new ConfidenceAdapter(
+                sp.GetRequiredService<SpotifyMusicAdapter>(),
+                sp.GetRequiredService<IConfidenceScoreService>(),
+                config.ConfidenceThreshold);
+        });
 
         builder
             .Services

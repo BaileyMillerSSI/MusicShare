@@ -1,23 +1,23 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 
 namespace MusicShare.Services.Services.Music.Spotify
 {
     public class SpotifySearchResponse
     {
-        public SpotifyTracksResult tracks { get; set; }
+        public SpotifyTracksResult? tracks { get; set; }
     }
 
     public class SpotifyTracksResult
     {
-        public SpotifyResponse[] items { get; set; }
+        public SpotifyResponse[]? items { get; set; }
         public int total { get; set; }
     }
 
     public class SpotifyResponse
     {
-        public SpotifyArtist[] artists { get; set; }
+        public SpotifyArtist[]? artists { get; set; }
 
-        public SpotifyAlbum album { get; set; }
+        public SpotifyAlbum? album { get; set; }
 
         [JsonPropertyName("explicit")]
         public bool Explicit { get; set; }
@@ -28,12 +28,12 @@ namespace MusicShare.Services.Services.Music.Spotify
         [JsonPropertyName("duration_ms")]
         public long Duration { get; set; }
 
-        public string id { get; set; }
+        public string? id { get; set; }
 
         public bool is_playable { get; set; }
 
-        public string name { get; set; }
+        public string? name { get; set; }
 
-        public SpotifyExternalUrls external_urls { get; set; }
+        public SpotifyExternalUrls? external_urls { get; set; }
     }
 }

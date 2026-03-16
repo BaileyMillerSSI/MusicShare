@@ -3,8 +3,6 @@ using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
 using MusicShare.Services.Models;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using MusicShare.Services.Configuration.MusicServices;
 
 namespace MusicShare.Services.Services.Music;
 
@@ -15,7 +13,7 @@ namespace MusicShare.Services.Services.Music;
 public class ConfidenceAdapter(
     IMusicServiceAdapter innerAdapter,
     IConfidenceScoreService confidenceScoreService,
-    ILogger<ConfidenceAdapter> logger) : IMusicServiceAdapter
+    double threshold) : IMusicServiceAdapter
 {
     public ServiceType ServiceType => innerAdapter.ServiceType;
 
@@ -27,7 +25,7 @@ public class ConfidenceAdapter(
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         await foreach (var (Result, Score) in GetCandidatesWithScoresAsync(metadata, cancellationToken)
-            .Where(c => confidenceScoreService.MeetsThreshold(c.Score))
+            .Where(c => confidenceScoreService.MeetsThreshold(c.Score, threshold))
             .OrderByDescending(c => c.Score.TotalScore)
             .WithCancellation(cancellationToken))
         {

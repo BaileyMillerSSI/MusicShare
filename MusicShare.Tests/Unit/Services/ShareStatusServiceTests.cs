@@ -22,7 +22,7 @@ public class ShareStatusServiceTests
 
         var sut = mock.Create<ShareStatusService>();
 
-        await sut.UpdateStatusAsync("share-abc123", ShareStatus.Completed);
+        await sut.UpdateStatusAsync("share-abc123", ShareStatus.Completed, TestContext.Current.CancellationToken);
 
         shareRequest.Status.Should().Be(ShareStatus.Completed);
         mock.Mock<IShareRequestRepository>().Verify(
@@ -41,7 +41,7 @@ public class ShareStatusServiceTests
 
         var sut = mock.Create<ShareStatusService>();
 
-        await sut.UpdateStatusAsync("share-abc123", ShareStatus.Failed);
+        await sut.UpdateStatusAsync("share-abc123", ShareStatus.Failed, TestContext.Current.CancellationToken);
 
         shareRequest.Status.Should().Be(ShareStatus.Failed);
     }
@@ -57,7 +57,7 @@ public class ShareStatusServiceTests
 
         var sut = mock.Create<ShareStatusService>();
 
-        await sut.UpdateStatusAsync("share-abc123", ShareStatus.Completed);
+        await sut.UpdateStatusAsync("share-abc123", ShareStatus.Completed, TestContext.Current.CancellationToken);
 
         mock.Mock<IShareRequestRepository>().Verify(
             x => x.UpdateAsync(It.IsAny<ShareRequest>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -75,7 +75,7 @@ public class ShareStatusServiceTests
 
         var sut = mock.Create<ShareStatusService>();
 
-        await sut.UpdateStatusAsync("custom-share-id", ShareStatus.Completed);
+        await sut.UpdateStatusAsync("custom-share-id", ShareStatus.Completed, TestContext.Current.CancellationToken);
 
         mock.Mock<IShareRequestRepository>().Verify(
             x => x.GetByShareIdAsync("custom-share-id", It.IsAny<CancellationToken>()), Times.Once);

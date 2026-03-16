@@ -89,10 +89,10 @@ public class SpotifyMusicAdapter(
     }
 
     private static SongMetadata MapToSongMetadata(SpotifyResponse track) =>
-        new SongMetadata
+        new()
         {
-            Title = track.name,
-            Artists = track.artists?.Select(a => a.name) ?? [],
+            Title = track.name ?? string.Empty,
+            Artists = track.artists?.Select(a => a.name).OfType<string>() ?? [],
             Album = track.album?.name,
             ArtworkUrl = track.album?.images?.OrderByDescending(i => i.width * i.height).FirstOrDefault()?.url,
             Duration = TimeSpan.FromMilliseconds(track.Duration),

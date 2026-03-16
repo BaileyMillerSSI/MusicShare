@@ -2,10 +2,10 @@ using MassTransit;
 using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
 using MusicShare.Services.Services;
-using MusicShare.Worker.Sagas.ShareRequest;
-using MusicShare.Worker.Sagas.ShareRequest.Activities;
+using MusicShare.Api.Sagas.ShareRequest;
+using MusicShare.Api.Sagas.ShareRequest.Activities;
 
-namespace MusicShare.Tests.Unit.Worker.Sagas;
+namespace MusicShare.Tests.Unit.Api.Sagas;
 
 public class CompleteSagaActivityTests
 {

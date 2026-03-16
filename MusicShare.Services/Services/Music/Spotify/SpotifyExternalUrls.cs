@@ -1,7 +1,7 @@
-﻿namespace MusicShare.Services.Services.Music.Spotify
+namespace MusicShare.Services.Services.Music.Spotify
 {
     public class SpotifyExternalUrls
     {
-        public string spotify { get; set; }
+        public string? spotify { get; set; }
     }
 }

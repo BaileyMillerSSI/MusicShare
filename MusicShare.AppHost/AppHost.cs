@@ -40,17 +40,8 @@ var frontend = builder.AddJavaScriptApp("frontend", "../MusicShare.Frontend")
     .WithHttpEndpoint(env: "PORT")
     .WithExternalHttpEndpoints();
 
-// Worker — references frontend so Aspire injects its URL; receives the revalidation secret
-builder.AddProject<Projects.MusicShare_Worker>("worker")
-    .WithReference(mongodb)
-    .WithReference(rabbitmq)
-    .WithReference(frontend)
-    .WithEnvironment("Spotify__ClientId", spotifyClientId)
-    .WithEnvironment("Spotify__ClientSecret", spotifyClientSecret)
-    .WithEnvironment("Frontend__RevalidationSecret", revalidationSecret)
-    .WaitFor(mongodb)
-    .WaitFor(rabbitmq)
-    .WaitFor(frontend);
+// API references frontend for ISR revalidation
+api.WithReference(frontend);
 
 // Dev tooling only when running locally
 if (builder.ExecutionContext.IsPublishMode)

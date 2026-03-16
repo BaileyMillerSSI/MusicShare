@@ -1,9 +1,9 @@
 using MusicShare.Contracts;
 using MusicShare.Services.Services;
 using MusicShare.Services.Services.Music;
-using MusicShare.Worker.Consumers;
+using MusicShare.Api.Consumers;
 
-namespace MusicShare.Tests.Unit.Worker.Consumers;
+namespace MusicShare.Tests.Unit.Api.Consumers;
 
 public class SpotifyLinkConsumerUnitTests
 {

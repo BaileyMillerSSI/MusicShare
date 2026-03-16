@@ -2,7 +2,7 @@ using System.Net;
 using Microsoft.Extensions.Logging;
 using MusicShare.Services.Services;
 
-namespace MusicShare.Tests.Unit.Worker.Services;
+namespace MusicShare.Tests.Unit.Services;
 
 public class FrontendRevalidateServiceTests
 {
