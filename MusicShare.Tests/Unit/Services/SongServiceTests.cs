@@ -22,7 +22,7 @@ public class SongServiceTests
 
         var sut = mock.Create<SongService>();
 
-        await sut.UpdateStatusAsync("song-1", SongStatus.Resolved);
+        await sut.UpdateStatusAsync("song-1", SongStatus.Resolved, TestContext.Current.CancellationToken);
 
         song.Status.Should().Be(SongStatus.Resolved);
         mock.Mock<ISongRepository>().Verify(
@@ -41,7 +41,7 @@ public class SongServiceTests
 
         var sut = mock.Create<SongService>();
 
-        await sut.UpdateStatusAsync("song-1", SongStatus.PartiallyResolved);
+        await sut.UpdateStatusAsync("song-1", SongStatus.PartiallyResolved, TestContext.Current.CancellationToken);
 
         song.Status.Should().Be(SongStatus.PartiallyResolved);
     }
@@ -58,7 +58,7 @@ public class SongServiceTests
 
         var sut = mock.Create<SongService>();
 
-        await sut.UpdateStatusAsync("song-1", SongStatus.Failed);
+        await sut.UpdateStatusAsync("song-1", SongStatus.Failed, TestContext.Current.CancellationToken);
 
         song.Status.Should().Be(SongStatus.Failed);
     }
@@ -76,7 +76,7 @@ public class SongServiceTests
 
         var sut = mock.Create<SongService>();
 
-        await sut.UpdateStatusAsync("song-1", SongStatus.Resolved);
+        await sut.UpdateStatusAsync("song-1", SongStatus.Resolved, TestContext.Current.CancellationToken);
 
         song.UpdatedAt.Should().BeOnOrAfter(beforeUpdate);
     }
@@ -87,7 +87,7 @@ public class SongServiceTests
         using var mock = AutoMock.GetLoose();
         var sut = mock.Create<SongService>();
 
-        await sut.UpdateStatusAsync(null, SongStatus.Resolved);
+        await sut.UpdateStatusAsync(null, SongStatus.Resolved, TestContext.Current.CancellationToken);
 
         mock.Mock<ISongRepository>().Verify(
             x => x.GetByIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -101,7 +101,7 @@ public class SongServiceTests
         using var mock = AutoMock.GetLoose();
         var sut = mock.Create<SongService>();
 
-        await sut.UpdateStatusAsync("", SongStatus.Resolved);
+        await sut.UpdateStatusAsync("", SongStatus.Resolved, TestContext.Current.CancellationToken);
 
         mock.Mock<ISongRepository>().Verify(
             x => x.GetByIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -118,7 +118,7 @@ public class SongServiceTests
 
         var sut = mock.Create<SongService>();
 
-        await sut.UpdateStatusAsync("song-1", SongStatus.Resolved);
+        await sut.UpdateStatusAsync("song-1", SongStatus.Resolved, TestContext.Current.CancellationToken);
 
         mock.Mock<ISongRepository>().Verify(
             x => x.UpdateAsync(It.IsAny<Song>(), It.IsAny<CancellationToken>()), Times.Never);

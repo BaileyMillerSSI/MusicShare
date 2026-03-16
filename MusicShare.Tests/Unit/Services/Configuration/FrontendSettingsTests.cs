@@ -8,7 +8,7 @@ public class FrontendSettingsTests
     public void ItWillUseServiceDiscovery()
     {
         // Arrange
-        var settings = new FrontendSettings();
+        _ = new FrontendSettings();
 
         // Act
         var uri = FrontendSettings.Uri;

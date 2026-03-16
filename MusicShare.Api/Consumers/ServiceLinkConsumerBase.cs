@@ -64,9 +64,11 @@ public abstract class ServiceLinkConsumerBase(
             };
 
             // Try to find the song on this service
-            var foundUrl = await adapter.FindSongAsync(metadata, context.CancellationToken);
+            var foundSong = await adapter
+                .FindSongsAsync(metadata, context.CancellationToken)
+                .FirstOrDefaultAsync();
 
-            if (string.IsNullOrEmpty(foundUrl))
+            if (foundSong is not { })
             {
                 logger.LogWarning(
                     "Song not found on {Service}: SongId={SongId}",
@@ -77,15 +79,15 @@ public abstract class ServiceLinkConsumerBase(
             }
 
             // Create the service link
-            var normalizedUrl = adapter.NormalizeUrl(foundUrl);
-            var serviceSongId = adapter.ExtractSongId(foundUrl) ?? foundUrl;
+            var normalizedUrl = adapter.NormalizeUrl(foundSong.Url);
+            var serviceSongId = adapter.ExtractSongId(foundSong.Url) ?? foundSong.Url;
 
             var link = new SongServiceLink
             {
                 SongId = message.SongId,
                 ServiceType = ServiceType,
                 ServiceSongId = serviceSongId,
-                OriginalUrl = foundUrl,
+                OriginalUrl = foundSong.Url,
                 NormalizedUrl = normalizedUrl,
                 CreatedAt = DateTime.UtcNow
             };

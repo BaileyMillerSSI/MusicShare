@@ -1,5 +1,6 @@
 using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
+using MusicShare.Services.Models;
 
 namespace MusicShare.Services.Services.Music;
 
@@ -18,9 +19,9 @@ public interface IMusicServiceAdapter
 
     /// <summary>
     /// Searches for a song on this service using metadata from another service.
-    /// Returns the URL if found.
+    /// Returns all candidate matches for downstream confidence scoring.
     /// </summary>
-    Task<string?> FindSongAsync(SongMetadata metadata, CancellationToken cancellationToken = default);
+    IAsyncEnumerable<SongSearchResult> FindSongsAsync(SongMetadata metadata, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Normalizes a service URL to a canonical format.

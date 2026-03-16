@@ -1,19 +1,20 @@
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Logging;
 using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
-using YouTubeMusicAPI.Client;
+using MusicShare.Services.Models;
 using YouTubeMusicAPI.Models;
-using YouTubeMusicAPI.Models.Search;
 
 namespace MusicShare.Services.Services.Music.YouTube;
 
 /// <summary>
-/// YouTube Music adapter using the YouTubeMusicAPI library.
+/// YouTube Music adapter that delegates to IYouTubeMusicService for API operations.
+/// Responsible for URL handling, DTO transformation, and metadata mapping.
 /// </summary>
-public class YouTubeMusicAdapter(ILogger<YouTubeMusicAdapter> logger, YouTubeMusicClient client) : IMusicServiceAdapter
+public class YouTubeMusicAdapter(
+    IYouTubeMusicService youTubeService,
+    ILogger<YouTubeMusicAdapter> logger) : IMusicServiceAdapter
 {
-    private readonly YouTubeMusicClient _client = client;
-    private readonly ILogger<YouTubeMusicAdapter> _logger = logger;
 
     public ServiceType ServiceType => ServiceType.YouTubeMusic;
 
@@ -24,83 +25,38 @@ public class YouTubeMusicAdapter(ILogger<YouTubeMusicAdapter> logger, YouTubeMus
         var videoId = ExtractSongId(url);
         if (string.IsNullOrEmpty(videoId))
         {
-            _logger.LogWarning("Could not extract video ID from URL: {Url}", url);
+            logger.LogWarning("Could not extract video ID from URL: {Url}", url);
             return null;
         }
 
         try
         {
-            var info = await _client.GetSongVideoInfoAsync(videoId, cancellationToken);
-
+            var info = await youTubeService.GetSongVideoInfoAsync(videoId, cancellationToken);
             if (info == null)
             {
-                _logger.LogWarning("No info returned for video ID: {VideoId}", videoId);
+                logger.LogWarning("No info returned for video ID: {VideoId}", videoId);
                 return null;
             }
 
-            return new SongMetadata
-            {
-                Title = info.Name,
-                Artists = info.Artists?.Select(a => a.Name) ?? [],
-                Album = info.Album?.Name,
-                ArtworkUrl = GetBestThumbnail(info.Thumbnails),
-                Duration = info.Duration,
-                IsExplicit = info.IsExplicit
-            };
+            return MapToSongMetadata(info);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error resolving metadata for video ID: {VideoId}", videoId);
+            logger.LogError(ex, "Error resolving metadata for video ID: {VideoId}", videoId);
             return null;
         }
     }
 
-    public async Task<string?> FindSongAsync(
+    public async IAsyncEnumerable<SongSearchResult> FindSongsAsync(
         SongMetadata metadata,
-        CancellationToken cancellationToken = default)
+        [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        try
+        foreach (var result in await youTubeService.SearchSongsAsync(metadata, maxResults: 10, cancellationToken))
         {
-            var query = BuildSearchQuery(metadata);
+            if (result?.Id == null)
+                continue;
 
-            _logger.LogDebug("Searching YouTube Music for: {Query}", query);
-
-            var searchResults = _client.SearchAsync(query, SearchCategory.Songs);
-            var results = await searchResults.FetchItemsAsync(0, 10);
-
-            if (results == null || results.Count == 0)
-            {
-                _logger.LogDebug("No results found for query: {Query}", query);
-                return null;
-            }
-
-            foreach (var result in results.OfType<SongSearchResult>())
-            {
-                if (IsMatch(result, metadata))
-                {
-                    var url = $"https://music.youtube.com/watch?v={result.Id}";
-                    _logger.LogDebug("Found match: {Url}", url);
-                    return url;
-                }
-            }
-
-            // If no exact match, return the first result as a fallback
-            var firstResult = results.OfType<SongSearchResult>().FirstOrDefault();
-            if (firstResult != null)
-            {
-                var url = $"https://music.youtube.com/watch?v={firstResult.Id}";
-                _logger.LogDebug("No exact match, using first result: {Url}", url);
-                return url;
-            }
-
-            _logger.LogDebug("No matching song found for: {Title} by {Artists}",
-                metadata.Title, string.Join(", ", metadata.Artists));
-            return null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error searching for song: {Title}", metadata.Title);
-            return null;
+            yield return new SongSearchResult($"https://music.youtube.com/watch?v={result.Id}", MapToSongMetadata(result));
         }
     }
 
@@ -139,37 +95,30 @@ public class YouTubeMusicAdapter(ILogger<YouTubeMusicAdapter> logger, YouTubeMus
         return null;
     }
 
-    private static string BuildSearchQuery(SongMetadata metadata)
-    {
-        var artist = metadata.Artists.FirstOrDefault();
-        return string.IsNullOrEmpty(artist)
-            ? metadata.Title
-            : $"{metadata.Title} {artist}";
-    }
+    private static SongMetadata MapToSongMetadata(YouTubeMusicAPI.Models.Search.SongSearchResult result) =>
+        new()
+        {
+            Title = result.Name,
+            Artists = result.Artists?.Select(a => a.Name) ?? [],
+            Album = result.Album?.Name,
+            ArtworkUrl = GetBestThumbnail(result.Thumbnails),
+            Duration = result.Duration,
+            IsExplicit = result.IsExplicit
+        };
 
-    private static bool IsMatch(SongSearchResult result, SongMetadata metadata)
-    {
-        // Check title match (case-insensitive, allowing partial matches)
-        var titleMatches = result.Name.Contains(metadata.Title, StringComparison.OrdinalIgnoreCase)
-            || metadata.Title.Contains(result.Name, StringComparison.OrdinalIgnoreCase);
+    private static SongMetadata MapToSongMetadata(YouTubeMusicAPI.Models.Info.SongVideoInfo info) =>
+        new()
+        {
+            Title = info.Name,
+            Artists = info.Artists?.Select(a => a.Name) ?? [],
+            Album = info.Album?.Name,
+            ArtworkUrl = GetBestThumbnail(info.Thumbnails),
+            Duration = info.Duration,
+            IsExplicit = info.IsExplicit
+        };
 
-        if (!titleMatches)
-            return false;
-
-        // Check for at least one artist match
-        var resultArtists = result.Artists?.Select(a => a.Name) ?? [];
-        var hasArtistMatch = metadata.Artists.Any(inputArtist =>
-            resultArtists.Any(resultArtist =>
-                resultArtist.Contains(inputArtist, StringComparison.OrdinalIgnoreCase)
-                || inputArtist.Contains(resultArtist, StringComparison.OrdinalIgnoreCase)));
-
-        return hasArtistMatch;
-    }
-
-    private static string? GetBestThumbnail(IEnumerable<Thumbnail>? thumbnails)
-    {
-        return thumbnails?
+    private static string? GetBestThumbnail(IEnumerable<Thumbnail>? thumbnails) =>
+        thumbnails?
             .OrderByDescending(t => t.Width * t.Height)
             .FirstOrDefault()?.Url;
-    }
 }

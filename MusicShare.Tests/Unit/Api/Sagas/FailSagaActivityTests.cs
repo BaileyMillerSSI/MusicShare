@@ -5,7 +5,7 @@ using MusicShare.Services.Services;
 using MusicShare.Api.Sagas.ShareRequest;
 using MusicShare.Api.Sagas.ShareRequest.Activities;
 
-namespace MusicShare.Tests.Unit.Worker.Sagas;
+namespace MusicShare.Tests.Unit.Api.Sagas;
 
 public class FailSagaActivityTests
 {

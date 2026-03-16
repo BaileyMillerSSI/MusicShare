@@ -416,3 +416,5 @@ nul
 
 # Next.js
 next-env.d.ts
+/MusicShare.Frontend/next-env.d.ts
+/.mcp/mcpserver.settings.json

@@ -3,14 +3,9 @@ using MusicShare.Persistence.Entities;
 
 namespace MusicShare.Persistence.Repositories;
 
-public class WorkflowStateRepository : IWorkflowStateRepository
+public class WorkflowStateRepository(IMusicShareDbContext context) : IWorkflowStateRepository
 {
-    private readonly IMongoCollection<WorkflowState> _states;
-
-    public WorkflowStateRepository(IMusicShareDbContext context)
-    {
-        _states = context.WorkflowStates;
-    }
+    private readonly IMongoCollection<WorkflowState> _states = context.WorkflowStates;
 
     public async Task<WorkflowState?> GetByCorrelationIdAsync(Guid correlationId, CancellationToken cancellationToken = default)
     {

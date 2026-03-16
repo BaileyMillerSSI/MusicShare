@@ -4,14 +4,9 @@ using MusicShare.Persistence.Entities;
 
 namespace MusicShare.Persistence.Repositories;
 
-public class ShareRequestRepository : IShareRequestRepository
+public class ShareRequestRepository(IMusicShareDbContext context) : IShareRequestRepository
 {
-    private readonly IMongoCollection<ShareRequest> _requests;
-
-    public ShareRequestRepository(IMusicShareDbContext context)
-    {
-        _requests = context.ShareRequests;
-    }
+    private readonly IMongoCollection<ShareRequest> _requests = context.ShareRequests;
 
     public async Task<ShareRequest?> GetByIdAsync(string id, CancellationToken cancellationToken = default)
     {

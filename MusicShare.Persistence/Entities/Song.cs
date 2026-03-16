@@ -16,7 +16,7 @@ public class Song
 
     [BsonElement("artists")]
     [BsonRequired]
-    public List<string> Artists { get; set; } = new();
+    public List<string> Artists { get; set; } = [];
 
     [BsonElement("album")]
     public string? Album { get; set; }

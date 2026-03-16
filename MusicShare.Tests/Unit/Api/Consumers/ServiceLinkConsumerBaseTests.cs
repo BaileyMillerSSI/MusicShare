@@ -4,11 +4,12 @@ using MusicShare.Contracts;
 using MusicShare.Contracts.Messages;
 using MusicShare.Persistence.Entities;
 using MusicShare.Persistence.Repositories;
+using MusicShare.Services.Models;
 using MusicShare.Services.Services;
 using MusicShare.Services.Services.Music;
 using MusicShare.Api.Consumers;
 
-namespace MusicShare.Tests.Unit.Worker.Consumers;
+namespace MusicShare.Tests.Unit.Api.Consumers;
 
 /// <summary>
 /// Tests the ServiceLinkConsumerBase logic through SpotifyLinkConsumer as a concrete implementation.
@@ -61,9 +62,18 @@ public class ServiceLinkConsumerBaseTests
             .ReturnsAsync((SongServiceLink?)null);
 
         var foundUrl = "https://open.spotify.com/track/found123";
+        var searchResult = new SongSearchResult(
+            foundUrl,
+            new SongMetadata
+            {
+                Title = "Test Song",
+                Artists = ["Artist One"],
+                Album = "Test Album"
+            });
+
         adapterMock
-            .Setup(x => x.FindSongAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(foundUrl);
+            .Setup(x => x.FindSongsAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
+            .Returns(YieldResult(searchResult));
         adapterMock
             .Setup(x => x.NormalizeUrl(foundUrl))
             .Returns(foundUrl);
@@ -116,8 +126,8 @@ public class ServiceLinkConsumerBaseTests
             .ReturnsAsync((SongServiceLink?)null);
 
         adapterMock
-            .Setup(x => x.FindSongAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((string?)null);
+            .Setup(x => x.FindSongsAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
+            .Returns(YieldResult());
 
         var sut = mock.Create<SpotifyLinkConsumer>();
 
@@ -157,8 +167,8 @@ public class ServiceLinkConsumerBaseTests
             .ReturnsAsync((SongServiceLink?)null);
 
         adapterMock
-            .Setup(x => x.FindSongAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync("");
+            .Setup(x => x.FindSongsAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
+            .Returns(YieldResult());
 
         var sut = mock.Create<SpotifyLinkConsumer>();
 
@@ -219,7 +229,7 @@ public class ServiceLinkConsumerBaseTests
 
         // Should not try to find the song again
         adapterMock.Verify(
-            x => x.FindSongAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()),
+            x => x.FindSongsAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -241,8 +251,8 @@ public class ServiceLinkConsumerBaseTests
             .ReturnsAsync((SongServiceLink?)null);
 
         adapterMock
-            .Setup(x => x.FindSongAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new HttpRequestException("API error"));
+            .Setup(x => x.FindSongsAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
+            .Returns(ThrowAsync());
 
         var sut = mock.Create<SpotifyLinkConsumer>();
 
@@ -276,9 +286,18 @@ public class ServiceLinkConsumerBaseTests
             .ReturnsAsync((SongServiceLink?)null);
 
         var foundUrl = "https://open.spotify.com/track/xyz";
+        var searchResult = new SongSearchResult(
+            foundUrl,
+            new SongMetadata
+            {
+                Title = "Test Song",
+                Artists = ["Artist One"],
+                Album = "Test Album"
+            });
+
         adapterMock
-            .Setup(x => x.FindSongAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(foundUrl);
+            .Setup(x => x.FindSongsAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
+            .Returns(YieldResult(searchResult));
         adapterMock
             .Setup(x => x.NormalizeUrl(foundUrl))
             .Returns(foundUrl);
@@ -332,8 +351,8 @@ public class ServiceLinkConsumerBaseTests
             .ReturnsAsync((SongServiceLink?)null);
 
         adapterMock
-            .Setup(x => x.FindSongAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((string?)null);
+            .Setup(x => x.FindSongsAsync(It.IsAny<SongMetadata>(), It.IsAny<CancellationToken>()))
+            .Returns(YieldResult());
 
         var sut = mock.Create<SpotifyLinkConsumer>();
 
@@ -342,7 +361,7 @@ public class ServiceLinkConsumerBaseTests
 
         // Assert
         adapterMock.Verify(
-            x => x.FindSongAsync(
+            x => x.FindSongsAsync(
                 It.Is<SongMetadata>(m =>
                     m.Title == "Specific Title" &&
                     m.Artists.Contains("Artist A") &&
@@ -353,5 +372,23 @@ public class ServiceLinkConsumerBaseTests
                     m.IsExplicit == true),
                 It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    private static async IAsyncEnumerable<SongSearchResult> YieldResult(SongSearchResult? result = null)
+    {
+        if (result != null)
+        {
+            await Task.Yield();
+            yield return result;
+        }
+    }
+
+    private static async IAsyncEnumerable<SongSearchResult> ThrowAsync()
+    {
+        await Task.Yield();
+        throw new HttpRequestException("API error");
+#pragma warning disable CS0162 // Unreachable code detected
+        yield break;
+#pragma warning restore CS0162
     }
 }

@@ -52,9 +52,12 @@ public static class DependencyInjection
 
     private static TBuilder AddMusicServices<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
     {
+        // Register the confidence scoring service (used by ConfidenceAdapter)
+        builder.Services.AddSingleton<IConfidenceScoreService, ConfidenceScoreService>();
+
+        // Register all music service implementations and adapters
         builder
             .AddSpotifyAccess()
-            .AddAppleMusicAccess()
             .AddYouTubeMusicAccess()
             .Services
             .AddSingleton<IMusicServiceResolver, MusicServiceResolver>();
@@ -68,7 +71,20 @@ public static class DependencyInjection
             .AddOptions<YouTubeMusicConfiguration>()
             .Bind(builder.Configuration.GetSection(YouTubeMusicConfiguration.SectionName));
 
-        builder.Services.AddTransient<IMusicServiceAdapter, YouTubeMusicAdapter>();
+        // Register YouTube Music service
+        builder.Services.AddTransient<IYouTubeMusicService, YouTubeMusicService>();
+
+        // Register YouTube Music adapter wrapped with per-service confidence threshold
+        builder.Services.AddTransient<YouTubeMusicAdapter>();
+        builder.Services.AddTransient<IMusicServiceAdapter>(sp =>
+        {
+            var config = sp.GetRequiredService<IOptions<YouTubeMusicConfiguration>>().Value;
+            return new ConfidenceAdapter(
+                sp.GetRequiredService<YouTubeMusicAdapter>(),
+                sp.GetRequiredService<IConfidenceScoreService>(),
+                config.ConfidenceThreshold);
+        });
+
         builder.Services.AddHttpClient(nameof(YouTubeMusicClient), client =>
         {
             // TODO: Configure HttpClient if needed
@@ -100,25 +116,29 @@ public static class DependencyInjection
             .AddOptions<SpotifyConfiguration>()
             .Bind(builder.Configuration.GetSection(SpotifyConfiguration.SectionName));
 
+        // Register Spotify service
         builder
             .Services
-            .AddHttpClient<IMusicServiceAdapter, SpotifyMusicService>(config =>
+            .AddHttpClient<ISpotifyMusicService, SpotifyMusicService>(config =>
             {
                 config.BaseAddress = new Uri("https://api.spotify.com/v1/");
             })
             .AddHttpMessageHandler<SpotifyAccessTokenHandler>();
 
+        // Register Spotify adapter wrapped with per-service confidence threshold
+        builder.Services.AddTransient<SpotifyMusicAdapter>();
+        builder.Services.AddTransient<IMusicServiceAdapter>(sp =>
+        {
+            var config = sp.GetRequiredService<IOptions<SpotifyConfiguration>>().Value;
+            return new ConfidenceAdapter(
+                sp.GetRequiredService<SpotifyMusicAdapter>(),
+                sp.GetRequiredService<IConfidenceScoreService>(),
+                config.ConfidenceThreshold);
+        });
+
         builder
             .Services
             .AddScoped<SpotifyAccessTokenHandler>();
-
-        return builder;
-    }
-
-    private static TBuilder AddAppleMusicAccess<TBuilder>(this TBuilder builder) where TBuilder : IHostApplicationBuilder
-    {
-        // TODO: implement an apple music adapter
-        //builder.Services.AddSingleton<IMusicServiceAdapter, AppleMusicMockAdapter>();
 
         return builder;
     }

@@ -55,10 +55,9 @@ public class ShareRequestSaga : MassTransitStateMachine<ShareRequestSagaState>
                     ctx.Saga.CreatedAt = DateTime.UtcNow;
 
                     // Determine which services we'll need to resolve (exclude source)
-                    ctx.Saga.PendingServices = serviceResolver.GetAllAdapters()
+                    ctx.Saga.PendingServices = [.. serviceResolver.GetAllAdapters()
                         .Select(a => a.ServiceType)
-                        .Where(s => s != ctx.Message.SourceService)
-                        .ToList();
+                        .Where(s => s != ctx.Message.SourceService)];
                 })
                 .Publish(ctx => new ResolveSourceMetadata
                 {

@@ -8,5 +8,7 @@ namespace MusicShare.Services.Configuration.MusicServices
         /// Geographic location for search results (e.g., "US", "GB", "DE").
         /// </summary>
         public string GeographicLocation { get; set; } = "US";
+
+        public double ConfidenceThreshold { get; set; } = 0.65;
     }
 }

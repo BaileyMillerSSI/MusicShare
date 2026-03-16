@@ -739,7 +739,7 @@ public class ShareRequestServiceTests
         using var mock = AutoMock.GetLoose();
         mock.Mock<IShareRequestRepository>()
             .Setup(x => x.GetAllCompletedShareIdsAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<string>());
+            .ReturnsAsync([]);
 
         var sut = mock.Create<ShareRequestService>();
 
@@ -758,7 +758,7 @@ public class ShareRequestServiceTests
         var cts = new CancellationTokenSource();
         mock.Mock<IShareRequestRepository>()
             .Setup(x => x.GetAllCompletedShareIdsAsync(cts.Token))
-            .ReturnsAsync(new List<string>());
+            .ReturnsAsync([]);
 
         var sut = mock.Create<ShareRequestService>();
 
