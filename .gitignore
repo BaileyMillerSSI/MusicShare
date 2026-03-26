@@ -409,6 +409,14 @@ FodyWeavers.xsd
 .claude/
 nul
 
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# JetBrains IDEs
+.idea/
+
 # Project-specific ignores
 **/appsettings.Development.json
 
