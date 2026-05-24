@@ -1,5 +1,6 @@
 using MassTransit;
 using MongoDB.Driver;
+using MusicShare.Api.Configuration;
 using MusicShare.Api.Sagas.ShareRequest;
 using MusicShare.Persistence;
 using MusicShare.ServiceDefaults;
@@ -12,16 +13,7 @@ builder.Services.AddControllers();
 // Add MediatR
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 
-// Add CORS for frontend
-builder.Services.AddCors(options =>
-{
-    options.AddDefaultPolicy(policy =>
-    {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
-    });
-});
+builder.Services.AddApiSecurity(builder.Configuration, builder.Environment);
 
 // Configure MassTransit with RabbitMQ, consumers, and saga
 builder.AddMessageAccess(

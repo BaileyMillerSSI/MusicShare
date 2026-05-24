@@ -50,7 +50,12 @@ if (builder.ExecutionContext.IsPublishMode)
         .WithAzdResourceNaming();
 
     IResourceBuilder<ParameterResource> customDomain = builder.AddParameter("custom-domain");
+    var frontendOrigin = builder.AddParameter("frontend-origin");
+    var internalApiKey = builder.AddParameter("internal-api-key", secret: true);
     IResourceBuilder<ParameterResource> certificateName = null!;
+
+    api.WithEnvironment("Cors__AllowedOrigins__0", frontendOrigin)
+        .WithEnvironment("InternalApi__ApiKey", internalApiKey);
 
     var azureCertName = Environment.GetEnvironmentVariable("AZURE_CERTIFICATE_NAME");
     if (!string.IsNullOrWhiteSpace(azureCertName))

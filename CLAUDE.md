@@ -278,6 +278,8 @@ When working with .NET codebase, the following MCP tools (`mcp__vs-mcp__*`) prov
 | `Spotify__ClientSecret` | Spotify API client secret |
 | `YouTube__GeographicLocation` | YouTube region setting |
 | `Frontend__RevalidationSecret` | Shared secret for ISR revalidation (sent as `X-API-KEY` header) |
+| `Cors__AllowedOrigins__0` | Production frontend origin allowed to call the backend from browsers |
+| `InternalApi__ApiKey` | Shared secret required by backend `/internal/*` routes (sent as `X-Internal-API-Key`) |
 
 ### Azure Deployment Variables
 
@@ -287,6 +289,8 @@ When working with .NET codebase, the following MCP tools (`mcp__vs-mcp__*`) prov
 | `AZURE_RABBITMQ_USERNAME` | RabbitMQ username |
 | `AZURE_RABBITMQ_PASSWORD` | RabbitMQ password |
 | `AZURE_REVALIDATION_SECRET` | ISR revalidation secret |
+| `AZURE_FRONTEND_ORIGIN` | Public frontend origin used for production API CORS |
+| `AZURE_INTERNAL_API_KEY` | Shared secret for production backend internal routes |
 | `AZURE_CUSTOM_DOMAIN` | Custom domain for frontend |
 | `AZURE_CERTIFICATE_NAME` | SSL certificate name |
 

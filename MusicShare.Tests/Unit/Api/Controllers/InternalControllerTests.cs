@@ -1,5 +1,8 @@
 using MediatR;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using MusicShare.Api.Configuration;
 using MusicShare.Api.Controllers;
 using MusicShare.Api.Queries;
 
@@ -18,7 +21,7 @@ public class InternalControllerTests
             .Setup(x => x.Send(It.IsAny<GetAllShareIds.Query>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(queryResult);
 
-        var sut = mock.Create<InternalController>();
+        var sut = CreateAuthorizedController(mock);
 
         // Act
         var actionResult = await sut.GetAllShareIds(CancellationToken.None);
@@ -40,7 +43,7 @@ public class InternalControllerTests
             .Setup(x => x.Send(It.IsAny<GetAllShareIds.Query>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(queryResult);
 
-        var sut = mock.Create<InternalController>();
+        var sut = CreateAuthorizedController(mock);
 
         // Act
         var actionResult = await sut.GetAllShareIds(CancellationToken.None);
@@ -61,7 +64,7 @@ public class InternalControllerTests
             .Setup(x => x.Send(It.IsAny<GetAllShareIds.Query>(), cts.Token))
             .ReturnsAsync(GetAllShareIds.Result.Success(new List<string>()));
 
-        var sut = mock.Create<InternalController>();
+        var sut = CreateAuthorizedController(mock);
 
         // Act
         await sut.GetAllShareIds(cts.Token);
@@ -70,5 +73,67 @@ public class InternalControllerTests
         mock.Mock<IMediator>().Verify(
             x => x.Send(It.IsAny<GetAllShareIds.Query>(), cts.Token),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task ItWillReturnUnauthorizedWhenInternalApiKeyIsMissing()
+    {
+        // Arrange
+        using var mock = AutoMock.GetLoose();
+        var sut = CreateController(mock);
+
+        // Act
+        var actionResult = await sut.GetAllShareIds(CancellationToken.None);
+
+        // Assert
+        actionResult.Result.Should().BeOfType<UnauthorizedResult>();
+        mock.Mock<IMediator>().Verify(
+            x => x.Send(It.IsAny<GetAllShareIds.Query>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task ItWillReturnUnauthorizedWhenInternalApiKeyDoesNotMatch()
+    {
+        // Arrange
+        using var mock = AutoMock.GetLoose();
+        var sut = CreateController(mock, "wrong-key");
+
+        // Act
+        var actionResult = await sut.GetAllShareIds(CancellationToken.None);
+
+        // Assert
+        actionResult.Result.Should().BeOfType<UnauthorizedResult>();
+        mock.Mock<IMediator>().Verify(
+            x => x.Send(It.IsAny<GetAllShareIds.Query>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    private static InternalController CreateAuthorizedController(AutoMock mock)
+    {
+        return CreateController(mock, "test-internal-key");
+    }
+
+    private static InternalController CreateController(AutoMock mock, string? providedApiKey = null)
+    {
+        var settings = new InternalApiSettings { ApiKey = "test-internal-key" };
+        mock.Mock<IOptions<InternalApiSettings>>()
+            .SetupGet(x => x.Value)
+            .Returns(settings);
+
+        var sut = mock.Create<InternalController>();
+        var context = new DefaultHttpContext();
+
+        if (providedApiKey is not null)
+        {
+            context.Request.Headers[settings.HeaderName] = providedApiKey;
+        }
+
+        sut.ControllerContext = new ControllerContext
+        {
+            HttpContext = context
+        };
+
+        return sut;
     }
 }
