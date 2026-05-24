@@ -773,6 +773,114 @@ public class ShareRequestServiceTests
 
     #endregion
 
+    #region Reindex Tests
+
+    [Fact]
+    public async Task ItWillRepublishAllCompletedShareRequestsForReindexing()
+    {
+        // Arrange
+        using var mock = AutoMock.GetLoose();
+        var shareRequests = new List<ShareRequest>
+        {
+            new()
+            {
+                ShareId = "abc123def456",
+                SourceUrl = "https://open.spotify.com/track/abc123",
+                SourceService = ServiceType.Spotify,
+                SongId = "507f1f77bcf86cd799439011",
+                Status = ShareStatus.Completed,
+                CorrelationId = Guid.NewGuid()
+            },
+            new()
+            {
+                ShareId = "789abc012def",
+                SourceUrl = "https://music.apple.com/us/song/example/123",
+                SourceService = ServiceType.AppleMusic,
+                SongId = "507f1f77bcf86cd799439012",
+                Status = ShareStatus.Completed,
+                CorrelationId = Guid.NewGuid()
+            }
+        };
+        mock.Mock<IShareRequestRepository>()
+            .Setup(x => x.GetAllCompletedAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(shareRequests);
+
+        var sut = mock.Create<ShareRequestService>();
+
+        // Act
+        var count = await sut.ReindexAllCompletedAsync(CancellationToken.None);
+
+        // Assert
+        count.Should().Be(2);
+        shareRequests.Should().OnlyContain(x => x.Status == ShareStatus.Pending && x.SongId == null);
+        mock.Mock<IPublishEndpoint>().Verify(
+            x => x.Publish(It.IsAny<SongShareSubmitted>(), It.IsAny<CancellationToken>()),
+            Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task ItWillReturnFalseWhenReindexSongCannotFindShareRequest()
+    {
+        // Arrange
+        using var mock = AutoMock.GetLoose();
+        mock.Mock<IShareRequestRepository>()
+            .Setup(x => x.GetBySongIdAsync("507f1f77bcf86cd799439011", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ShareRequest?)null);
+
+        var sut = mock.Create<ShareRequestService>();
+
+        // Act
+        var result = await sut.ReindexSongAsync("507f1f77bcf86cd799439011", CancellationToken.None);
+
+        // Assert
+        result.Should().BeFalse();
+        mock.Mock<IPublishEndpoint>().Verify(
+            x => x.Publish(It.IsAny<SongShareSubmitted>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task ItWillRepublishShareRequestForSongReindexing()
+    {
+        // Arrange
+        using var mock = AutoMock.GetLoose();
+        var originalCorrelationId = Guid.NewGuid();
+        var shareRequest = new ShareRequest
+        {
+            ShareId = "abc123def456",
+            SourceUrl = "https://open.spotify.com/track/abc123",
+            SourceService = ServiceType.Spotify,
+            SongId = "507f1f77bcf86cd799439011",
+            Status = ShareStatus.Completed,
+            CorrelationId = originalCorrelationId
+        };
+        mock.Mock<IShareRequestRepository>()
+            .Setup(x => x.GetBySongIdAsync(shareRequest.SongId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(shareRequest);
+
+        var sut = mock.Create<ShareRequestService>();
+
+        // Act
+        var result = await sut.ReindexSongAsync(shareRequest.SongId, CancellationToken.None);
+
+        // Assert
+        result.Should().BeTrue();
+        shareRequest.Status.Should().Be(ShareStatus.Pending);
+        shareRequest.SongId.Should().BeNull();
+        shareRequest.CorrelationId.Should().NotBe(originalCorrelationId);
+        mock.Mock<IPublishEndpoint>().Verify(
+            x => x.Publish(
+                It.Is<SongShareSubmitted>(message =>
+                    message.ShareId == "abc123def456" &&
+                    message.SourceUrl == "https://open.spotify.com/track/abc123" &&
+                    message.SourceService == ServiceType.Spotify &&
+                    message.CorrelationId == shareRequest.CorrelationId),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    #endregion
+
     #region Helper Methods
 
     private static void SetupAdapterForCreate(AutoMock mock, string url, ServiceType serviceType, string? songId)

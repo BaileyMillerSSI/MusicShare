@@ -1,5 +1,6 @@
 import { revalidatePath } from 'next/cache';
 import { NextResponse } from 'next/server';
+import { getSharePath, isValidShareId, parseApiBaseUrl, validateApiKey } from '../_lib/maintenance';
 
 interface GetShareIdsResponse {
   shareIds: string[];
@@ -8,34 +9,36 @@ interface GetShareIdsResponse {
 export async function POST(request: Request) {
   const secret = process.env.REVALIDATION_SECRET;
 
-  if (!secret) {
-    return NextResponse.json({ error: 'Revalidation secret not configured' }, { status: 500 });
-  }
-
-  const authorization = request.headers.get('X-API-KEY');
-  if (authorization !== secret) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const authError = validateApiKey(request, secret, 'Revalidation secret');
+  if (authError) {
+    return authError;
   }
 
   const apiBase =
     process.env.services__api__https__0 ??
     process.env.services__api__http__0;
+  const apiBaseUrl = parseApiBaseUrl(apiBase);
 
-  if (!apiBase) {
-    return NextResponse.json({ error: 'API base URL not configured' }, { status: 500 });
+  if (!apiBaseUrl) {
+    return NextResponse.json({ error: 'API base URL not configured or invalid' }, { status: 500 });
   }
 
-  const res = await fetch(`${apiBase}/internal/share/ids`);
+  const res = await fetch(new URL('/internal/share/ids', apiBaseUrl));
   if (!res.ok) {
     return NextResponse.json({ error: 'Failed to fetch share IDs from API' }, { status: 502 });
   }
 
   const data: GetShareIdsResponse = await res.json();
   const shareIds = data.shareIds ?? [];
+  const validShareIds = shareIds.filter(isValidShareId);
 
-  for (const shareId of shareIds) {
-    revalidatePath(`/share/${shareId}`);
+  if (validShareIds.length !== shareIds.length) {
+    return NextResponse.json({ error: 'API returned malformed share IDs' }, { status: 502 });
   }
 
-  return NextResponse.json({ revalidated: true, count: shareIds.length, shareIds });
+  for (const shareId of validShareIds) {
+    revalidatePath(getSharePath(shareId));
+  }
+
+  return NextResponse.json({ revalidated: true, count: validShareIds.length });
 }

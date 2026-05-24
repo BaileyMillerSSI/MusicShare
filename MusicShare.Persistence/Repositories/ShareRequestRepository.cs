@@ -51,6 +51,12 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
         return await _requests.Find(filter).Project(projection).ToListAsync(cancellationToken);
     }
 
+    public async Task<List<ShareRequest>> GetAllCompletedAsync(CancellationToken cancellationToken = default)
+    {
+        var filter = Builders<ShareRequest>.Filter.Eq(r => r.Status, ShareStatus.Completed);
+        return await _requests.Find(filter).ToListAsync(cancellationToken);
+    }
+
     public async Task<ShareRequest> InsertAsync(ShareRequest request, CancellationToken cancellationToken = default)
     {
         request.CreatedAt = DateTime.UtcNow;

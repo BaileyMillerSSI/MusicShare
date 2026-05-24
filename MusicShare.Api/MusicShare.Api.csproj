@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MusicShare.ServiceDefaults\MusicShare.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\MusicShare.Services\MusicShare.Services.csproj" />
   </ItemGroup>
 
 </Project>

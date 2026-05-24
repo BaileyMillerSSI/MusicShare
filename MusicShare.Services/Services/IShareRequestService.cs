@@ -16,4 +16,11 @@ public interface IShareRequestService
 
     Task<List<string>> GetAllCompletedShareIdsAsync(
         CancellationToken cancellationToken);
+
+    Task<int> ReindexAllCompletedAsync(
+        CancellationToken cancellationToken);
+
+    Task<bool> ReindexSongAsync(
+        string songId,
+        CancellationToken cancellationToken);
 }

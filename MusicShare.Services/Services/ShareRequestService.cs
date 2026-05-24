@@ -73,6 +73,31 @@ public class ShareRequestService(
         CancellationToken cancellationToken) =>
         await shareRequestRepository.GetAllCompletedShareIdsAsync(cancellationToken);
 
+    public async Task<int> ReindexAllCompletedAsync(CancellationToken cancellationToken)
+    {
+        var shareRequests = await shareRequestRepository.GetAllCompletedAsync(cancellationToken);
+
+        foreach (var shareRequest in shareRequests)
+        {
+            await RepublishShareRequest(shareRequest, cancellationToken);
+        }
+
+        return shareRequests.Count;
+    }
+
+    public async Task<bool> ReindexSongAsync(string songId, CancellationToken cancellationToken)
+    {
+        var shareRequest = await shareRequestRepository.GetBySongIdAsync(songId, cancellationToken);
+        if (shareRequest == null)
+        {
+            return false;
+        }
+
+        await RepublishShareRequest(shareRequest, cancellationToken);
+
+        return true;
+    }
+
     public async Task<ShareResultResponse?> GetByShareIdAsync(
         string shareId,
         CancellationToken cancellationToken)
@@ -120,5 +145,24 @@ public class ShareRequestService(
         }
 
         return response;
+    }
+
+    private async Task RepublishShareRequest(
+        ShareRequest shareRequest,
+        CancellationToken cancellationToken)
+    {
+        shareRequest.CorrelationId = Guid.NewGuid();
+        shareRequest.SongId = null;
+        shareRequest.Status = ShareStatus.Pending;
+
+        await shareRequestRepository.UpdateAsync(shareRequest, cancellationToken);
+
+        await publishEndpoint.Publish(new SongShareSubmitted
+        {
+            ShareId = shareRequest.ShareId,
+            SourceUrl = shareRequest.SourceUrl,
+            SourceService = shareRequest.SourceService,
+            CorrelationId = shareRequest.CorrelationId
+        }, cancellationToken);
     }
 }
