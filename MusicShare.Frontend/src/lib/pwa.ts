@@ -1,5 +1,5 @@
 export const PWA_INSTALL_DISMISSED_KEY = 'pwa-install-dismissed';
-export const PWA_INSTALL_DISMISSED_DURATION_DAYS = 30;
+export const PWA_INSTALL_DISMISSED_DURATION_DAYS = 180;
 
 export function isIOS(): boolean {
   if (typeof window === 'undefined') return false;

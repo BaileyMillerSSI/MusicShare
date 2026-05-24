@@ -15,7 +15,7 @@ describe('PWA Utilities', () => {
     });
 
     it('exports correct dismissal duration', () => {
-      expect(PWA_INSTALL_DISMISSED_DURATION_DAYS).toBe(30);
+      expect(PWA_INSTALL_DISMISSED_DURATION_DAYS).toBe(180);
     });
   });
 
@@ -528,18 +528,18 @@ describe('PWA Utilities', () => {
         expect(result).toBe(true);
       });
 
-      it('returns true when dismissed 29 days ago (just before expiry)', () => {
-        const twentyNineDaysAgo = Date.now() - 29 * 24 * 60 * 60 * 1000;
-        vi.mocked(localStorage.getItem).mockReturnValue(twentyNineDaysAgo.toString());
+      it('returns true when dismissed 179 days ago (just before expiry)', () => {
+        const oneHundredSeventyNineDaysAgo = Date.now() - 179 * 24 * 60 * 60 * 1000;
+        vi.mocked(localStorage.getItem).mockReturnValue(oneHundredSeventyNineDaysAgo.toString());
 
         const result = isDismissed();
 
         expect(result).toBe(true);
       });
 
-      it('returns true when dismissed exactly at boundary (29.99 days)', () => {
-        const almostThirtyDays = Date.now() - (30 * 24 * 60 * 60 * 1000 - 1000);
-        vi.mocked(localStorage.getItem).mockReturnValue(almostThirtyDays.toString());
+      it('returns true when dismissed exactly at boundary (179.99 days)', () => {
+        const almostOneHundredEightyDays = Date.now() - (180 * 24 * 60 * 60 * 1000 - 1000);
+        vi.mocked(localStorage.getItem).mockReturnValue(almostOneHundredEightyDays.toString());
 
         const result = isDismissed();
 
@@ -548,31 +548,31 @@ describe('PWA Utilities', () => {
     });
 
     describe('Expired Dismissal', () => {
-      it('returns false when dismissed exactly 30 days ago', () => {
-        const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-        vi.mocked(localStorage.getItem).mockReturnValue(thirtyDaysAgo.toString());
+      it('returns false when dismissed exactly 180 days ago', () => {
+        const oneHundredEightyDaysAgo = Date.now() - 180 * 24 * 60 * 60 * 1000;
+        vi.mocked(localStorage.getItem).mockReturnValue(oneHundredEightyDaysAgo.toString());
 
         const result = isDismissed();
 
         expect(result).toBe(false);
       });
 
-      it('returns false when dismissed 31 days ago', () => {
-        const thirtyOneDaysAgo = Date.now() - 31 * 24 * 60 * 60 * 1000;
-        vi.mocked(localStorage.getItem).mockReturnValue(thirtyOneDaysAgo.toString());
+      it('returns false when dismissed 181 days ago', () => {
+        const oneHundredEightyOneDaysAgo = Date.now() - 181 * 24 * 60 * 60 * 1000;
+        vi.mocked(localStorage.getItem).mockReturnValue(oneHundredEightyOneDaysAgo.toString());
 
         const result = isDismissed();
 
         expect(result).toBe(false);
       });
 
-      it('returns false when dismissed 60 days ago', () => {
+      it('returns true when dismissed 60 days ago', () => {
         const sixtyDaysAgo = Date.now() - 60 * 24 * 60 * 60 * 1000;
         vi.mocked(localStorage.getItem).mockReturnValue(sixtyDaysAgo.toString());
 
         const result = isDismissed();
 
-        expect(result).toBe(false);
+        expect(result).toBe(true);
       });
 
       it('returns false when dismissed 365 days ago', () => {
@@ -658,7 +658,7 @@ describe('PWA Utilities', () => {
 
         const result = isDismissed();
 
-        // Future date means negative days since dismissal, which is < 30
+        // Future date means negative days since dismissal, which is < 180
         expect(result).toBe(true);
       });
 
@@ -667,7 +667,7 @@ describe('PWA Utilities', () => {
 
         const result = isDismissed();
 
-        // This is many years ago, well beyond 30 days
+        // This is many years ago, well beyond 180 days
         expect(result).toBe(false);
       });
 
@@ -894,7 +894,7 @@ describe('PWA Utilities', () => {
         expect(isDismissed()).toBe(true);
       });
 
-      it('respects the 30-day expiration', () => {
+      it('respects the 180-day expiration', () => {
         const mockLocalStorage: Record<string, string> = {};
         Object.defineProperty(window, 'localStorage', {
           value: {
@@ -917,9 +917,9 @@ describe('PWA Utilities', () => {
         setDismissed();
         expect(isDismissed()).toBe(true);
 
-        // Fast forward 31 days
-        const thirtyOneDaysLater = originalTime + 31 * 24 * 60 * 60 * 1000;
-        vi.spyOn(Date, 'now').mockReturnValue(thirtyOneDaysLater);
+        // Fast forward 181 days
+        const oneHundredEightyOneDaysLater = originalTime + 181 * 24 * 60 * 60 * 1000;
+        vi.spyOn(Date, 'now').mockReturnValue(oneHundredEightyOneDaysLater);
 
         expect(isDismissed()).toBe(false);
       });
@@ -1057,7 +1057,7 @@ describe('PWA Utilities', () => {
       expect(isDismissed()).toBe(true);
     });
 
-    it('complete flow: dismiss, wait 31 days, check again', () => {
+    it('complete flow: dismiss, wait 181 days, check again', () => {
       const mockLocalStorage: Record<string, string> = {};
       Object.defineProperty(window, 'localStorage', {
         value: {
@@ -1080,14 +1080,14 @@ describe('PWA Utilities', () => {
       setDismissed();
       expect(isDismissed()).toBe(true);
 
-      // Fast forward 31 days
-      const laterTime = initialTime + 31 * 24 * 60 * 60 * 1000;
+      // Fast forward 181 days
+      const laterTime = initialTime + 181 * 24 * 60 * 60 * 1000;
       vi.spyOn(Date, 'now').mockReturnValue(laterTime);
 
       expect(isDismissed()).toBe(false);
     });
 
-    it('dismiss twice within 30 days updates timestamp', () => {
+    it('dismiss twice within 180 days updates timestamp', () => {
       const mockLocalStorage: Record<string, string> = {};
       Object.defineProperty(window, 'localStorage', {
         value: {
@@ -1108,19 +1108,19 @@ describe('PWA Utilities', () => {
       vi.spyOn(Date, 'now').mockReturnValue(firstTime);
       setDismissed();
 
-      // Fast forward 20 days
-      const secondTime = firstTime + 20 * 24 * 60 * 60 * 1000;
+      // Fast forward 120 days
+      const secondTime = firstTime + 120 * 24 * 60 * 60 * 1000;
       vi.spyOn(Date, 'now').mockReturnValue(secondTime);
       expect(isDismissed()).toBe(true);
 
       // Dismiss again
       setDismissed();
 
-      // Fast forward another 15 days (35 days from first dismissal, 15 from second)
-      const thirdTime = firstTime + 35 * 24 * 60 * 60 * 1000;
+      // Fast forward another 70 days (190 days from first dismissal, 70 from second)
+      const thirdTime = firstTime + 190 * 24 * 60 * 60 * 1000;
       vi.spyOn(Date, 'now').mockReturnValue(thirdTime);
 
-      // Should still be dismissed because it's only 15 days from second dismissal
+      // Should still be dismissed because it's only 70 days from second dismissal
       expect(isDismissed()).toBe(true);
     });
   });
