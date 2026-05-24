@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dotnet Backend Engineer"
+  short_description: "Use this agent when working on the MusicShare.Api or MusicShare.Worker projects, including creating new API endpoints, MediatR commands/queries, handlers, services, repositories, MassTransit consumers, or sagas. Also..."
+  default_prompt: "Use the Dotnet Backend Engineer guidance for this MusicMatcher task."

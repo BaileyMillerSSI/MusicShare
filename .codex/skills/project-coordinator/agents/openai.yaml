@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Coordinator"
+  short_description: "Use this agent when the user provides a GitHub issue number and wants the issue analyzed, broken down, and delegated to the appropriate specialist agent for implementation. This agent acts as the project manager / bus..."
+  default_prompt: "Use the Project Coordinator guidance for this MusicMatcher task."

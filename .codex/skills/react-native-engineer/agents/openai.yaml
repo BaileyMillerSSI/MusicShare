@@ -1,0 +1,4 @@
+interface:
+  display_name: "React Native Engineer"
+  short_description: "Use this agent when you need to build, refactor, or maintain React Native mobile UI components, implement navigation flows, create custom hooks, manage component state, apply styling, or optimize mobile performance. T..."
+  default_prompt: "Use the React Native Engineer guidance for this MusicMatcher task."

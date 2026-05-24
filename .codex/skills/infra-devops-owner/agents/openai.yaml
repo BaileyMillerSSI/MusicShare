@@ -1,0 +1,4 @@
+interface:
+  display_name: "Infra Devops Owner"
+  short_description: "Use this agent when working on .NET Aspire AppHost configuration, GitHub Actions CI/CD workflows, service wiring and dependency injection setup, environment variables and secrets management, or Azure Container Apps de..."
+  default_prompt: "Use the Infra Devops Owner guidance for this MusicMatcher task."

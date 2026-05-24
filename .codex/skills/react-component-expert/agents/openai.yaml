@@ -1,0 +1,4 @@
+interface:
+  display_name: "React Component Expert"
+  short_description: "Use this agent when you need to create, refactor, or review React components, especially those involving Next.js patterns, Tailwind CSS styling, or when components need accompanying tests. This includes building new U..."
+  default_prompt: "Use the React Component Expert guidance for this MusicMatcher task."
