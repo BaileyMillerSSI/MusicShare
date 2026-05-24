@@ -67,6 +67,15 @@ public class YouTubeMusicAdapterTests
     }
 
     [Fact]
+    public void ItWillExtractVideoIdWhenWatchQueryHasLeadingParams()
+    {
+        using var mock = AutoMock.GetLoose();
+        mock.Create<YouTubeMusicAdapter>()
+            .ExtractSongId("https://www.youtube.com/watch?si=abc&v=dQw4w9WgXcQ")
+            .Should().Be("dQw4w9WgXcQ");
+    }
+
+    [Fact]
     public void ItWillExtractVideoIdFromShortUrl()
     {
         using var mock = AutoMock.GetLoose();
@@ -81,6 +90,21 @@ public class YouTubeMusicAdapterTests
         using var mock = AutoMock.GetLoose();
         mock.Create<YouTubeMusicAdapter>()
             .ExtractSongId("https://open.spotify.com/track/abc123")
+            .Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("https://attacker.example/?next=youtube.com/watch?v=dQw4w9WgXcQ")]
+    [InlineData("https://youtube.com.attacker.example/watch?v=dQw4w9WgXcQ")]
+    [InlineData("http://music.youtube.com/watch?v=dQw4w9WgXcQ")]
+    [InlineData("https://music.youtube.com/watch?v=short")]
+    [InlineData("https://youtu.be/dQw4w9WgXcQextra")]
+    [InlineData("https://www.youtube.com/embed/dQw4w9WgXcQ")]
+    public void ItWillReturnNullForInvalidVideoIdsHostsAndSchemes(string url)
+    {
+        using var mock = AutoMock.GetLoose();
+        mock.Create<YouTubeMusicAdapter>()
+            .ExtractSongId(url)
             .Should().BeNull();
     }
 

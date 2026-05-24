@@ -18,10 +18,9 @@ public class MusicServiceResolverTests
     #region DetectServiceType Tests
 
     [Theory]
-    [InlineData("https://open.spotify.com/track/abc123")]
-    [InlineData("https://open.spotify.com/album/xyz")]
-    [InlineData("https://play.spotify.com/track/123")]
-    [InlineData("spotify:track:abc123")]
+    [InlineData("https://open.spotify.com/track/6rqhFgbbKwnb9MLmUQDhG6")]
+    [InlineData("https://play.spotify.com/track/6rqhFgbbKwnb9MLmUQDhG6")]
+    [InlineData("spotify:track:6rqhFgbbKwnb9MLmUQDhG6")]
     public void ItWillReturnSpotifyForSpotifyUrl(string url)
     {
         // Act
@@ -46,10 +45,10 @@ public class MusicServiceResolverTests
     }
 
     [Theory]
-    [InlineData("https://music.youtube.com/watch?v=abc123")]
-    [InlineData("https://www.youtube.com/watch?v=abc123")]
-    [InlineData("https://youtube.com/watch?v=abc123")]
-    [InlineData("https://youtu.be/abc123")]
+    [InlineData("https://music.youtube.com/watch?v=dQw4w9WgXcQ")]
+    [InlineData("https://www.youtube.com/watch?v=dQw4w9WgXcQ")]
+    [InlineData("https://youtube.com/watch?v=dQw4w9WgXcQ")]
+    [InlineData("https://youtu.be/dQw4w9WgXcQ")]
     public void ItWillReturnYouTubeMusicForYouTubeMusicUrl(string url)
     {
         // Act
@@ -64,6 +63,14 @@ public class MusicServiceResolverTests
     [InlineData("https://example.com/track/123")]
     [InlineData("https://soundcloud.com/artist/track")]
     [InlineData("https://tidal.com/browse/track/123")]
+    [InlineData("https://spotify.com.attacker.example/track/6rqhFgbbKwnb9MLmUQDhG6")]
+    [InlineData("https://open.spotify.com/album/xyz")]
+    [InlineData("https://open.spotify.com/track/short")]
+    [InlineData("https://attacker.example/?next=youtube.com/watch?v=dQw4w9WgXcQ")]
+    [InlineData("https://music.youtube.com/watch?v=short")]
+    [InlineData("http://open.spotify.com/track/6rqhFgbbKwnb9MLmUQDhG6")]
+    [InlineData("ftp://music.youtube.com/watch?v=dQw4w9WgXcQ")]
+    [InlineData("spotify:track:invalid")]
     [InlineData("not-a-url")]
     [InlineData("")]
     public void ItWillReturnNullForUnsupportedUrl(string url)
