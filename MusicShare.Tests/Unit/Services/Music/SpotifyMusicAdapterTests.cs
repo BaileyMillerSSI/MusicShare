@@ -85,27 +85,27 @@ public class SpotifyMusicAdapterTests
     public void ItWillReturnCanonicalUrlForStandardUrl()
     {
         var sut = CreateSut();
-        var result = sut.NormalizeUrl("https://open.spotify.com/track/abc123");
+        var result = sut.NormalizeUrl("https://open.spotify.com/track/6rqhFgbbKwnb9MLmUQDhG6");
 
-        result.Should().Be("https://open.spotify.com/track/abc123");
+        result.Should().Be("https://open.spotify.com/track/6rqhFgbbKwnb9MLmUQDhG6");
     }
 
     [Fact]
     public void ItWillReturnCleanUrlForUrlWithQueryParams()
     {
         var sut = CreateSut();
-        var result = sut.NormalizeUrl("https://open.spotify.com/track/abc123?si=extra_params");
+        var result = sut.NormalizeUrl("https://open.spotify.com/track/6rqhFgbbKwnb9MLmUQDhG6?si=extra_params");
 
-        result.Should().Be("https://open.spotify.com/track/abc123");
+        result.Should().Be("https://open.spotify.com/track/6rqhFgbbKwnb9MLmUQDhG6");
     }
 
     [Fact]
     public void ItWillReturnWebUrlForSpotifyUri()
     {
         var sut = CreateSut();
-        var result = sut.NormalizeUrl("spotify:track:abc123");
+        var result = sut.NormalizeUrl("spotify:track:6rqhFgbbKwnb9MLmUQDhG6");
 
-        result.Should().Be("https://open.spotify.com/track/abc123");
+        result.Should().Be("https://open.spotify.com/track/6rqhFgbbKwnb9MLmUQDhG6");
     }
 
     [Fact]
@@ -116,6 +116,20 @@ public class SpotifyMusicAdapterTests
         var result = sut.NormalizeUrl(url);
 
         result.Should().Be(url);
+    }
+
+    [Theory]
+    [InlineData("https://spotify.com.attacker.example/track/6rqhFgbbKwnb9MLmUQDhG6")]
+    [InlineData("http://open.spotify.com/track/6rqhFgbbKwnb9MLmUQDhG6")]
+    [InlineData("https://open.spotify.com/track/abc123")]
+    [InlineData("spotify:track:abc123")]
+    [InlineData("spotify:album:6rqhFgbbKwnb9MLmUQDhG6")]
+    public void ItWillReturnNullForMalformedOrSpoofedSpotifyIds(string url)
+    {
+        var sut = CreateSut();
+        var result = sut.ExtractSongId(url);
+
+        result.Should().BeNull();
     }
 
     #endregion

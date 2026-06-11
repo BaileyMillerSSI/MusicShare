@@ -84,6 +84,20 @@ public class YouTubeMusicAdapterTests
             .Should().BeNull();
     }
 
+    [Theory]
+    [InlineData("https://attacker.example/?next=youtube.com/watch?v=dQw4w9WgXcQ")]
+    [InlineData("https://youtube.com.attacker.example/watch?v=dQw4w9WgXcQ")]
+    [InlineData("http://music.youtube.com/watch?v=dQw4w9WgXcQ")]
+    [InlineData("https://music.youtube.com/watch?v=abc123")]
+    [InlineData("https://music.youtube.com/playlist?list=dQw4w9WgXcQ")]
+    public void ItWillReturnNullExtractedIdForMalformedOrSpoofedYouTubeUrl(string url)
+    {
+        using var mock = AutoMock.GetLoose();
+        mock.Create<YouTubeMusicAdapter>()
+            .ExtractSongId(url)
+            .Should().BeNull();
+    }
+
     #endregion
 
     #region NormalizeUrl
