@@ -70,29 +70,9 @@ public class YouTubeMusicAdapter(
 
     public string? ExtractSongId(string url)
     {
-        if (string.IsNullOrWhiteSpace(url))
-            return null;
-
-        // Handle watch URLs: youtube.com/watch?v=... or music.youtube.com/watch?v=...
-        if (url.Contains("youtube.com/watch") || url.Contains("music.youtube.com/watch"))
-        {
-            var queryPart = url.Split('?').LastOrDefault();
-            if (queryPart != null)
-            {
-                var vParam = queryPart.Split('&')
-                    .FirstOrDefault(p => p.StartsWith("v="));
-                return vParam?.Split('=')[1];
-            }
-        }
-
-        // Handle short URLs: youtu.be/VIDEO_ID
-        if (url.Contains("youtu.be/"))
-        {
-            var parts = url.Split('/');
-            return parts.LastOrDefault()?.Split('?')[0];
-        }
-
-        return null;
+        return MusicUrlParser.TryExtractYouTubeVideoId(url, out var videoId)
+            ? videoId
+            : null;
     }
 
     private static SongMetadata MapToSongMetadata(YouTubeMusicAPI.Models.Search.SongSearchResult result) =>

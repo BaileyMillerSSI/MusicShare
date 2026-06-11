@@ -66,26 +66,9 @@ public class SpotifyMusicAdapter(
 
     public string? ExtractSongId(string url)
     {
-        if (string.IsNullOrWhiteSpace(url))
-            return null;
-
-        // Handle URLs like: https://open.spotify.com/track/TRACK_ID or spotify:track:TRACK_ID
-        if (url.Contains("spotify.com/track/"))
-        {
-            var parts = url.Split('/');
-            var trackIndex = Array.IndexOf(parts, "track");
-            if (trackIndex >= 0 && trackIndex + 1 < parts.Length)
-            {
-                return parts[trackIndex + 1].Split('?')[0];
-            }
-        }
-
-        if (url.StartsWith("spotify:track:"))
-        {
-            return url.Split(':')[2];
-        }
-
-        return null;
+        return MusicUrlParser.TryExtractSpotifyTrackId(url, out var trackId)
+            ? trackId
+            : null;
     }
 
     private static SongMetadata MapToSongMetadata(SpotifyResponse track) =>

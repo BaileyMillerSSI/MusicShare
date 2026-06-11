@@ -24,14 +24,13 @@ public class MusicServiceResolver(IEnumerable<IMusicServiceAdapter> adapters) : 
 
     public ServiceType? DetectServiceType(string url)
     {
-        // Try to detect service type from URL
-        if (url.Contains("spotify.com") || url.StartsWith("spotify:"))
+        if (MusicUrlParser.IsSpotifyUrl(url))
             return ServiceType.Spotify;
 
-        if (url.Contains("music.apple.com"))
+        if (MusicUrlParser.IsAppleMusicUrl(url))
             return ServiceType.AppleMusic;
 
-        if (url.Contains("music.youtube.com") || url.Contains("youtube.com") || url.Contains("youtu.be"))
+        if (MusicUrlParser.IsYouTubeMusicUrl(url))
             return ServiceType.YouTubeMusic;
 
         return null;
