@@ -118,6 +118,8 @@ jobs:
           AZURE_SPOTIFY_CLIENTSECRET: ${{ secrets.SPOTIFY_CLIENTSECRET }}
           AZURE_YOUTUBE_GEOGRAPHICLOCATION: ${{ vars.YOUTUBE_GEOGRAPHICLOCATION }}
           AZURE_REVALIDATION_SECRET: ${{ secrets.REVALIDATION_SECRET }}
+          AZURE_INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
+          AZURE_FRONTEND_ORIGIN: https://${{ vars.sub_domain }}.${{ vars.domain }}
           AZURE_CUSTOM_DOMAIN: ${{ vars.sub_domain }}.${{ vars.domain }}
           AZURE_CERTIFICATE_NAME: "${{ vars.certificate_name }}"
           AZURE_API_MIN_REPLICAS: ${{ vars.API_MIN_REPLICAS }}
@@ -141,6 +143,8 @@ jobs:
           AZURE_SPOTIFY_CLIENTSECRET: ${{ secrets.SPOTIFY_CLIENTSECRET }}
           AZURE_YOUTUBE_GEOGRAPHICLOCATION: ${{ vars.YOUTUBE_GEOGRAPHICLOCATION }}
           AZURE_REVALIDATION_SECRET: ${{ secrets.REVALIDATION_SECRET }}
+          AZURE_INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
+          AZURE_FRONTEND_ORIGIN: https://${{ vars.sub_domain }}.${{ vars.domain }}
           AZURE_CUSTOM_DOMAIN: ${{ vars.sub_domain }}.${{ vars.domain }}
           AZURE_CERTIFICATE_NAME: "${{ vars.certificate_name }}"
           AZURE_API_MIN_REPLICAS: ${{ vars.API_MIN_REPLICAS }}

@@ -1,6 +1,7 @@
 using MassTransit;
 using MongoDB.Driver;
 using MusicShare.Api.Sagas.ShareRequest;
+using MusicShare.Api.Security;
 using MusicShare.Persistence;
 using MusicShare.ServiceDefaults;
 
@@ -12,16 +13,14 @@ builder.Services.AddControllers();
 // Add MediatR
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 
-// Add CORS for frontend
-builder.Services.AddCors(options =>
-{
-    options.AddDefaultPolicy(policy =>
-    {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
-    });
-});
+var corsPolicyName = builder.Services.AddMusicShareCors(builder.Configuration, builder.Environment);
+
+builder.Services.AddOptions<InternalApiSettings>()
+    .Bind(builder.Configuration.GetSection(InternalApiSettings.SectionName))
+    .Validate(
+        settings => builder.Environment.IsDevelopment() || !string.IsNullOrWhiteSpace(settings.SharedSecret),
+        "Production internal API access requires InternalApi:SharedSecret.")
+    .ValidateOnStart();
 
 // Configure MassTransit with RabbitMQ, consumers, and saga
 builder.AddMessageAccess(
@@ -52,7 +51,7 @@ builder.AddMessageAccess(
 var app = builder.Build();
 
 app.UseHttpsRedirection();
-app.UseCors();
+app.UseCors(corsPolicyName);
 app.MapControllers();
 
 app.Run();
