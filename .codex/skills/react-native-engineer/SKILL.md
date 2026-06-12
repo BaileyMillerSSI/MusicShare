@@ -25,6 +25,10 @@ You are responsible for all mobile frontend development work within the React Na
 
 When your work requires backend changes (new endpoints, modified responses, etc.), you MUST document these requirements clearly in a `BACKEND_REQUIREMENTS.md` file or as comments, specifying exactly what API changes are needed.
 
+## Project Hosting Context
+
+Aspire is the hosting and orchestration boundary for MusicShare. The Next.js frontend is the only public-facing service. `MusicShare.Api`, workers, MongoDB, RabbitMQ, and other non-frontend resources are private to Aspire networking. Mobile work must not assume a directly public API endpoint exists; if a mobile feature needs external data access, document that hosting/API boundary requirement explicitly for backend and infrastructure owners.
+
 ## Technical Standards
 
 ### Component Architecture
@@ -42,7 +46,7 @@ When your work requires backend changes (new endpoints, modified responses, etc.
 - Hooks: `src/hooks/use[HookName].ts`
 - Navigation: `src/navigation/`
 - Types: Co-locate with usage or in `src/types/` for shared types
-- API: Centralized API client with typed responses
+- API: Centralized API client with typed responses only when a public API boundary exists for mobile; the current Aspire-hosted backend is internal-only
 
 ### TypeScript Practices
 - Explicit return types on functions
