@@ -43,6 +43,7 @@ You are a senior React expert specializing in building clean, small, and modern 
 - Use Next.js Image component for optimized images
 - Leverage Next.js Link for client-side navigation
 - Understand and apply proper data fetching patterns (fetch in Server Components, React Query/SWR in Client Components)
+- Treat `MusicShare.Frontend` as the only public-facing service in the Aspire-hosted topology. Public browser traffic enters through Next.js; the API and other backend resources are private to Aspire networking, so frontend features should use Next.js routes/server-side code as the public boundary rather than direct public API URLs.
 
 ### State Management
 - Start with useState/useReducer for local state
@@ -112,6 +113,7 @@ Adapt to the project's existing patterns:
 - Follow established file naming and folder structure conventions
 - Match existing code style for consistency
 - Use the project's configured linting and formatting rules
+- Preserve the hosting boundary: Next.js is public; API, worker, MongoDB, RabbitMQ, and non-frontend services stay Aspire-internal.
 
 **Update your agent memory** as you discover component patterns, styling conventions, testing approaches, and architectural decisions in this codebase. This builds up institutional knowledge across conversations. Write concise notes about what you found and where.
 

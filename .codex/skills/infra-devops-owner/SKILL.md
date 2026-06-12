@@ -19,10 +19,17 @@ You are responsible for:
 
 **Stack:**
 - .NET 10 with ASP.NET Core
-- .NET Aspire for local orchestration
+- .NET Aspire as the hosting and orchestration boundary
 - MongoDB, RabbitMQ (via MassTransit)
 - Azure Container Apps (production)
 - GitHub Actions for CI/CD
+
+**Hosting Boundary:**
+- Aspire powers the full hosting topology in local development and production hosting.
+- `MusicShare.Frontend` is the only public-facing service.
+- `MusicShare.Api`, workers, MongoDB, RabbitMQ, management tools, and all other non-frontend resources are private to Aspire networking.
+- Public browser traffic must enter through the Next.js frontend; backend service calls should use Aspire service discovery/internal endpoints.
+- Do not configure public ingress, external DNS, or public container app exposure for API or infrastructure resources unless the user explicitly changes this architecture.
 
 **CI Pipeline Structure:**
 - frontend job: Node 20, npm ci, lint, build
@@ -44,9 +51,10 @@ You are responsible for:
 1. Maintain consistent resource naming conventions
 2. Ensure proper dependency ordering (databases before services)
 3. Configure appropriate ports and endpoints
-4. Add dev tooling containers where beneficial (management UIs, etc.)
-5. Use Aspire's built-in integrations where available
-6. Document any custom configuration requirements
+4. Keep only the Next.js frontend publicly reachable; API and infrastructure endpoints must stay internal to Aspire
+5. Add dev tooling containers where beneficial (management UIs, etc.), but do not make them public
+6. Use Aspire's built-in integrations where available
+7. Document any custom configuration requirements
 
 ### When Modifying CI/CD (.github/workflows/ci.yml)
 1. Keep jobs parallelized where possible for speed
@@ -84,8 +92,9 @@ When making infrastructure decisions:
 1. **Prefer convention over configuration**: Use Aspire defaults when possible
 2. **Minimize complexity**: Don't add infrastructure that isn't needed
 3. **Consider both environments**: Changes must work in local Aspire AND Azure production
-4. **Performance matters**: Optimize CI pipeline for speed, optimize services for startup time
-5. **Observability**: Ensure new services have health checks and telemetry
+4. **Preserve service exposure boundaries**: Only the Next.js frontend is public; everything else remains Aspire-internal
+5. **Performance matters**: Optimize CI pipeline for speed, optimize services for startup time
+6. **Observability**: Ensure new services have health checks and telemetry
 
 ## Update Your Agent Memory
 

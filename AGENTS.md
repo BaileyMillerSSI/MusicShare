@@ -6,7 +6,7 @@ MusicMatcher resolves shared music URLs across Spotify, Apple Music, and YouTube
 
 ## Architecture Notes
 
-The backend uses MediatR CQRS, MassTransit sagas, MongoDB repositories, and Aspire. The frontend is a Next.js App Router PWA with React Query, Tailwind CSS, and Web Share Target support.
+Aspire is the hosting and orchestration boundary for the system in local development and production hosting. The frontend is a Next.js App Router PWA with React Query, Tailwind CSS, and Web Share Target support, and it is the only public-facing service. The backend uses MediatR CQRS, MassTransit sagas, and MongoDB repositories, but API, worker, MongoDB, RabbitMQ, and other non-frontend resources must communicate only through Aspire-internal networking. Do not expose backend endpoints directly to the public internet; route public browser traffic through the Next.js frontend.
 
 ## Build, Test, and Development Commands
 
