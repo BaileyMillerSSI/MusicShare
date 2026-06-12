@@ -26,9 +26,6 @@ Frontend   Backend
     │         │
 Provision    Deploy
 (azd prov)  (azd dep)
-         │
-    Warm ISR Cache
-  (pre-render all share pages)
 ```
 
 ---
@@ -83,24 +80,6 @@ All secrets come from GitHub repository secrets/variables:
 - Revalidation secret
 - Custom domain + SSL certificate name
 - Autoscaling limits (min/max replicas per service)
-
----
-
-## Job 4 — Warm the ISR Cache
-
-After deploy, the pipeline immediately warms the Next.js ISR cache:
-
-```yaml
-- POST /api/revalidate-all
-  Headers: X-API-KEY: ${{ secrets.REVALIDATION_SECRET }}
-
-  → Fetches all completed share IDs from MongoDB
-  → Triggers Next.js to re-render every share result page
-  → Returns count of revalidated pages
-```
-
-- Retries up to 3 times (15s between attempts) in case the new deploy is still warming up
-- This means shared links are **fast for the first user** after a deployment — no cold cache
 
 ---
 

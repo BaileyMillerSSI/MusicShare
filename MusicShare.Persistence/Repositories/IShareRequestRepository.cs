@@ -10,7 +10,6 @@ public interface IShareRequestRepository
     Task<ShareRequest?> GetByCorrelationIdAsync(Guid correlationId, CancellationToken cancellationToken = default);
     Task<ShareRequest?> GetBySongIdAsync(string songId, CancellationToken cancellationToken = default);
     Task<ShareRequest?> GetByServiceTrackIdAsync(ServiceType serviceType, string serviceTrackId, CancellationToken cancellationToken = default);
-    Task<List<string>> GetAllCompletedShareIdsAsync(CancellationToken cancellationToken = default);
     Task<ShareRequest> InsertAsync(ShareRequest request, CancellationToken cancellationToken = default);
     Task UpdateAsync(ShareRequest request, CancellationToken cancellationToken = default);
 }

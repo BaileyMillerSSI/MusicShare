@@ -118,7 +118,6 @@ jobs:
           AZURE_SPOTIFY_CLIENTSECRET: ${{ secrets.SPOTIFY_CLIENTSECRET }}
           AZURE_YOUTUBE_GEOGRAPHICLOCATION: ${{ vars.YOUTUBE_GEOGRAPHICLOCATION }}
           AZURE_REVALIDATION_SECRET: ${{ secrets.REVALIDATION_SECRET }}
-          AZURE_INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
           AZURE_FRONTEND_ORIGIN: https://${{ vars.sub_domain }}.${{ vars.domain }}
           AZURE_CUSTOM_DOMAIN: ${{ vars.sub_domain }}.${{ vars.domain }}
           AZURE_CERTIFICATE_NAME: "${{ vars.certificate_name }}"
@@ -143,7 +142,6 @@ jobs:
           AZURE_SPOTIFY_CLIENTSECRET: ${{ secrets.SPOTIFY_CLIENTSECRET }}
           AZURE_YOUTUBE_GEOGRAPHICLOCATION: ${{ vars.YOUTUBE_GEOGRAPHICLOCATION }}
           AZURE_REVALIDATION_SECRET: ${{ secrets.REVALIDATION_SECRET }}
-          AZURE_INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
           AZURE_FRONTEND_ORIGIN: https://${{ vars.sub_domain }}.${{ vars.domain }}
           AZURE_CUSTOM_DOMAIN: ${{ vars.sub_domain }}.${{ vars.domain }}
           AZURE_CERTIFICATE_NAME: "${{ vars.certificate_name }}"
@@ -158,45 +156,3 @@ jobs:
         run: |
           echo "Deployment completed to ${{ github.ref == 'refs/heads/main' && 'production' || 'develop' }} environment"
           azd show
-
-  warm-cache:
-    name: Warm ISR Cache
-    needs: [deploy]
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'develop' }}
-
-    steps:
-      - name: Warm ISR cache
-        run: |
-          FRONTEND_URL="https://${{ vars.sub_domain }}.${{ vars.domain }}"
-          echo "Warming ISR cache at ${FRONTEND_URL}/api/revalidate-all ..."
-
-          MAX_RETRIES=3
-          RETRY_DELAY=15
-
-          for i in $(seq 1 $MAX_RETRIES); do
-            STATUS=$(curl -s -o /tmp/revalidate-response.json -w "%{http_code}" \
-              -X POST "${FRONTEND_URL}/api/revalidate-all" \
-              -H "X-API-KEY: ${{ secrets.REVALIDATION_SECRET }}" \
-              -H "Content-Type: application/json")
-
-            if [ "$STATUS" = "200" ]; then
-              echo "Cache warming succeeded (attempt ${i}/${MAX_RETRIES}):"
-              cat /tmp/revalidate-response.json
-              echo ""
-              COUNT=$(cat /tmp/revalidate-response.json | python3 -c "import sys,json; print(json.load(sys.stdin).get('count',0))" 2>/dev/null || echo "unknown")
-              echo "Warmed ${COUNT} ISR routes."
-              break
-            else
-              echo "Attempt ${i}/${MAX_RETRIES} failed with status ${STATUS}."
-              cat /tmp/revalidate-response.json 2>/dev/null || true
-              echo ""
-              if [ "$i" -lt "$MAX_RETRIES" ]; then
-                echo "Retrying in ${RETRY_DELAY}s..."
-                sleep $RETRY_DELAY
-              else
-                echo "::warning::ISR cache warming failed after ${MAX_RETRIES} attempts (status: ${STATUS}). The cache will be populated on first request."
-              fi
-            fi
-          done

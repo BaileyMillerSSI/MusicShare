@@ -28,7 +28,7 @@ Backend tests use xUnit v3, FluentAssertions, Moq, Autofac.Extras.Moq, and Aspir
 
 ## Commit & Pull Request Guidelines
 
-Recent history uses short, imperative subjects with Conventional Commit prefixes, such as `feat: add frontend proxy routes for song re-indexing`. Create issue branches as `feat/issue-<number>-<short-name>`. Keep commits focused and avoid unrelated refactors. PRs should target `main`, link issues with `Closes #<number>` when applicable, include test results, and add screenshots for UI/PWA changes.
+Recent history uses short, imperative subjects with Conventional Commit prefixes, such as `feat: add frontend proxy routes for share submission`. Create issue branches as `feat/issue-<number>-<short-name>`. Keep commits focused and avoid unrelated refactors. PRs should target `main`, link issues with `Closes #<number>` when applicable, include test results, and add screenshots for UI/PWA changes.
 
 ## Security & Configuration Tips
 

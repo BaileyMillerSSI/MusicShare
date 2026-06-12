@@ -83,7 +83,7 @@
 ### Why Next.js + ISR?
 - Result pages are shareable links — they need to be fast on first load
 - ISR means the page is pre-rendered and cached after first resolution
-- When deployment happens, CI warms the cache automatically
+- When song resolution completes, the saga triggers on-demand revalidation
 
 ### Why .NET Aspire?
 - One command to spin up the entire stack locally (MongoDB, RabbitMQ, API, Frontend)
@@ -115,5 +115,4 @@ MusicShare/
 - **Idempotency:** Consumers check for existing results before re-resolving
 - **Duplicate detection:** Same Spotify URL submitted twice → returns existing result instantly
 - **Autoscaling:** Azure Container Apps scales to zero when idle, scales up under load
-- **Cache warming:** CI warms ISR cache after every deployment
-- **Secured endpoints:** Re-indexing API requires API key authentication
+- **On-demand ISR:** completed share pages are revalidated as the saga finishes

@@ -67,14 +67,14 @@ First time /share/abc123 is visited:
   → Caches it statically
   → Subsequent visitors get the cached version instantly
 
-When a new deployment happens:
-  → CI pipeline calls POST /api/revalidate-all
-  → All existing share pages are re-rendered
-  → Cache is warm before any user hits it
+When song resolution completes:
+  → The saga calls POST /api/revalidate for that share
+  → That share page is re-rendered
+  → Future visitors get the refreshed cached page
 ```
 
 - **Result:** Share links load at CDN speed, not API speed
-- **No stale data:** Cache is invalidated on deployment and on saga completion
+- **No stale data:** Cache is invalidated on saga completion
 - **Open Graph tags** generated per-song for rich link previews in Slack/iMessage/Twitter
 
 ---
