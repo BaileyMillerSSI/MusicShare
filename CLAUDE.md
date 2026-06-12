@@ -25,13 +25,14 @@ MusicShare is a full-stack web application that allows users to share music URLs
 - **Frontend**: Next.js 16 + React 19 + TypeScript
 - **Database**: MongoDB
 - **Messaging**: RabbitMQ (via MassTransit)
-- **Orchestration**: .NET Aspire (local dev) / Azure Container Apps (production)
+- **Orchestration**: .NET Aspire hosting topology with Azure Container Apps as the production runtime
 
 **Key Patterns**:
 - CQRS with MediatR for API
 - Saga pattern with MassTransit for async processing
 - Repository pattern for data access
 - PWA with Web Share Target API support
+- Next.js frontend is the only public-facing service; API and infrastructure resources stay Aspire-internal
 
 ## Project Structure
 
@@ -278,6 +279,8 @@ When working with .NET codebase, the following MCP tools (`mcp__vs-mcp__*`) prov
 | `Spotify__ClientSecret` | Spotify API client secret |
 | `YouTube__GeographicLocation` | YouTube region setting |
 | `Frontend__RevalidationSecret` | Shared secret for ISR revalidation (sent as `X-API-KEY` header) |
+| `InternalApi__SharedSecret` | Shared secret required for Aspire-internal API endpoints (sent as `X-MusicShare-Internal-Secret`) |
+| `Cors__AllowedOrigins__0` | Production frontend origin allowed to call browser-facing API routes |
 
 ### Azure Deployment Variables
 
@@ -287,6 +290,8 @@ When working with .NET codebase, the following MCP tools (`mcp__vs-mcp__*`) prov
 | `AZURE_RABBITMQ_USERNAME` | RabbitMQ username |
 | `AZURE_RABBITMQ_PASSWORD` | RabbitMQ password |
 | `AZURE_REVALIDATION_SECRET` | ISR revalidation secret |
+| `AZURE_INTERNAL_API_SECRET` | Shared secret for Aspire-internal frontend to API calls |
+| `AZURE_FRONTEND_ORIGIN` | Production frontend origin allowed by API CORS |
 | `AZURE_CUSTOM_DOMAIN` | Custom domain for frontend |
 | `AZURE_CERTIFICATE_NAME` | SSL certificate name |
 

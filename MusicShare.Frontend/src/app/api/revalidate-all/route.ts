@@ -25,7 +25,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'API base URL not configured' }, { status: 500 });
   }
 
-  const res = await fetch(`${apiBase}/internal/share/ids`);
+  const internalApiSecret = process.env.INTERNAL_API_SECRET;
+  if (!internalApiSecret) {
+    return NextResponse.json({ error: 'Internal API secret not configured' }, { status: 500 });
+  }
+
+  const res = await fetch(`${apiBase}/internal/share/ids`, {
+    headers: {
+      'X-MusicShare-Internal-Secret': internalApiSecret,
+    },
+  });
   if (!res.ok) {
     return NextResponse.json({ error: 'Failed to fetch share IDs from API' }, { status: 502 });
   }
