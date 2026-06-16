@@ -204,7 +204,6 @@ public interface IShareRequestRepository
     Task<ShareRequest?> GetByShareIdAsync(string shareId, CancellationToken ct);
     Task<ShareRequest> InsertAsync(ShareRequest request, CancellationToken ct);
     Task UpdateAsync(ShareRequest request, CancellationToken ct);
-    Task<List<string>> GetAllCompletedShareIdsAsync(CancellationToken ct);
 }
 
 // Implementation — MongoDB-specific, hidden from domain

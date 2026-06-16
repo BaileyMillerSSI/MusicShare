@@ -17,9 +17,6 @@ var spotifyClientSecret = builder.AddParameter("spotify-clientsecret", secret: t
 // Shared secret for the Next.js revalidation endpoint
 var revalidationSecret = builder.AddParameter("revalidation-secret", secret: true);
 
-// Shared secret for Aspire-internal frontend to API endpoints
-var internalApiSecret = builder.AddParameter("internal-api-secret", secret: true);
-
 var corsAllowedOrigin = builder.ExecutionContext.IsPublishMode
     ? builder.AddParameter("frontend-origin")
     : null;
@@ -31,7 +28,6 @@ var api = builder.AddProject<Projects.MusicShare_Api>("api")
     .WithEnvironment("Spotify__ClientId", spotifyClientId)
     .WithEnvironment("Spotify__ClientSecret", spotifyClientSecret)
     .WithEnvironment("Frontend__RevalidationSecret", revalidationSecret)
-    .WithEnvironment("InternalApi__SharedSecret", internalApiSecret)
     .WaitFor(mongodb)
     .WaitFor(rabbitmq)
     .PublishAsAzureContainerApp((module, app) =>
@@ -45,7 +41,6 @@ var frontend = builder.AddJavaScriptApp("frontend", "../MusicShare.Frontend")
     .WithReference(api)
     .WaitFor(api)
     .WithEnvironment("REVALIDATION_SECRET", revalidationSecret)
-    .WithEnvironment("INTERNAL_API_SECRET", internalApiSecret)
     .WithHttpEndpoint(env: "PORT")
     .WithExternalHttpEndpoints();
 

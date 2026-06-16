@@ -15,13 +15,6 @@ builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Progr
 
 var corsPolicyName = builder.Services.AddMusicShareCors(builder.Configuration, builder.Environment);
 
-builder.Services.AddOptions<InternalApiSettings>()
-    .Bind(builder.Configuration.GetSection(InternalApiSettings.SectionName))
-    .Validate(
-        settings => builder.Environment.IsDevelopment() || !string.IsNullOrWhiteSpace(settings.SharedSecret),
-        "Production internal API access requires InternalApi:SharedSecret.")
-    .ValidateOnStart();
-
 // Configure MassTransit with RabbitMQ, consumers, and saga
 builder.AddMessageAccess(
     assemblies: [typeof(Program).Assembly],

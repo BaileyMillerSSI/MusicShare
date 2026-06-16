@@ -53,7 +53,7 @@
 - Added **test coverage** (xUnit, FluentAssertions, AutoMock pattern)
 - Environment variables for API/frontend **horizontal scaling**
 - UI polish: unified song title format, removed awkward "Check out..." wording
-- **CI-triggered ISR cache warming** after deployment (cache is pre-warmed before users hit it)
+- **On-demand ISR revalidation** when share resolution completes
 - Display song duration on results page
 
 **Slide point:** The project matured fast — tests, observability, cache strategy, UI polish all in a few days.
@@ -87,7 +87,6 @@
   - Levenshtein distance for fuzzy title matching
   - Duration tolerance scoring
 - Added **Decorator pattern** to wrap adapters with confidence filtering
-- Added **song re-indexing** with secured API endpoints (re-run resolution on demand)
 - Tuned YouTube confidence threshold (it was too aggressive)
 
 **Slide point:** The final phase made matching smarter — this is the kind of feature that makes it actually useful.
