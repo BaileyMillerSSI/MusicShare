@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { type ShareResultResponse } from '../../../lib/api';
 import { durationToSeconds } from '../../../lib/utils';
+import { BreadstickFooter } from '../../../components/BreadstickFooter';
 import { ResultPoller } from '../../../components/ResultPoller';
 
 export const revalidate = false; // cache indefinitely; revalidated on-demand by the Worker
@@ -79,7 +80,7 @@ export default async function ShareResultPage({ params }: PageProps) {
   const data: ShareResultResponse = await res.json();
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-purple-500 to-pink-500 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-linear-to-br from-purple-500 to-pink-500 flex flex-col items-center justify-center p-4">
       <div className="bg-white rounded-lg shadow-xl p-8 max-w-2xl w-full">
         {/* Pass initialData only when Completed; otherwise client polls fresh */}
         <ResultPoller
@@ -87,6 +88,7 @@ export default async function ShareResultPage({ params }: PageProps) {
           initialData={data.status === 'Completed' ? data : undefined}
         />
       </div>
+      <BreadstickFooter />
     </div>
   );
 }
