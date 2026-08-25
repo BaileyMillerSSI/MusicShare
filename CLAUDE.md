@@ -307,7 +307,7 @@ GitHub Actions workflow (`.github/workflows/ci.yml`):
 2. **backend**: .NET 10
    - `dotnet restore` → `dotnet build --configuration Release` → `dotnet test`
 
-3. **deploy**: Conditional (push to main/develop only)
+3. **deploy**: Conditional (push to `main` or manual run from `main` only)
    - Azure login, `azd provision`, `azd deploy`
 
 ## PWA Features

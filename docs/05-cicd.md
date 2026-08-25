@@ -102,7 +102,7 @@ concurrency:
 |--------|--------------|
 | `main` | production environment |
 | feature branches | no deploy (only build + test) |
-| manual trigger | production (useful for re-deploying without code change) |
+| manual trigger on `main` | production (useful for re-deploying without code change) |
 
 ---
 
