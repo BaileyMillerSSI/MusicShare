@@ -16,7 +16,6 @@ function mockHookReturn(
 ) {
     return {
         canInstall: false,
-        isIOSDevice: false,
         isInstalled: false,
         promptInstall: vi.fn(),
         dismissPrompt: vi.fn(),
@@ -35,57 +34,15 @@ describe("PWAInstallPrompt", () => {
         expect(container.innerHTML).toBe("");
     });
 
-    it("renders InstallBanner on a non-iOS device when canInstall is true", () => {
+    it("renders InstallBanner when installation is available", () => {
         vi.mocked(usePWAInstall).mockReturnValue(
-            mockHookReturn({ canInstall: true, isIOSDevice: false }),
+            mockHookReturn({ canInstall: true }),
         );
 
         render(<PWAInstallPrompt />);
 
-        // InstallBanner renders these elements; IOSInstallInstructions does not.
         expect(screen.getByRole("button", { name: "Install" })).toBeVisible();
         expect(screen.getByRole("button", { name: "Not now" })).toBeVisible();
         expect(screen.getByText("Install Music Share")).toBeVisible();
-    });
-
-    it("renders IOSInstallInstructions on an iOS device when canInstall is true", () => {
-        vi.mocked(usePWAInstall).mockReturnValue(
-            mockHookReturn({ canInstall: true, isIOSDevice: true }),
-        );
-
-        render(<PWAInstallPrompt />);
-
-        // IOSInstallInstructions renders these; InstallBanner does not.
-        expect(
-            screen.getByRole("heading", { name: "Install Music Share" }),
-        ).toBeVisible();
-        expect(screen.getByRole("button", { name: "Got it" })).toBeVisible();
-        expect(
-            screen.queryByRole("button", { name: "Install" }),
-        ).not.toBeInTheDocument();
-    });
-
-    it("does not render IOSInstallInstructions on a non-iOS device", () => {
-        vi.mocked(usePWAInstall).mockReturnValue(
-            mockHookReturn({ canInstall: true, isIOSDevice: false }),
-        );
-
-        render(<PWAInstallPrompt />);
-
-        expect(
-            screen.queryByRole("button", { name: "Got it" }),
-        ).not.toBeInTheDocument();
-    });
-
-    it("does not render InstallBanner on an iOS device", () => {
-        vi.mocked(usePWAInstall).mockReturnValue(
-            mockHookReturn({ canInstall: true, isIOSDevice: true }),
-        );
-
-        render(<PWAInstallPrompt />);
-
-        expect(
-            screen.queryByRole("button", { name: "Not now" }),
-        ).not.toBeInTheDocument();
     });
 });

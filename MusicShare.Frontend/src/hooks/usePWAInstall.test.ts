@@ -116,28 +116,16 @@ describe('usePWAInstall', () => {
     expect(result.current.canInstall).toBe(false);
   });
 
-  // -----------------------------------------------------------------------
-  // iOS detection
-  // -----------------------------------------------------------------------
-
-  it('isIOSDevice reflects the value returned by isIOS()', () => {
+  it('never offers installation on iOS', async () => {
     vi.mocked(isIOS).mockReturnValue(true);
 
     const { result } = renderHook(() => usePWAInstall());
 
-    expect(result.current.isIOSDevice).toBe(true);
-  });
-
-  it('canInstall becomes true on iOS after delay even without a prompt event', async () => {
-    vi.mocked(isIOS).mockReturnValue(true);
-
-    const { result } = renderHook(() => usePWAInstall());
-
-    // No beforeinstallprompt fired -- iOS does not support it.
+    const event = await act(() => fireBeforeInstallPrompt());
     await advancePastDelay();
 
-    expect(result.current.canInstall).toBe(true);
-    expect(result.current.isIOSDevice).toBe(true);
+    expect(event.preventDefault).not.toHaveBeenCalled();
+    expect(result.current.canInstall).toBe(false);
   });
 
   // -----------------------------------------------------------------------
@@ -266,10 +254,9 @@ describe('usePWAInstall', () => {
   // -----------------------------------------------------------------------
 
   it('dismissPrompt persists the dismissal and sets canInstall to false', async () => {
-    vi.mocked(isIOS).mockReturnValue(true);
-
     const { result } = renderHook(() => usePWAInstall());
 
+    await act(() => fireBeforeInstallPrompt());
     await advancePastDelay();
     expect(result.current.canInstall).toBe(true);
 
