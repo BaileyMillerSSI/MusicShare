@@ -1,8 +1,16 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach, type Mock } from 'vitest';
 
 import NativeShare from './NativeShare';
+
+function setWindowLocation(href: string) {
+  Object.defineProperty(window, 'location', {
+    value: { href },
+    writable: true,
+    configurable: true,
+  });
+}
 
 describe('NativeShare', () => {
   const defaultProps = {
@@ -11,10 +19,7 @@ describe('NativeShare', () => {
   };
 
   beforeEach(() => {
-    // Reset window.location.href to a known value
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    delete (window as any).location;
-    window.location = { href: 'https://musicshare.example.com/share/test123' } as Location;
+    setWindowLocation('https://musicshare.example.com/share/test123');
 
     // Mock console.error to avoid polluting test output
     vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -128,7 +133,7 @@ describe('NativeShare', () => {
         configurable: true,
       });
 
-      window.location = { href: 'https://custom.domain.com/share/custom-id' } as Location;
+      setWindowLocation('https://custom.domain.com/share/custom-id');
 
       const user = userEvent.setup();
       render(<NativeShare {...defaultProps} />);
@@ -283,8 +288,8 @@ describe('NativeShare', () => {
   });
 
   describe('Clipboard Fallback', () => {
-    let mockWriteText: ReturnType<typeof vi.fn>;
-    let mockAlert: ReturnType<typeof vi.fn>;
+    let mockWriteText: Mock<(data: string) => Promise<void>>;
+    let mockAlert: Mock<typeof window.alert>;
 
     beforeEach(() => {
       // Remove navigator.share to simulate unsupported browser
@@ -292,11 +297,11 @@ describe('NativeShare', () => {
       delete (navigator as any).share;
 
       // Mock clipboard.writeText as a spy
-      mockWriteText = vi.fn().mockResolvedValue(undefined);
+      mockWriteText = vi.fn<(data: string) => Promise<void>>().mockResolvedValue(undefined);
       vi.spyOn(navigator.clipboard, 'writeText').mockImplementation(mockWriteText);
 
       // Mock window.alert
-      mockAlert = vi.fn();
+      mockAlert = vi.fn<typeof window.alert>();
       window.alert = mockAlert;
     });
 
@@ -313,7 +318,7 @@ describe('NativeShare', () => {
     });
 
     it('copies correct URL to clipboard', async () => {
-      window.location = { href: 'https://test.com/share/abc123' } as Location;
+      setWindowLocation('https://test.com/share/abc123');
 
       const user = userEvent.setup();
       render(<NativeShare {...defaultProps} />);
@@ -355,7 +360,7 @@ describe('NativeShare', () => {
 
     it('includes URL in manual copy alert message', async () => {
       mockWriteText.mockRejectedValueOnce(new Error('Failed'));
-      window.location = { href: 'https://custom.url.com/share/xyz' } as Location;
+      setWindowLocation('https://custom.url.com/share/xyz');
 
       const user = userEvent.setup();
       render(<NativeShare {...defaultProps} />);

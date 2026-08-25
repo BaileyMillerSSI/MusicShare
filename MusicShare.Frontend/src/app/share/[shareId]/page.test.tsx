@@ -349,7 +349,7 @@ describe('ShareResultPage', () => {
       expect(metadata.openGraph?.description).toBe(
         'Listen to Amazing Song from Artist One, Artist Two across multiple platforms'
       );
-      expect(metadata.openGraph?.type).toBe('music.song');
+      expect(metadata.openGraph).toMatchObject({ type: 'music.song' });
       expect(metadata.openGraph?.images).toEqual([
         {
           url: 'https://example.com/artwork.jpg',
@@ -358,7 +358,7 @@ describe('ShareResultPage', () => {
           alt: 'Amazing Song - Artist One, Artist Two',
         },
       ]);
-      expect(metadata.twitter?.card).toBe('summary_large_image');
+      expect(metadata.twitter).toMatchObject({ card: 'summary_large_image' });
       expect(metadata.twitter?.title).toBe('Amazing Song - Artist One, Artist Two');
       expect(metadata.twitter?.images).toEqual(['https://example.com/artwork.jpg']);
     });
@@ -555,7 +555,7 @@ describe('ShareResultPage', () => {
         json: async () => {
           throw new Error('Invalid JSON');
         },
-      } as Response);
+      } as unknown as Response);
 
       const params = Promise.resolve({ shareId: 'invalid-json-meta' });
       const metadata = await generateMetadata({ params });
