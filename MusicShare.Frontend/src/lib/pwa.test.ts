@@ -129,7 +129,6 @@ describe('PWA Utilities', () => {
           writable: true,
           configurable: true,
         });
-        // @ts-expect-error: Testing absence of property
         delete window.document.ontouchend;
 
         const result = isIOS();
@@ -452,7 +451,7 @@ describe('PWA Utilities', () => {
               delete mockLocalStorage[key];
             });
           }),
-        } as Storage,
+        } as unknown as Storage,
         writable: true,
         configurable: true,
       });
@@ -756,7 +755,7 @@ describe('PWA Utilities', () => {
               delete mockLocalStorage[key];
             });
           }),
-        } as Storage,
+        } as unknown as Storage,
         writable: true,
         configurable: true,
       });
@@ -879,7 +878,7 @@ describe('PWA Utilities', () => {
               delete mockLocalStorage[key];
             }),
             clear: vi.fn(),
-          } as Storage,
+          } as unknown as Storage,
           writable: true,
           configurable: true,
         });
@@ -906,7 +905,7 @@ describe('PWA Utilities', () => {
               delete mockLocalStorage[key];
             }),
             clear: vi.fn(),
-          } as Storage,
+          } as unknown as Storage,
           writable: true,
           configurable: true,
         });
@@ -1015,7 +1014,7 @@ describe('PWA Utilities', () => {
               delete mockLocalStorage[key];
             });
           }),
-        } as Storage,
+        } as unknown as Storage,
         writable: true,
         configurable: true,
       });
@@ -1042,7 +1041,7 @@ describe('PWA Utilities', () => {
             delete mockLocalStorage[key];
           }),
           clear: vi.fn(),
-        } as Storage,
+        } as unknown as Storage,
         writable: true,
         configurable: true,
       });
@@ -1069,7 +1068,7 @@ describe('PWA Utilities', () => {
             delete mockLocalStorage[key];
           }),
           clear: vi.fn(),
-        } as Storage,
+        } as unknown as Storage,
         writable: true,
         configurable: true,
       });
@@ -1099,7 +1098,7 @@ describe('PWA Utilities', () => {
             delete mockLocalStorage[key];
           }),
           clear: vi.fn(),
-        } as Storage,
+        } as unknown as Storage,
         writable: true,
         configurable: true,
       });

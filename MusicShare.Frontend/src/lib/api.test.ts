@@ -136,7 +136,7 @@ describe('API Client', () => {
           json: async () => {
             throw new Error('Invalid JSON');
           },
-        } as Response);
+        } as unknown as Response);
 
         await expect(api.submitShare('https://test.com')).rejects.toThrow('Failed to submit share');
       });
@@ -490,7 +490,7 @@ describe('API Client', () => {
           json: async () => {
             throw new Error('Invalid JSON');
           },
-        } as Response);
+        } as unknown as Response);
 
         await expect(api.getShareResult('test')).rejects.toThrow('Failed to get share result');
       });
