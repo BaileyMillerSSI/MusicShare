@@ -10,7 +10,6 @@ interface BeforeInstallPromptEvent extends Event {
 
 interface UsePWAInstallReturn {
   canInstall: boolean;
-  isIOSDevice: boolean;
   isInstalled: boolean;
   promptInstall: () => Promise<void>;
   dismissPrompt: () => void;
@@ -26,15 +25,19 @@ export function usePWAInstall(): UsePWAInstallReturn {
 
   // Delay before showing prompt
   useEffect(() => {
+    if (isIOSDevice) return;
+
     const timer = setTimeout(() => {
       setShowDelayPassed(true);
     }, 5000);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [isIOSDevice]);
 
   // Listen for beforeinstallprompt event
   useEffect(() => {
+    if (isIOSDevice) return;
+
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
@@ -55,7 +58,7 @@ export function usePWAInstall(): UsePWAInstallReturn {
       );
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
-  }, []);
+  }, [isIOSDevice]);
 
   const promptInstall = useCallback(async () => {
     if (!deferredPrompt) return;
@@ -77,14 +80,14 @@ export function usePWAInstall(): UsePWAInstallReturn {
   }, []);
 
   const canInstall =
+    !isIOSDevice &&
     showDelayPassed &&
     !isInstalled &&
     !dismissed &&
-    (deferredPrompt !== null || isIOSDevice);
+    deferredPrompt !== null;
 
   return {
     canInstall,
-    isIOSDevice,
     isInstalled,
     promptInstall,
     dismissPrompt,
