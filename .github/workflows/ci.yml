@@ -69,13 +69,15 @@ jobs:
       - name: Test
         run: dotnet test MusicShare.slnx --no-build --configuration Release --verbosity normal
 
-  # CD steps - only run on push or manual trigger, not on PRs
+  # Production deploys only run from main, never from pull requests or feature branches.
   deploy:
     name: Deploy
     needs: [frontend, backend]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'develop' }}
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    environment: production
 
     steps:
       - name: Checkout code
@@ -154,5 +156,5 @@ jobs:
 
       - name: Output deployment info
         run: |
-          echo "Deployment completed to ${{ github.ref == 'refs/heads/main' && 'production' || 'develop' }} environment"
+          echo "Deployment completed to production environment"
           azd show
