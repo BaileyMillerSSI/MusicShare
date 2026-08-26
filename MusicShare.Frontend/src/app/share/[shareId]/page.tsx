@@ -31,8 +31,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const title = `${data.song.title} - ${artistsString}`;
     const description = `Listen to ${data.song.title} from ${artistsString} across multiple platforms`;
     const durationSeconds = durationToSeconds(data.song.duration);
-    const publicOrigin = process.env.NEXT_PUBLIC_APP_URL ?? 'https://music.baileymiller.dev';
-    const shareUrl = new URL(`/share/${encodeURIComponent(shareId)}`, publicOrigin).toString();
     const artworkUrl = data.song.artworkUrl
       ? new URL(
           `/api/artwork/${encodeURIComponent(shareId)}`,
@@ -46,10 +44,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       openGraph: {
         title,
         description,
-        url: shareUrl,
         type: 'music.song',
         images: artworkUrl
-          ? [{ url: artworkUrl, type: 'image/jpeg', width: 300, height: 300, alt: title }]
+          ? [{ url: artworkUrl, width: 300, height: 300, alt: title }]
           : [],
       },
       twitter: {

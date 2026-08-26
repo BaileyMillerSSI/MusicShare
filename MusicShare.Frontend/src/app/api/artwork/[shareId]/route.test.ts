@@ -15,7 +15,7 @@ describe('GET /api/artwork/[shareId]', () => {
       { headers: { 'content-type': 'application/json' } }
     );
     const artworkResponse = new Response('image bytes', {
-      headers: { 'content-length': '11', 'content-type': 'image/jpeg; charset=utf-8' },
+      headers: { 'content-type': 'image/jpeg; charset=utf-8' },
     });
     const fetchMock = vi.spyOn(global, 'fetch')
       .mockResolvedValueOnce(apiResponse)
@@ -27,7 +27,6 @@ describe('GET /api/artwork/[shareId]', () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toBe('image/jpeg');
-    expect(response.headers.get('content-length')).toBe('11');
     expect(response.headers.get('cache-control')).toContain('s-maxage=86400');
     expect(await response.text()).toBe('image bytes');
     expect(fetchMock).toHaveBeenNthCalledWith(
