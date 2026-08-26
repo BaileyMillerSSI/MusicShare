@@ -57,12 +57,14 @@ export async function GET(
       return new Response(null, { status: 415 });
     }
 
-    return new Response(artworkResponse.body, {
-      headers: {
-        'Cache-Control': 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800',
-        'Content-Type': contentType,
-      },
+    const responseHeaders = new Headers({
+      'Cache-Control': 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800',
+      'Content-Type': contentType,
     });
+    const contentLength = artworkResponse.headers.get('content-length');
+    if (contentLength) responseHeaders.set('Content-Length', contentLength);
+
+    return new Response(artworkResponse.body, { headers: responseHeaders });
   } catch {
     return new Response(null, { status: 502 });
   }
