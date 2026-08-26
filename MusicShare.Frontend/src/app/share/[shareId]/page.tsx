@@ -31,12 +31,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const title = `${data.song.title} - ${artistsString}`;
     const description = `Listen to ${data.song.title} from ${artistsString} across multiple platforms`;
     const durationSeconds = durationToSeconds(data.song.duration);
-    const artworkUrl = data.song.artworkUrl
-      ? new URL(
-          `/api/artwork/${encodeURIComponent(shareId)}`,
-          process.env.NEXT_PUBLIC_APP_URL ?? 'https://music.baileymiller.dev'
-        ).toString()
-      : undefined;
 
     const metadata: Metadata = {
       title,
@@ -45,15 +39,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
         title,
         description,
         type: 'music.song',
-        images: artworkUrl
-          ? [{ url: artworkUrl, width: 300, height: 300, alt: title }]
+        images: data.song.artworkUrl
+          ? [{ url: data.song.artworkUrl, width: 300, height: 300, alt: title }]
           : [],
       },
       twitter: {
         card: 'summary_large_image',
         title,
         description,
-        images: artworkUrl ? [artworkUrl] : [],
+        images: data.song.artworkUrl ? [data.song.artworkUrl] : [],
       },
     };
 

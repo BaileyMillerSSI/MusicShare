@@ -146,62 +146,6 @@ describe('NativeShare', () => {
         })
       );
     });
-
-    it('includes artwork as a shareable image file when the browser supports file sharing', async () => {
-      const mockShare = vi.fn().mockResolvedValue(undefined);
-      const mockCanShare = vi.fn().mockReturnValue(true);
-      Object.defineProperty(navigator, 'share', {
-        value: mockShare,
-        writable: true,
-        configurable: true,
-      });
-      Object.defineProperty(navigator, 'canShare', {
-        value: mockCanShare,
-        writable: true,
-        configurable: true,
-      });
-      vi.spyOn(global, 'fetch').mockResolvedValue(
-        new Response(new Blob(['image'], { type: 'image/jpeg' }), {
-          headers: { 'content-type': 'image/jpeg' },
-        })
-      );
-
-      const user = userEvent.setup();
-      render(<NativeShare {...defaultProps} artworkUrl="/api/artwork/test123" />);
-
-      await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/artwork/test123', {
-        headers: { Accept: 'image/*' },
-      }));
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      await user.click(screen.getByRole('button', { name: 'Share this song' }));
-
-      expect(mockCanShare).toHaveBeenCalledWith({ files: [expect.any(File)] });
-      expect(mockShare).toHaveBeenCalledWith({
-        title: 'Test Song - Artist One, Artist Two',
-        url: 'https://musicshare.example.com/share/test123',
-        files: [expect.any(File)],
-      });
-    });
-
-    it('keeps URL sharing available when artwork loading fails', async () => {
-      const mockShare = vi.fn().mockResolvedValue(undefined);
-      Object.defineProperty(navigator, 'share', {
-        value: mockShare,
-        writable: true,
-        configurable: true,
-      });
-      vi.spyOn(global, 'fetch').mockRejectedValue(new Error('Artwork unavailable'));
-
-      const user = userEvent.setup();
-      render(<NativeShare {...defaultProps} artworkUrl="/api/artwork/test123" />);
-
-      await user.click(screen.getByRole('button', { name: 'Share this song' }));
-
-      expect(mockShare).toHaveBeenCalledWith({
-        title: 'Test Song - Artist One, Artist Two',
-        url: 'https://musicshare.example.com/share/test123',
-      });
-    });
   });
 
   describe('Web Share API - Success Cases', () => {
