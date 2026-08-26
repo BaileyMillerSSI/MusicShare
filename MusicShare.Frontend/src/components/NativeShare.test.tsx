@@ -172,8 +172,9 @@ describe('NativeShare', () => {
       await waitFor(() => expect(global.fetch).toHaveBeenCalledWith('/api/artwork/test123', {
         headers: { Accept: 'image/*' },
       }));
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      await user.click(screen.getByRole('button', { name: 'Share this song' }));
+      const button = screen.getByRole('button', { name: 'Share this song' });
+      await waitFor(() => expect(button).toBeEnabled());
+      await user.click(button);
 
       expect(mockCanShare).toHaveBeenCalledWith({ files: [expect.any(File)] });
       expect(mockShare).toHaveBeenCalledWith({
@@ -195,7 +196,9 @@ describe('NativeShare', () => {
       const user = userEvent.setup();
       render(<NativeShare {...defaultProps} artworkUrl="/api/artwork/test123" />);
 
-      await user.click(screen.getByRole('button', { name: 'Share this song' }));
+      const button = screen.getByRole('button', { name: 'Share this song' });
+      await waitFor(() => expect(button).toBeEnabled());
+      await user.click(button);
 
       expect(mockShare).toHaveBeenCalledWith({
         title: 'Test Song - Artist One, Artist Two',

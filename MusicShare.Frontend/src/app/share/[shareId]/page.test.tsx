@@ -349,10 +349,14 @@ describe('ShareResultPage', () => {
       expect(metadata.openGraph?.description).toBe(
         'Listen to Amazing Song from Artist One, Artist Two across multiple platforms'
       );
-      expect(metadata.openGraph).toMatchObject({ type: 'music.song' });
+      expect(metadata.openGraph).toMatchObject({
+        url: 'https://music.baileymiller.dev/share/meta-123',
+        type: 'music.song',
+      });
       expect(metadata.openGraph?.images).toEqual([
         {
           url: 'https://music.baileymiller.dev/api/artwork/meta-123',
+          type: 'image/jpeg',
           width: 300,
           height: 300,
           alt: 'Amazing Song - Artist One, Artist Two',
