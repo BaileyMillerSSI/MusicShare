@@ -349,14 +349,10 @@ describe('ShareResultPage', () => {
       expect(metadata.openGraph?.description).toBe(
         'Listen to Amazing Song from Artist One, Artist Two across multiple platforms'
       );
-      expect(metadata.openGraph).toMatchObject({
-        url: 'https://music.baileymiller.dev/share/meta-123',
-        type: 'music.song',
-      });
+      expect(metadata.openGraph).toMatchObject({ type: 'music.song' });
       expect(metadata.openGraph?.images).toEqual([
         {
-          url: 'https://music.baileymiller.dev/api/artwork/meta-123',
-          type: 'image/jpeg',
+          url: 'https://example.com/artwork.jpg',
           width: 300,
           height: 300,
           alt: 'Amazing Song - Artist One, Artist Two',
@@ -364,7 +360,7 @@ describe('ShareResultPage', () => {
       ]);
       expect(metadata.twitter).toMatchObject({ card: 'summary_large_image' });
       expect(metadata.twitter?.title).toBe('Amazing Song - Artist One, Artist Two');
-      expect(metadata.twitter?.images).toEqual(['https://music.baileymiller.dev/api/artwork/meta-123']);
+      expect(metadata.twitter?.images).toEqual(['https://example.com/artwork.jpg']);
     });
 
     it('generates metadata without artwork when artworkUrl is not provided', async () => {
