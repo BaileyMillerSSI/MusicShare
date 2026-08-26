@@ -18,8 +18,8 @@ public class CorsConfigurationTests
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Cors:AllowedOrigins:0"] = "https://musicshare.example.com/",
-                ["Cors:AllowedOrigins:1"] = "https://www.musicshare.example.com"
+                ["Cors:AllowedOrigins:0"] = "https://music.baileymiller.dev/",
+                ["Cors:AllowedOrigins:1"] = "https://resume.baileymiller.dev"
             })
             .Build();
 
@@ -34,8 +34,11 @@ public class CorsConfigurationTests
         // Assert
         policy.Should().NotBeNull();
         policy!.Origins.Should().BeEquivalentTo(
-            "https://musicshare.example.com",
-            "https://www.musicshare.example.com");
+            "https://music.baileymiller.dev",
+            "https://resume.baileymiller.dev");
+        policy.IsOriginAllowed("https://music.baileymiller.dev").Should().BeTrue();
+        policy.IsOriginAllowed("https://resume.baileymiller.dev").Should().BeTrue();
+        policy.IsOriginAllowed("https://unrelated.example.com").Should().BeFalse();
         policy.Methods.Should().BeEquivalentTo("GET", "POST");
         policy.Headers.Should().BeEquivalentTo("Accept", "Content-Type");
         policy.AllowAnyOrigin.Should().BeFalse();

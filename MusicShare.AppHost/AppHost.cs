@@ -20,6 +20,9 @@ var revalidationSecret = builder.AddParameter("revalidation-secret", secret: tru
 var corsAllowedOrigin = builder.ExecutionContext.IsPublishMode
     ? builder.AddParameter("frontend-origin")
     : null;
+var resumeCorsAllowedOrigin = builder.ExecutionContext.IsPublishMode
+    ? builder.AddParameter("resume-origin")
+    : null;
 
 // Backend services
 var api = builder.AddProject<Projects.MusicShare_Api>("api")
@@ -44,9 +47,10 @@ var frontend = builder.AddJavaScriptApp("frontend", "../MusicShare.Frontend")
     .WithHttpEndpoint(env: "PORT")
     .WithExternalHttpEndpoints();
 
-if (corsAllowedOrigin != null)
+if (corsAllowedOrigin != null && resumeCorsAllowedOrigin != null)
 {
     api.WithEnvironment("Cors__AllowedOrigins__0", corsAllowedOrigin);
+    api.WithEnvironment("Cors__AllowedOrigins__1", resumeCorsAllowedOrigin);
 }
 
 // API references frontend for ISR revalidation

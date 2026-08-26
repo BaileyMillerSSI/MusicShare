@@ -279,7 +279,8 @@ When working with .NET codebase, the following MCP tools (`mcp__vs-mcp__*`) prov
 | `Spotify__ClientSecret` | Spotify API client secret |
 | `YouTube__GeographicLocation` | YouTube region setting |
 | `Frontend__RevalidationSecret` | Shared secret for ISR revalidation (sent as `X-API-KEY` header) |
-| `Cors__AllowedOrigins__0` | Production frontend origin allowed to call browser-facing API routes |
+| `Cors__AllowedOrigins__0` | Production MusicShare origin allowed to call browser-facing API routes |
+| `Cors__AllowedOrigins__1` | Production resume origin allowed to call browser-facing API routes |
 
 ### Azure Deployment Variables
 
@@ -290,6 +291,7 @@ When working with .NET codebase, the following MCP tools (`mcp__vs-mcp__*`) prov
 | `AZURE_RABBITMQ_PASSWORD` | RabbitMQ password |
 | `AZURE_REVALIDATION_SECRET` | ISR revalidation secret |
 | `AZURE_FRONTEND_ORIGIN` | Production frontend origin allowed by API CORS |
+| `AZURE_RESUME_ORIGIN` | Production resume origin allowed by API CORS |
 | `AZURE_CUSTOM_DOMAIN` | Custom domain for frontend |
 | `AZURE_CERTIFICATE_NAME` | SSL certificate name |
 
