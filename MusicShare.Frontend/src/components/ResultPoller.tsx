@@ -121,7 +121,11 @@ export function ResultPoller({ shareId, initialData }: Readonly<Props>) {
           )}
 
           <div className="mt-6 pt-6 border-t border-gray-200">
-            <NativeShare title={song.title} artists={song.artists} />
+            <NativeShare
+              title={song.title}
+              artists={song.artists}
+              artworkUrl={song.artworkUrl ? `/api/artwork/${encodeURIComponent(shareId)}` : undefined}
+            />
           </div>
         </div>
       )}

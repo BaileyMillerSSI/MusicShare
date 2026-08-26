@@ -1,18 +1,60 @@
 'use client';
 
-type Props = {
+import { useEffect, useState } from 'react';
+
+interface Props {
     title: string;
     artists: string[];
+    artworkUrl?: string;
 }
 
-export default function NativeShare({ title, artists }: Readonly<Props>) {
+async function loadArtworkFile(artworkUrl: string): Promise<File | undefined> {
+    try {
+      const response = await fetch(artworkUrl, { headers: { Accept: 'image/*' } });
+      if (!response.ok) return undefined;
+
+      const artwork = await response.blob();
+      if (!artwork.type.startsWith('image/')) return undefined;
+
+      const extension = artwork.type.split('/')[1] || 'jpeg';
+      return new File([artwork], `musicshare-artwork.${extension}`, { type: artwork.type });
+    } catch {
+      // Sharing the URL still works when the artwork cannot be loaded.
+      return undefined;
+    }
+}
+
+export default function NativeShare({ title, artists, artworkUrl }: Readonly<Props>) {
+    const [loadedArtwork, setLoadedArtwork] = useState<{ url: string; file: File }>();
+    const artworkFile = loadedArtwork && loadedArtwork.url === artworkUrl
+      ? loadedArtwork.file
+      : undefined;
+
+    useEffect(() => {
+      let isCurrent = true;
+
+      if (artworkUrl) {
+        void loadArtworkFile(artworkUrl).then((file) => {
+          if (isCurrent && file) setLoadedArtwork({ url: artworkUrl, file });
+        });
+      }
+
+      return () => {
+        isCurrent = false;
+      };
+    }, [artworkUrl]);
+
     return (<button
                 onClick={async () => {
                   const shareUrl = window.location.href;
-                  const shareData = {
+                  const shareData: ShareData = {
                     title: `${title} - ${artists.join(', ')}`,
                     url: shareUrl,
                   };
+
+                  if (artworkFile && navigator.canShare?.({ files: [artworkFile] })) {
+                    shareData.files = [artworkFile];
+                  }
 
                   // Check if Web Share API is supported
                   if (navigator.share) {
