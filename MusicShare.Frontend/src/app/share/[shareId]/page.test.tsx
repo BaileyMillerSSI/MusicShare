@@ -62,8 +62,10 @@ describe('ShareResultPage', () => {
       expect(outerDiv).toHaveClass('from-purple-500');
       expect(outerDiv).toHaveClass('to-pink-500');
       expect(outerDiv).toHaveClass('flex');
+      expect(outerDiv).toHaveClass('flex-col');
       expect(outerDiv).toHaveClass('items-center');
       expect(outerDiv).toHaveClass('justify-center');
+      expect(outerDiv).toHaveClass('gap-4');
       expect(outerDiv).toHaveClass('p-4');
     });
 
@@ -80,6 +82,17 @@ describe('ShareResultPage', () => {
       expect(cardDiv).toHaveClass('p-8');
       expect(cardDiv).toHaveClass('max-w-2xl');
       expect(cardDiv).toHaveClass('w-full');
+    });
+
+    it('renders the Breadstick Labs footer beneath the primary card', async () => {
+      const params = Promise.resolve({ shareId: 'footer-test' });
+      const page = await ShareResultPage({ params });
+
+      const { container } = render(page);
+      const card = container.querySelector('.bg-white.rounded-lg.shadow-xl');
+      const footer = screen.getByRole('contentinfo');
+
+      expect(card?.compareDocumentPosition(footer)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     });
   });
 
