@@ -35,6 +35,15 @@ describe('Home page', () => {
     expect(screen.getByTestId('share-form')).toBeInTheDocument();
   });
 
+  it('renders the Breadstick Labs footer beneath the primary card', () => {
+    const { container } = render(<Home />);
+
+    const card = container.querySelector('.bg-white.rounded-lg.shadow-xl');
+    const footer = screen.getByRole('contentinfo');
+
+    expect(card?.compareDocumentPosition(footer)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
   it('has the correct Suspense structure', () => {
     const { container } = render(<Home />);
     // Verify there's a Suspense boundary by checking the structure
@@ -50,6 +59,8 @@ describe('Home page', () => {
     const { container } = render(<Home />);
     const mainContainer = container.querySelector('.min-h-screen.bg-linear-to-br');
     expect(mainContainer).toBeInTheDocument();
+    expect(mainContainer).toHaveClass('flex-col');
+    expect(mainContainer).toHaveClass('gap-4');
 
     const card = container.querySelector('.bg-white.rounded-lg.shadow-xl');
     expect(card).toBeInTheDocument();
