@@ -1,4 +1,5 @@
 using MongoDB.Driver;
+using MongoDB.Bson;
 using MusicShare.Contracts;
 using MusicShare.Persistence.Entities;
 
@@ -55,5 +56,40 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
     {
         var filter = Builders<ShareRequest>.Filter.Eq(r => r.Id, request.Id);
         await _requests.ReplaceOneAsync(filter, request, cancellationToken: cancellationToken);
+    }
+
+    public async Task<IReadOnlyDictionary<ServiceType, long>> GetCompletedDistinctSongCountsBySourceAsync(CancellationToken cancellationToken = default)
+    {
+        var pipeline = PipelineDefinition<ShareRequest, BsonDocument>.Create([
+            .. DistinctCompletedPipeline(),
+            new BsonDocument("$group", new BsonDocument { { "_id", "$sourceService" }, { "count", new BsonDocument("$sum", 1) } })]);
+        var rows = await _requests.Aggregate<BsonDocument>(pipeline).ToListAsync(cancellationToken);
+        return rows.Where(x => x.TryGetValue("_id", out var service) && x.TryGetValue("count", out var count)
+            && Enum.TryParse<ServiceType>(service.AsString, out _))
+            .ToDictionary(x => Enum.Parse<ServiceType>(x["_id"].AsString), x => x["count"].ToInt64());
+    }
+
+    public async Task<IReadOnlyList<CompletedShareRequest>> GetRecentCompletedDistinctAsync(int maximum, CancellationToken cancellationToken = default)
+    {
+        if (maximum <= 0) return [];
+        var pipeline = PipelineDefinition<ShareRequest, BsonDocument>.Create([
+            .. DistinctCompletedPipeline(),
+            new BsonDocument("$sort", new BsonDocument { { "createdAt", -1 }, { "shareId", -1 } }),
+            new BsonDocument("$limit", maximum)]);
+        var rows = await _requests.Aggregate<BsonDocument>(pipeline).ToListAsync(cancellationToken);
+        return rows.Select(x => new CompletedShareRequest(
+            x["songId"].AsString, x["shareId"].AsString,
+            Enum.Parse<ServiceType>(x["sourceService"].AsString), x["createdAt"].ToUniversalTime())).ToList();
+    }
+
+    private static BsonDocument[] DistinctCompletedPipeline()
+    {
+        var stages = new BsonDocument[]
+        {
+            new("$match", new BsonDocument { { "status", ShareStatus.Completed.ToString() }, { "songId", new BsonDocument("$type", "string") }, { "songId", new BsonDocument("$ne", "") } }),
+            new("$sort", new BsonDocument { { "createdAt", -1 }, { "shareId", -1 } }),
+            new("$group", new BsonDocument { { "_id", "$songId" }, { "songId", new BsonDocument("$first", "$songId") }, { "shareId", new BsonDocument("$first", "$shareId") }, { "sourceService", new BsonDocument("$first", "$sourceService") }, { "createdAt", new BsonDocument("$first", "$createdAt") } })
+        };
+        return stages;
     }
 }

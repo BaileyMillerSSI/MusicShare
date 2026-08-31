@@ -21,4 +21,7 @@ public class MusicShareDbContext(IMongoClient client, IOptions<MongoDbSettings> 
 
     public IMongoCollection<WorkflowState> WorkflowStates =>
         Database.GetCollection<WorkflowState>("workflowStates");
+
+    public IMongoCollection<PublicMetricsSnapshot> PublicMetricsSnapshots =>
+        Database.GetCollection<PublicMetricsSnapshot>("publicMetricsSnapshots");
 }

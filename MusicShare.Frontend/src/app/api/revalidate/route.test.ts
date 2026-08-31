@@ -81,7 +81,7 @@ describe('POST /api/revalidate', () => {
     const response = await POST(createJsonRequest({}));
 
     expect(response.status).toBe(400);
-    await expect(response.json()).resolves.toEqual({ error: 'shareId is required' });
+    await expect(response.json()).resolves.toEqual({ error: 'Invalid revalidation target' });
     expect(revalidatePath).not.toHaveBeenCalled();
   });
 
@@ -109,5 +109,22 @@ describe('POST /api/revalidate', () => {
     await expect(response.json()).resolves.toEqual({ revalidated: true, shareId });
     expect(revalidatePath).toHaveBeenCalledTimes(1);
     expect(revalidatePath).toHaveBeenCalledWith(`/share/${encodeURIComponent(shareId)}`);
+  });
+
+  it('revalidates only the fixed metrics path', async () => {
+    const response = await POST(createJsonRequest({ target: 'metrics' }));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ revalidated: true, target: 'metrics' });
+    expect(revalidatePath).toHaveBeenCalledWith('/metrics');
+  });
+
+  it('rejects mixed and unknown targets', async () => {
+    const mixed = await POST(createJsonRequest({ target: 'metrics', shareId: 'abc123def456' }));
+    const unknown = await POST(createJsonRequest({ target: '/anything' }));
+
+    expect(mixed.status).toBe(400);
+    expect(unknown.status).toBe(400);
+    expect(revalidatePath).not.toHaveBeenCalled();
   });
 });

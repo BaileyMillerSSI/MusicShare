@@ -12,6 +12,7 @@ public class CompleteSagaActivity(
     ISongService songService,
     IShareStatusService shareStatusService,
     IFrontendRevalidateService revalidateService,
+    IPublishEndpoint publishEndpoint,
     ILogger<CompleteSagaActivity> logger) :
     IStateMachineActivity<ShareRequestSagaState, SourceMetadataResolved>,
     IStateMachineActivity<ShareRequestSagaState, ServiceLinkResolved>,
@@ -68,7 +69,8 @@ public class CompleteSagaActivity(
 
         // Trigger Next.js on-demand ISR revalidation for this share page
         await _frontendRevalidateService
-            .RevalidateAsync(new RevalidateFrontendRequest(saga.ShareId));
+            .RevalidateShareAsync(saga.ShareId);
+        await publishEndpoint.Publish(new RefreshPublicMetrics());
     }
 
     public Task Faulted<TException>(

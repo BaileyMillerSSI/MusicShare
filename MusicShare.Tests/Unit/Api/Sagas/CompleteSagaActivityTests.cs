@@ -160,7 +160,7 @@ public class CompleteSagaActivityTests
 
         // Assert
         mock.Mock<IFrontendRevalidateService>().Verify(
-            x => x.RevalidateAsync(It.Is<RevalidateFrontendRequest>(r => r.ShareId == "share-abc123")),
+            x => x.RevalidateShareAsync("share-abc123"),
             Times.Once);
     }
 
@@ -323,7 +323,7 @@ public class CompleteSagaActivityTests
 
         // Assert
         mock.Mock<IFrontendRevalidateService>().Verify(
-            x => x.RevalidateAsync(It.Is<RevalidateFrontendRequest>(r => r.ShareId == "share-abc123")),
+            x => x.RevalidateShareAsync("share-abc123"),
             Times.Once);
     }
 

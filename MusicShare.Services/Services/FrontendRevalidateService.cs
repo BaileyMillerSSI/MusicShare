@@ -8,22 +8,25 @@ namespace MusicShare.Services.Services
         private readonly HttpClient _client = client;
         private readonly ILogger<FrontendRevalidateService> _logger = logger;
 
-        public async Task RevalidateAsync(RevalidateFrontendRequest request)
+        public Task RevalidateShareAsync(string shareId) => RevalidateAsync(new { shareId }, $"ShareId={shareId}");
+
+        public Task RevalidateMetricsAsync() => RevalidateAsync(new { target = "metrics" }, "metrics");
+
+        private async Task RevalidateAsync(object request, string target)
         {
             try
             {
                 var response = await _client.PostAsJsonAsync("/api/revalidate", request);
                 response.EnsureSuccessStatusCode();
 
-                _logger.LogInformation("Revalidation triggered for ShareId={ShareId}", request.ShareId);
+                _logger.LogInformation("Revalidation triggered for {Target}", target);
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex,
-                    "Failed to trigger revalidation for ShareId={ShareId}", request.ShareId);
+                    "Failed to trigger revalidation for {Target}", target);
             }
         }
     }
 
-    public record RevalidateFrontendRequest(string ShareId);
 }

@@ -6,179 +6,45 @@ namespace MusicShare.Tests.Unit.Services;
 
 public class FrontendRevalidateServiceTests
 {
-    private static FrontendRevalidateService CreateSut(
-        HttpMessageHandler handler,
-        ILogger<FrontendRevalidateService>? logger = null)
+    private sealed class MockHttpMessageHandler(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> handler) : HttpMessageHandler
     {
-        var client = new HttpClient(handler)
-        {
-            BaseAddress = new Uri("https://frontend.example.com")
-        };
-        return new FrontendRevalidateService(
-            client,
-            logger ?? Mock.Of<ILogger<FrontendRevalidateService>>());
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) => handler(request, cancellationToken);
     }
 
-    [Fact]
-    public async Task ItWillPostToRevalidateEndpoint()
-    {
-        // Arrange
-        Uri? capturedUri = null;
-        var handler = new MockHttpMessageHandler((request, _) =>
-        {
-            capturedUri = request.RequestUri;
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
-        });
-        var sut = CreateSut(handler);
-        var request = new RevalidateFrontendRequest("share-abc123");
-
-        // Act
-        await sut.RevalidateAsync(request);
-
-        // Assert
-        capturedUri.Should().NotBeNull();
-        capturedUri!.PathAndQuery.Should().Be("/api/revalidate");
-    }
+    private static FrontendRevalidateService CreateSut(HttpMessageHandler handler) => new(
+        new HttpClient(handler) { BaseAddress = new Uri("https://frontend.example.com") },
+        Mock.Of<ILogger<FrontendRevalidateService>>());
 
     [Fact]
-    public async Task ItWillSendPostRequest()
+    public async Task ItWillPostTheExactSharePayload()
     {
-        // Arrange
-        HttpMethod? capturedMethod = null;
-        var handler = new MockHttpMessageHandler((request, _) =>
+        string? body = null;
+        var sut = CreateSut(new MockHttpMessageHandler(async (request, _) =>
         {
-            capturedMethod = request.Method;
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
-        });
-        var sut = CreateSut(handler);
-
-        // Act
-        await sut.RevalidateAsync(new RevalidateFrontendRequest("share-1"));
-
-        // Assert
-        capturedMethod.Should().Be(HttpMethod.Post);
-    }
-
-    [Fact]
-    public async Task ItWillIncludeShareIdInRequestBody()
-    {
-        // Arrange
-        string? capturedBody = null;
-        var handler = new MockHttpMessageHandler(async (request, _) =>
-        {
-            capturedBody = await request.Content!.ReadAsStringAsync();
+            body = await request.Content!.ReadAsStringAsync();
             return new HttpResponseMessage(HttpStatusCode.OK);
-        });
-        var sut = CreateSut(handler);
-
-        // Act
-        await sut.RevalidateAsync(new RevalidateFrontendRequest("share-abc123"));
-
-        // Assert
-        capturedBody.Should().NotBeNull();
-        capturedBody.Should().Contain("share-abc123");
+        }));
+        await sut.RevalidateShareAsync("abc123def456");
+        body.Should().Be("{\"shareId\":\"abc123def456\"}");
     }
 
     [Fact]
-    public async Task ItWillNotThrowOnHttpFailure()
+    public async Task ItWillPostTheFixedMetricsPayload()
     {
-        // Arrange
-        var handler = new MockHttpMessageHandler((_, _) =>
-            Task.FromResult(new HttpResponseMessage(HttpStatusCode.InternalServerError)));
-        var sut = CreateSut(handler);
-
-        // Act
-        var act = () => sut.RevalidateAsync(new RevalidateFrontendRequest("share-1"));
-
-        // Assert
-        await act.Should().NotThrowAsync();
+        string? body = null;
+        var sut = CreateSut(new MockHttpMessageHandler(async (request, _) =>
+        {
+            body = await request.Content!.ReadAsStringAsync();
+            return new HttpResponseMessage(HttpStatusCode.OK);
+        }));
+        await sut.RevalidateMetricsAsync();
+        body.Should().Be("{\"target\":\"metrics\"}");
     }
 
     [Fact]
-    public async Task ItWillNotThrowOnNetworkException()
+    public async Task ItWillTolerateFrontendFailure()
     {
-        // Arrange
-        var handler = new MockHttpMessageHandler((_, _) =>
-            throw new HttpRequestException("Connection refused"));
-        var sut = CreateSut(handler);
-
-        // Act
-        var act = () => sut.RevalidateAsync(new RevalidateFrontendRequest("share-1"));
-
-        // Assert
-        await act.Should().NotThrowAsync();
-    }
-
-    [Fact]
-    public async Task ItWillNotThrowOnTaskCanceledException()
-    {
-        // Arrange
-        var handler = new MockHttpMessageHandler((_, _) =>
-            throw new TaskCanceledException("Request timed out"));
-        var sut = CreateSut(handler);
-
-        // Act
-        var act = () => sut.RevalidateAsync(new RevalidateFrontendRequest("share-1"));
-
-        // Assert
-        await act.Should().NotThrowAsync();
-    }
-
-    [Fact]
-    public async Task ItWillCompleteSuccessfullyOnOkResponse()
-    {
-        // Arrange
-        var handler = new MockHttpMessageHandler((_, _) =>
-            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));
-        var sut = CreateSut(handler);
-
-        // Act
-        var act = () => sut.RevalidateAsync(new RevalidateFrontendRequest("share-abc123"));
-
-        // Assert
-        await act.Should().NotThrowAsync();
-    }
-
-    [Fact]
-    public async Task ItWillNotThrowOnBadRequestResponse()
-    {
-        // Arrange
-        var handler = new MockHttpMessageHandler((_, _) =>
-            Task.FromResult(new HttpResponseMessage(HttpStatusCode.BadRequest)));
-        var sut = CreateSut(handler);
-
-        // Act
-        var act = () => sut.RevalidateAsync(new RevalidateFrontendRequest("share-1"));
-
-        // Assert
-        await act.Should().NotThrowAsync();
-    }
-
-    [Fact]
-    public async Task ItWillNotThrowOnServiceUnavailableResponse()
-    {
-        // Arrange
-        var handler = new MockHttpMessageHandler((_, _) =>
-            Task.FromResult(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable)));
-        var sut = CreateSut(handler);
-
-        // Act
-        var act = () => sut.RevalidateAsync(new RevalidateFrontendRequest("share-1"));
-
-        // Assert
-        await act.Should().NotThrowAsync();
-    }
-
-    /// <summary>
-    /// Test helper that intercepts HTTP requests for assertion.
-    /// </summary>
-    private class MockHttpMessageHandler(
-        Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> handler)
-        : HttpMessageHandler
-    {
-        protected override Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage request,
-            CancellationToken cancellationToken)
-            => handler(request, cancellationToken);
+        var sut = CreateSut(new MockHttpMessageHandler((_, _) => throw new HttpRequestException("offline")));
+        await sut.Invoking(x => x.RevalidateMetricsAsync()).Should().NotThrowAsync();
     }
 }

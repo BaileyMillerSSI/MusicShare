@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 
 const shareIdPattern = /^[a-f0-9]{12}$/;
 
-function isRequestBody(value: unknown): value is { shareId?: unknown } {
+function isRequestBody(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
@@ -26,10 +26,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const shareId = isRequestBody(body) ? body.shareId : undefined;
-  if (typeof shareId !== 'string' || shareId.length === 0) {
-    return NextResponse.json({ error: 'shareId is required' }, { status: 400 });
+  if (!isRequestBody(body)) {
+    return NextResponse.json({ error: 'Invalid revalidation target' }, { status: 400 });
   }
+
+  if (body.target === 'metrics' && Object.keys(body).length === 1) {
+    revalidatePath('/metrics');
+    return NextResponse.json({ revalidated: true, target: 'metrics' });
+  }
+
+  if (Object.keys(body).length !== 1 || typeof body.shareId !== 'string') {
+    return NextResponse.json({ error: 'Invalid revalidation target' }, { status: 400 });
+  }
+
+  const shareId = body.shareId;
 
   if (!shareIdPattern.test(shareId)) {
     return NextResponse.json(

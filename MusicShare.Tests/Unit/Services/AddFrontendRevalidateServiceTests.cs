@@ -82,7 +82,7 @@ public class AddFrontendRevalidateServiceTests
 
         // Trigger an actual HTTP call to capture the configured base address
         // The handler will capture the request and short-circuit it
-        await service.RevalidateAsync(new RevalidateFrontendRequest("test-share"));
+        await service.RevalidateShareAsync("test-share");
 
         // Assert
         capturedBaseAddress.Should().NotBeNull();
@@ -120,7 +120,7 @@ public class AddFrontendRevalidateServiceTests
         // Act
         using var scope = host.Services.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<IFrontendRevalidateService>();
-        await service.RevalidateAsync(new RevalidateFrontendRequest("test-share"));
+        await service.RevalidateShareAsync("test-share");
 
         // Assert
         capturedApiKey.Should().Be("super-secret-api-key");

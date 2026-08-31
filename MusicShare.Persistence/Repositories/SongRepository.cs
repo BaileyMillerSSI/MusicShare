@@ -13,6 +13,13 @@ public class SongRepository(IMusicShareDbContext context) : ISongRepository
         return await _songs.Find(filter).FirstOrDefaultAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Song>> GetByIdsAsync(IEnumerable<string> ids, CancellationToken cancellationToken = default)
+    {
+        var uniqueIds = ids.Where(id => !string.IsNullOrWhiteSpace(id)).Distinct().ToList();
+        if (uniqueIds.Count == 0) return [];
+        return await _songs.Find(Builders<Song>.Filter.In(s => s.Id, uniqueIds)).ToListAsync(cancellationToken);
+    }
+
     public async Task<Song> InsertAsync(Song song, CancellationToken cancellationToken = default)
     {
         song.CreatedAt = DateTime.UtcNow;
