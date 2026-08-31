@@ -5,6 +5,7 @@ using MusicShare.Contracts;
 using MusicShare.Persistence;
 using MusicShare.Persistence.Entities;
 using MusicShare.Persistence.Repositories;
+using MusicShare.Services.Services;
 
 namespace MusicShare.Tests.Integration;
 
@@ -79,7 +80,50 @@ public class PublicMetricsMongoRepositoryTests : IAsyncLifetime
         (await repository.GetAsync()).Should().Match<PublicMetricsSnapshot>(x => x.TotalCompletedSongs == 4 && x.SnapshotVersion == 20);
     }
 
+    [Fact]
+    public async Task ItWillRejectAnOlderEqualTotalRefreshAfterANewerAuthoritativeViewPersists()
+    {
+        var context = new TestDbContext(_database);
+        var oldCreatedAt = TruncateToMongoMilliseconds(DateTime.UtcNow.AddMinutes(-1));
+        var newCreatedAt = TruncateToMongoMilliseconds(DateTime.UtcNow);
+        var songId = ObjectId.GenerateNewId().ToString();
+        await context.Songs.InsertOneAsync(new Song { Id = songId, Title = "Song", Artists = ["Artist"] });
+        await _database.GetCollection<BsonDocument>("requests").InsertOneAsync(RequestDocument(songId, "share-old", ServiceType.Spotify, oldCreatedAt));
+
+        var delayedRequests = new DelayedAfterRecentReadRepository(new ShareRequestRepository(context));
+        var snapshots = new PublicMetricsSnapshotRepository(context);
+        var olderRefresh = new PublicMetricsService(delayedRequests, new SongRepository(context), snapshots).RefreshAsync();
+        await delayedRequests.RecentRead;
+
+        await _database.GetCollection<BsonDocument>("requests").InsertOneAsync(RequestDocument(songId, "share-new", ServiceType.Spotify, newCreatedAt));
+        var newerResult = await new PublicMetricsService(new ShareRequestRepository(context), new SongRepository(context), snapshots).RefreshAsync();
+        delayedRequests.Release();
+        var olderResult = await olderRefresh;
+
+        newerResult.Accepted.Should().BeTrue();
+        olderResult.Accepted.Should().BeFalse();
+        (await snapshots.GetAsync()).Should().Match<PublicMetricsSnapshot>(x =>
+            x.TotalCompletedSongs == 1 && x.SnapshotVersion == newCreatedAt.Ticks && x.RecentSongs.Single().ShareId == "share-new");
+    }
+
+    [Fact]
+    public async Task ItWillUseTheLatestAuthoritativeRequestTimestampAsTheSnapshotVersion()
+    {
+        var context = new TestDbContext(_database);
+        var createdAt = TruncateToMongoMilliseconds(DateTime.UtcNow.AddMinutes(-5));
+        var songId = ObjectId.GenerateNewId().ToString();
+        await context.Songs.InsertOneAsync(new Song { Id = songId, Title = "Song", Artists = ["Artist"] });
+        await _database.GetCollection<BsonDocument>("requests").InsertOneAsync(RequestDocument(songId, "share", ServiceType.Spotify, createdAt));
+
+        var result = await new PublicMetricsService(
+            new ShareRequestRepository(context), new SongRepository(context), new PublicMetricsSnapshotRepository(context)).RefreshAsync();
+
+        result.Accepted.Should().BeTrue();
+        (await context.PublicMetricsSnapshots.Find(_ => true).SingleAsync()).SnapshotVersion.Should().Be(createdAt.Ticks);
+    }
+
     private static PublicMetricsSnapshot Snapshot(long total, long version) => new() { TotalCompletedSongs = total, SnapshotVersion = version, GeneratedAt = DateTime.UtcNow };
+    private static DateTime TruncateToMongoMilliseconds(DateTime value) => new(value.Ticks - value.Ticks % TimeSpan.TicksPerMillisecond, DateTimeKind.Utc);
     private static BsonDocument RequestDocument(string songId, string shareId, ServiceType service, DateTime createdAt, ShareStatus status = ShareStatus.Completed) => new()
     {
         { "_id", ObjectId.GenerateNewId() }, { "shareId", shareId }, { "sourceUrl", "https://example.test" },
@@ -94,5 +138,30 @@ public class PublicMetricsMongoRepositoryTests : IAsyncLifetime
         public IMongoCollection<SongServiceLink> SongServiceLinks => database.GetCollection<SongServiceLink>("links");
         public IMongoCollection<WorkflowState> WorkflowStates => database.GetCollection<WorkflowState>("workflows");
         public IMongoCollection<PublicMetricsSnapshot> PublicMetricsSnapshots => database.GetCollection<PublicMetricsSnapshot>("snapshots");
+    }
+
+    private sealed class DelayedAfterRecentReadRepository(IShareRequestRepository inner) : IShareRequestRepository
+    {
+        private readonly TaskCompletionSource _recentRead = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task RecentRead => _recentRead.Task;
+        public void Release() => _release.SetResult();
+        public Task<ShareRequest?> GetByIdAsync(string id, CancellationToken cancellationToken = default) => inner.GetByIdAsync(id, cancellationToken);
+        public Task<ShareRequest?> GetByShareIdAsync(string shareId, CancellationToken cancellationToken = default) => inner.GetByShareIdAsync(shareId, cancellationToken);
+        public Task<ShareRequest?> GetByCorrelationIdAsync(Guid correlationId, CancellationToken cancellationToken = default) => inner.GetByCorrelationIdAsync(correlationId, cancellationToken);
+        public Task<ShareRequest?> GetBySongIdAsync(string songId, CancellationToken cancellationToken = default) => inner.GetBySongIdAsync(songId, cancellationToken);
+        public Task<ShareRequest?> GetByServiceTrackIdAsync(ServiceType serviceType, string serviceTrackId, CancellationToken cancellationToken = default) => inner.GetByServiceTrackIdAsync(serviceType, serviceTrackId, cancellationToken);
+        public Task<ShareRequest> InsertAsync(ShareRequest request, CancellationToken cancellationToken = default) => inner.InsertAsync(request, cancellationToken);
+        public Task UpdateAsync(ShareRequest request, CancellationToken cancellationToken = default) => inner.UpdateAsync(request, cancellationToken);
+        public Task<IReadOnlyDictionary<ServiceType, long>> GetCompletedDistinctSongCountsBySourceAsync(CancellationToken cancellationToken = default) => inner.GetCompletedDistinctSongCountsBySourceAsync(cancellationToken);
+
+        public async Task<IReadOnlyList<CompletedShareRequest>> GetRecentCompletedDistinctAsync(int maximum, CancellationToken cancellationToken = default)
+        {
+            var requests = await inner.GetRecentCompletedDistinctAsync(maximum, cancellationToken);
+            _recentRead.SetResult();
+            await _release.Task.WaitAsync(cancellationToken);
+            return requests;
+        }
     }
 }

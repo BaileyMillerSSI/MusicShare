@@ -27,7 +27,8 @@ public class PublicMetricsService(
         var candidate = new PublicMetricsSnapshot
         {
             TotalCompletedSongs = counts.Where(x => IsPublicSourceService(x.Key)).Sum(x => x.Value),
-            SnapshotVersion = DateTime.UtcNow.Ticks,
+            SnapshotVersion = recentRequests.Where(x => IsPublicSourceService(x.SourceService))
+                .Select(x => x.CreatedAt.Ticks).DefaultIfEmpty(0).Max(),
             GeneratedAt = DateTime.UtcNow,
             ServiceCounts = Enum.GetValues<ServiceType>().Where(x => x != ServiceType.Unknown)
                 .Select(x => new PublicMetricsServiceCount { Service = x, Count = counts.GetValueOrDefault(x) }).ToList(),
