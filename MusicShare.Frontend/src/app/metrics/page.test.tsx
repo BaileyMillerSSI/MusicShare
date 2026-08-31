@@ -35,6 +35,8 @@ describe('MetricsPage', () => {
     expect(screen.getByRole('heading', { name: 'Completed songs by week' })).toBeInTheDocument();
     expect(screen.getByLabelText('2026-01-04 UTC: 0 completed songs')).toBeInTheDocument();
     expect(screen.getByLabelText('2026-02-22 UTC: 3 completed songs')).toBeInTheDocument();
+    expect(screen.getByLabelText('2026-01-04 UTC: 0 completed songs').querySelector('[aria-hidden="true"]')).toHaveStyle({ height: '0%' });
+    expect(screen.getByLabelText('2026-01-11 UTC: 2 completed songs').querySelector('[aria-hidden="true"]')).toHaveStyle({ height: '67%' });
   });
 
   it('supports snapshots created before weekly metrics were stored', async () => {

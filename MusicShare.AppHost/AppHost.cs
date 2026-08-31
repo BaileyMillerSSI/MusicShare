@@ -1,8 +1,9 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
-// Scaling configuration (defaults to 0/1 for development, configurable via environment variables for production)
-var apiMinReplicas = int.TryParse(Environment.GetEnvironmentVariable("AZURE_API_MIN_REPLICAS"), out var apiMin) ? apiMin : 0;
-var apiMaxReplicas = int.TryParse(Environment.GetEnvironmentVariable("AZURE_API_MAX_REPLICAS"), out var apiMax) ? apiMax : 1;
+// The API owns the UTC weekly metrics refresh, so published deployments need one replica
+// available even when the frontend is idle. The frontend may still scale to zero.
+var apiMinReplicas = Math.Max(1, int.TryParse(Environment.GetEnvironmentVariable("AZURE_API_MIN_REPLICAS"), out var apiMin) ? apiMin : 1);
+var apiMaxReplicas = Math.Max(apiMinReplicas, int.TryParse(Environment.GetEnvironmentVariable("AZURE_API_MAX_REPLICAS"), out var apiMax) ? apiMax : 1);
 var frontendMinReplicas = int.TryParse(Environment.GetEnvironmentVariable("AZURE_FRONTEND_MIN_REPLICAS"), out var feMin) ? feMin : 0;
 var frontendMaxReplicas = int.TryParse(Environment.GetEnvironmentVariable("AZURE_FRONTEND_MAX_REPLICAS"), out var feMax) ? feMax : 1;
 

@@ -57,7 +57,7 @@ export default async function MetricsPage() {
         <h2 id="weekly-completed-songs" className="text-xl font-semibold text-gray-800">Completed songs by week</h2>
         {weeklyCompletedSongs.length === 0 ? <p className="mt-3 text-gray-600">Weekly song data is not available yet.</p> : <ol className="mt-3 grid grid-cols-8 gap-1.5" aria-label="Completed songs by week, Sunday UTC start">
           {weeklyCompletedSongs.map((week) => {
-            const height = largestWeeklyCount === 0 ? 0 : Math.max(8, Math.round((week.count / largestWeeklyCount) * 100));
+            const height = week.count === 0 || largestWeeklyCount === 0 ? 0 : Math.max(8, Math.round((week.count / largestWeeklyCount) * 100));
             const label = `${week.weekStart.slice(0, 10)} UTC: ${week.count} completed songs`;
             return <li key={week.weekStart} className="min-w-0 text-center text-xs text-gray-600" aria-label={label}>
               <span className="flex h-28 items-end justify-center rounded bg-gray-100 px-0.5"><span className="w-full rounded-t bg-purple-600" style={{ height: `${height}%` }} aria-hidden="true" /></span>
