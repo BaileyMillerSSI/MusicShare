@@ -2,14 +2,21 @@ const refreshPath = '/api/metrics/refresh';
 const timeoutMs = 120_000;
 
 type Logger = Pick<Console, 'warn'>;
+type ApiServiceEnvironment = {
+  services__api__https__0?: string;
+  services__api__http__0?: string;
+};
+type StartupTimer = number | ReturnType<typeof globalThis.setTimeout>;
+type SetStartupTimer = (callback: () => void, delay: number) => StartupTimer;
+type ClearStartupTimer = (timer: StartupTimer) => void;
 
 export type RefreshMetricsOnStartupDependencies = {
-  env?: NodeJS.ProcessEnv;
+  env?: ApiServiceEnvironment;
   fetch?: typeof globalThis.fetch;
   logger?: Logger;
   createAbortController?: () => AbortController;
-  setTimeout?: typeof globalThis.setTimeout;
-  clearTimeout?: typeof globalThis.clearTimeout;
+  setTimeout?: SetStartupTimer;
+  clearTimeout?: ClearStartupTimer;
 };
 
 function warn(logger: Logger, message: string, error?: unknown) {
@@ -20,7 +27,7 @@ function warn(logger: Logger, message: string, error?: unknown) {
   }
 }
 
-export function resolveApiOrigin(env: NodeJS.ProcessEnv): string | undefined {
+export function resolveApiOrigin(env: ApiServiceEnvironment): string | undefined {
   return env.services__api__https__0 ?? env.services__api__http__0;
 }
 
@@ -31,12 +38,14 @@ export function resolveApiOrigin(env: NodeJS.ProcessEnv): string | undefined {
 export async function refreshMetricsOnStartup(
   dependencies: RefreshMetricsOnStartupDependencies = {}
 ): Promise<void> {
-  const env = dependencies.env ?? process.env;
+  const env = dependencies.env ?? (process.env as ApiServiceEnvironment);
   const fetchFn = dependencies.fetch ?? globalThis.fetch;
   const logger = dependencies.logger ?? console;
   const createAbortController = dependencies.createAbortController ?? (() => new AbortController());
-  const setTimeoutFn = dependencies.setTimeout ?? globalThis.setTimeout;
-  const clearTimeoutFn = dependencies.clearTimeout ?? globalThis.clearTimeout;
+  const setTimeoutFn: SetStartupTimer = dependencies.setTimeout
+    ?? ((callback, delay) => globalThis.setTimeout(callback, delay));
+  const clearTimeoutFn: ClearStartupTimer = dependencies.clearTimeout
+    ?? ((timer) => globalThis.clearTimeout(timer));
   const apiOrigin = resolveApiOrigin(env);
 
   if (!apiOrigin) {
