@@ -12,19 +12,25 @@ namespace MusicShare.Tests.Integration;
 /// <summary>Exercises the actual MongoDB aggregation and compare-and-set filters, not rendered BSON alone.</summary>
 public class PublicMetricsMongoRepositoryTests : IAsyncLifetime
 {
-    private MongoDbRunner _runner = null!;
+    private MongoDbRunner? _runner;
     private IMongoDatabase _database = null!;
 
     public ValueTask InitializeAsync()
     {
-        _runner = MongoDbRunner.Start(singleNodeReplSet: true);
-        _database = new MongoClient(_runner.ConnectionString).GetDatabase($"metrics-{Guid.NewGuid():N}");
+        var connectionString = Environment.GetEnvironmentVariable("MUSICSHARE_TEST_MONGODB");
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            _runner = MongoDbRunner.Start(singleNodeReplSet: true);
+            connectionString = _runner.ConnectionString;
+        }
+
+        _database = new MongoClient(connectionString).GetDatabase($"metrics-{Guid.NewGuid():N}");
         return ValueTask.CompletedTask;
     }
 
     public ValueTask DisposeAsync()
     {
-        _runner.Dispose();
+        _runner?.Dispose();
         return ValueTask.CompletedTask;
     }
 
