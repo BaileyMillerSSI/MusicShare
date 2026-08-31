@@ -8,10 +8,12 @@ public record PublicMetricsResponse(
     IReadOnlyList<PublicMetricsServiceCountResponse> ServiceCounts,
     IReadOnlyList<PublicMetricsRecentSongResponse> RecentSongs)
 {
+    public static IReadOnlyList<ServiceType> MetricsPlatforms { get; } = [ServiceType.Spotify, ServiceType.YouTubeMusic];
+
     public static PublicMetricsResponse Empty() => new(
         0,
         null,
-        Enum.GetValues<ServiceType>().Where(x => x != ServiceType.Unknown)
+        MetricsPlatforms
             .Select(x => new PublicMetricsServiceCountResponse(x, 0)).ToList(),
         []);
 }

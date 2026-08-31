@@ -58,15 +58,13 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
         await _requests.ReplaceOneAsync(filter, request, cancellationToken: cancellationToken);
     }
 
-    public async Task<IReadOnlyDictionary<ServiceType, long>> GetCompletedDistinctSongCountsBySourceAsync(CancellationToken cancellationToken = default)
+    public async Task<long> GetCompletedDistinctSongCountAsync(CancellationToken cancellationToken = default)
     {
         var pipeline = PipelineDefinition<ShareRequest, BsonDocument>.Create([
             .. DistinctCompletedPipeline(),
-            new BsonDocument("$group", new BsonDocument { { "_id", "$sourceService" }, { "count", new BsonDocument("$sum", 1) } })]);
-        var rows = await _requests.Aggregate<BsonDocument>(pipeline).ToListAsync(cancellationToken);
-        return rows.Where(x => x.TryGetValue("_id", out var service) && x.TryGetValue("count", out _)
-            && service.IsString && IsPublicSourceService(service.AsString, out _))
-            .ToDictionary(x => Enum.Parse<ServiceType>(x["_id"].AsString), x => x["count"].ToInt64());
+            new BsonDocument("$count", "count")]);
+        var result = await _requests.Aggregate<BsonDocument>(pipeline).FirstOrDefaultAsync(cancellationToken);
+        return result is not null && result.TryGetValue("count", out var count) && count.IsNumeric ? count.ToInt64() : 0;
     }
 
     public async Task<IReadOnlyList<CompletedShareRequest>> GetRecentCompletedDistinctAsync(int maximum, CancellationToken cancellationToken = default)

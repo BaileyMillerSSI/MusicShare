@@ -35,7 +35,7 @@ public class PublicMetricsMongoRepositoryTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task ItWillAggregateOnlyValidDistinctCompletedSongsInDeterministicBoundedOrder()
+    public async Task ItWillAggregateDistinctCompletedSongsAndResolvedLinksInDeterministicBoundedOrder()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         var context = new TestDbContext(_database);
@@ -44,20 +44,37 @@ public class PublicMetricsMongoRepositoryTests : IAsyncLifetime
         var newest = DateTime.UtcNow;
         var firstSong = ObjectId.GenerateNewId().ToString();
         var secondSong = ObjectId.GenerateNewId().ToString();
+        var pendingSong = ObjectId.GenerateNewId().ToString();
         await requests.InsertManyAsync([
             RequestDocument(firstSong, "share-old", ServiceType.Spotify, old),
             RequestDocument(firstSong, "share-new", ServiceType.YouTubeMusic, newest),
             RequestDocument(secondSong, "share-second", ServiceType.AppleMusic, newest),
             RequestDocument(ObjectId.GenerateNewId().ToString(), "unknown", ServiceType.Unknown, newest),
             RequestDocument(ObjectId.GenerateNewId().ToString(), "undefined", (ServiceType)999, newest),
-            RequestDocument(ObjectId.GenerateNewId().ToString(), "pending", ServiceType.Spotify, newest, ShareStatus.Pending)
+            RequestDocument(pendingSong, "pending", ServiceType.Spotify, newest, ShareStatus.Pending)
+        ], cancellationToken: cancellationToken);
+        await _database.GetCollection<BsonDocument>("links").InsertManyAsync([
+            LinkDocument(firstSong, ServiceType.Spotify),
+            LinkDocument(firstSong, ServiceType.YouTubeMusic),
+            LinkDocument(firstSong, ServiceType.YouTubeMusic),
+            LinkDocument(secondSong, ServiceType.AppleMusic),
+            LinkDocument(pendingSong, ServiceType.Spotify),
+            LinkDocument(ObjectId.GenerateNewId().ToString(), ServiceType.Spotify),
+            LinkDocument(ObjectId.GenerateNewId().ToString(), ServiceType.Unknown),
+            new BsonDocument { { "songId", "not-an-object-id" }, { "serviceType", ServiceType.Spotify.ToString() } }
         ], cancellationToken: cancellationToken);
         var repository = new ShareRequestRepository(context);
+        var links = new SongServiceLinkRepository(context);
 
-        var counts = await repository.GetCompletedDistinctSongCountsBySourceAsync(cancellationToken);
+        var total = await repository.GetCompletedDistinctSongCountAsync(cancellationToken);
+        var counts = await links.GetCompletedDistinctSongLinkCountsAsync(cancellationToken);
         var recent = await repository.GetRecentCompletedDistinctAsync(1, cancellationToken);
 
-        counts.Should().BeEquivalentTo(new Dictionary<ServiceType, long> { [ServiceType.YouTubeMusic] = 1, [ServiceType.AppleMusic] = 1 });
+        total.Should().Be(2);
+        counts.Should().BeEquivalentTo(new Dictionary<ServiceType, long>
+        {
+            [ServiceType.Spotify] = 1, [ServiceType.YouTubeMusic] = 1, [ServiceType.AppleMusic] = 1
+        });
         var only = recent.Should().ContainSingle().Which;
         only.SongId.Should().Be(secondSong);
         only.ShareId.Should().Be("share-second", "shareId breaks equal timestamp ties descending");
@@ -110,13 +127,13 @@ public class PublicMetricsMongoRepositoryTests : IAsyncLifetime
 
         var delayedRequests = new DelayedAfterRecentReadRepository(new ShareRequestRepository(context));
         var snapshots = new PublicMetricsSnapshotRepository(context);
-        var olderRefresh = new PublicMetricsService(delayedRequests, new SongRepository(context), snapshots).RefreshAsync(cancellationToken);
+        var olderRefresh = new PublicMetricsService(delayedRequests, new SongServiceLinkRepository(context), new SongRepository(context), snapshots).RefreshAsync(cancellationToken);
         await delayedRequests.RecentRead.WaitAsync(cancellationToken);
 
         await _database.GetCollection<BsonDocument>("requests").InsertOneAsync(
             RequestDocument(changedSongId, "share-new", ServiceType.YouTubeMusic, changedCreatedAt),
             cancellationToken: cancellationToken);
-        var newerResult = await new PublicMetricsService(new ShareRequestRepository(context), new SongRepository(context), snapshots).RefreshAsync(cancellationToken);
+        var newerResult = await new PublicMetricsService(new ShareRequestRepository(context), new SongServiceLinkRepository(context), new SongRepository(context), snapshots).RefreshAsync(cancellationToken);
         delayedRequests.Release();
         var olderResult = await olderRefresh;
 
@@ -149,6 +166,13 @@ public class PublicMetricsMongoRepositoryTests : IAsyncLifetime
         { "sourceService", service.ToString() }, { "songId", ObjectId.Parse(songId) }, { "status", status.ToString() }, { "createdAt", createdAt }
     };
 
+    private static BsonDocument LinkDocument(string songId, ServiceType service) => new()
+    {
+        { "_id", ObjectId.GenerateNewId() }, { "songId", ObjectId.Parse(songId) }, { "serviceType", service.ToString() },
+        { "serviceSongId", Guid.NewGuid().ToString("N") }, { "originalUrl", "https://example.test" }, { "normalizedUrl", "https://example.test" },
+        { "createdAt", DateTime.UtcNow }
+    };
+
     private sealed class TestDbContext(IMongoDatabase database) : IMusicShareDbContext
     {
         public IMongoDatabase Database => database;
@@ -173,7 +197,7 @@ public class PublicMetricsMongoRepositoryTests : IAsyncLifetime
         public Task<ShareRequest?> GetByServiceTrackIdAsync(ServiceType serviceType, string serviceTrackId, CancellationToken cancellationToken = default) => inner.GetByServiceTrackIdAsync(serviceType, serviceTrackId, cancellationToken);
         public Task<ShareRequest> InsertAsync(ShareRequest request, CancellationToken cancellationToken = default) => inner.InsertAsync(request, cancellationToken);
         public Task UpdateAsync(ShareRequest request, CancellationToken cancellationToken = default) => inner.UpdateAsync(request, cancellationToken);
-        public Task<IReadOnlyDictionary<ServiceType, long>> GetCompletedDistinctSongCountsBySourceAsync(CancellationToken cancellationToken = default) => inner.GetCompletedDistinctSongCountsBySourceAsync(cancellationToken);
+        public Task<long> GetCompletedDistinctSongCountAsync(CancellationToken cancellationToken = default) => inner.GetCompletedDistinctSongCountAsync(cancellationToken);
 
         public async Task<IReadOnlyList<CompletedShareRequest>> GetRecentCompletedDistinctAsync(int maximum, CancellationToken cancellationToken = default)
         {

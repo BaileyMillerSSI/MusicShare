@@ -12,7 +12,7 @@ public interface IShareRequestRepository
     Task<ShareRequest?> GetByServiceTrackIdAsync(ServiceType serviceType, string serviceTrackId, CancellationToken cancellationToken = default);
     Task<ShareRequest> InsertAsync(ShareRequest request, CancellationToken cancellationToken = default);
     Task UpdateAsync(ShareRequest request, CancellationToken cancellationToken = default);
-    Task<IReadOnlyDictionary<ServiceType, long>> GetCompletedDistinctSongCountsBySourceAsync(CancellationToken cancellationToken = default);
+    Task<long> GetCompletedDistinctSongCountAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CompletedShareRequest>> GetRecentCompletedDistinctAsync(int maximum, CancellationToken cancellationToken = default);
 }
 

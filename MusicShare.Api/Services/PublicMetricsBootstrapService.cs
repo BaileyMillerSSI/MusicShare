@@ -17,13 +17,15 @@ public class PublicMetricsBootstrapService(
         {
             using var scope = scopeFactory.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<IMusicShareDbContext>();
-            var indexes = context.ShareRequests.Indexes;
-            await indexes.CreateManyAsync([
+            await context.ShareRequests.Indexes.CreateManyAsync([
                 new CreateIndexModel<ShareRequest>(Builders<ShareRequest>.IndexKeys
-                    .Ascending(x => x.Status).Ascending(x => x.SourceService)),
+                    .Ascending(x => x.Status).Ascending(x => x.SongId).Ascending(x => x.SourceService)),
                 new CreateIndexModel<ShareRequest>(Builders<ShareRequest>.IndexKeys
                     .Ascending(x => x.Status).Descending(x => x.CreatedAt).Ascending(x => x.SongId))
             ], cancellationToken: stoppingToken);
+            await context.SongServiceLinks.Indexes.CreateOneAsync(
+                new CreateIndexModel<SongServiceLink>(Builders<SongServiceLink>.IndexKeys
+                    .Ascending(x => x.ServiceType).Ascending(x => x.SongId)), cancellationToken: stoppingToken);
             await scope.ServiceProvider.GetRequiredService<IPublishEndpoint>()
                 .Publish(new RefreshPublicMetrics(), stoppingToken);
         }

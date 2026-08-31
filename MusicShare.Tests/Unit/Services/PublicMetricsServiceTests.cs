@@ -1,6 +1,7 @@
 using MusicShare.Contracts;
 using MusicShare.Persistence.Entities;
 using MusicShare.Persistence.Repositories;
+using MusicShare.Services.Models;
 using MusicShare.Services.Services;
 
 namespace MusicShare.Tests.Unit.Services;
@@ -8,15 +9,37 @@ namespace MusicShare.Tests.Unit.Services;
 public class PublicMetricsServiceTests
 {
     [Fact]
-    public async Task ItWillReturnZeroesForEveryKnownServiceBeforeBootstrap()
+    public async Task ItWillReturnZeroesForMetricsPlatformsBeforeBootstrap()
     {
         using var mock = AutoMock.GetLoose();
         mock.Mock<IPublicMetricsSnapshotRepository>().Setup(x => x.GetAsync(It.IsAny<CancellationToken>())).ReturnsAsync((PublicMetricsSnapshot?)null);
         var result = await mock.Create<PublicMetricsService>().GetAsync(TestContext.Current.CancellationToken);
         result.TotalCompletedSongs.Should().Be(0);
         result.ServiceCounts.Should().Contain(x => x.Service == ServiceType.Spotify && x.Count == 0)
-            .And.Contain(x => x.Service == ServiceType.AppleMusic && x.Count == 0)
             .And.Contain(x => x.Service == ServiceType.YouTubeMusic && x.Count == 0);
+        result.ServiceCounts.Should().NotContain(x => x.Service == ServiceType.AppleMusic);
+    }
+
+    [Fact]
+    public async Task ItWillHideAppleCountsFromLegacySnapshots()
+    {
+        using var mock = AutoMock.GetLoose();
+        mock.Mock<IPublicMetricsSnapshotRepository>().Setup(x => x.GetAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new PublicMetricsSnapshot
+        {
+            TotalCompletedSongs = 1,
+            ServiceCounts =
+            [
+                new PublicMetricsServiceCount { Service = ServiceType.Spotify, Count = 1 },
+                new PublicMetricsServiceCount { Service = ServiceType.AppleMusic, Count = 99 }
+            ]
+        });
+
+        var result = await mock.Create<PublicMetricsService>().GetAsync(TestContext.Current.CancellationToken);
+
+        result.ServiceCounts.Should().BeEquivalentTo([
+            new PublicMetricsServiceCountResponse(ServiceType.Spotify, 1),
+            new PublicMetricsServiceCountResponse(ServiceType.YouTubeMusic, 0)
+        ]);
     }
 
     [Fact]
@@ -24,8 +47,9 @@ public class PublicMetricsServiceTests
     {
         using var mock = AutoMock.GetLoose();
         var requests = Enumerable.Range(1, 21).Select(i => new CompletedShareRequest($"song-{i}", $"share-{i}", ServiceType.Spotify, DateTime.UtcNow.AddMinutes(-i))).ToList();
-        mock.Mock<IShareRequestRepository>().Setup(x => x.GetCompletedDistinctSongCountsBySourceAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Dictionary<ServiceType, long> { [ServiceType.Spotify] = 21 });
+        mock.Mock<IShareRequestRepository>().Setup(x => x.GetCompletedDistinctSongCountAsync(It.IsAny<CancellationToken>())).ReturnsAsync(21);
+        mock.Mock<ISongServiceLinkRepository>().Setup(x => x.GetCompletedDistinctSongLinkCountsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<ServiceType, long> { [ServiceType.Spotify] = 21, [ServiceType.YouTubeMusic] = 1 });
         mock.Mock<IShareRequestRepository>().Setup(x => x.GetRecentCompletedDistinctAsync(20, It.IsAny<CancellationToken>())).ReturnsAsync(requests.Take(20).ToList());
         mock.Mock<ISongRepository>().Setup(x => x.GetByIdsAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(requests.Select(x => new Song { Id = x.SongId, Title = x.SongId, Artists = ["Artist"] }).ToList());
@@ -37,11 +61,16 @@ public class PublicMetricsServiceTests
     }
 
     [Fact]
-    public async Task ItWillNeverPublishUnknownOrUndefinedServices()
+    public async Task ItWillPublishIndependentCompletedSongAndResolvedLinkCountsForMetricsPlatformsOnly()
     {
         using var mock = AutoMock.GetLoose();
-        mock.Mock<IShareRequestRepository>().Setup(x => x.GetCompletedDistinctSongCountsBySourceAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Dictionary<ServiceType, long> { [ServiceType.Spotify] = 2, [ServiceType.Unknown] = 4, [(ServiceType)999] = 8 });
+        mock.Mock<IShareRequestRepository>().Setup(x => x.GetCompletedDistinctSongCountAsync(It.IsAny<CancellationToken>())).ReturnsAsync(1);
+        mock.Mock<ISongServiceLinkRepository>().Setup(x => x.GetCompletedDistinctSongLinkCountsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<ServiceType, long>
+            {
+                [ServiceType.Spotify] = 1, [ServiceType.YouTubeMusic] = 1, [ServiceType.AppleMusic] = 9,
+                [ServiceType.Unknown] = 4, [(ServiceType)999] = 8
+            });
         mock.Mock<IShareRequestRepository>().Setup(x => x.GetRecentCompletedDistinctAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([new CompletedShareRequest("song", "share", (ServiceType)999, DateTime.UtcNow)]);
         mock.Mock<ISongRepository>().Setup(x => x.GetByIdsAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
@@ -49,9 +78,13 @@ public class PublicMetricsServiceTests
 
         var result = await mock.Create<PublicMetricsService>().RefreshAsync(TestContext.Current.CancellationToken);
 
-        result.Snapshot.TotalCompletedSongs.Should().Be(2);
+        result.Snapshot.TotalCompletedSongs.Should().Be(1);
+        result.Snapshot.ServiceCounts.Should().BeEquivalentTo([
+            new PublicMetricsServiceCountResponse(ServiceType.Spotify, 1),
+            new PublicMetricsServiceCountResponse(ServiceType.YouTubeMusic, 1)
+        ]);
         result.Snapshot.ServiceCounts.Select(x => x.Service).Should().NotContain(ServiceType.Unknown);
-        result.Snapshot.ServiceCounts.Should().OnlyContain(x => Enum.IsDefined(x.Service));
+        result.Snapshot.ServiceCounts.Should().NotContain(x => x.Service == ServiceType.AppleMusic || !Enum.IsDefined(x.Service));
         result.Snapshot.RecentSongs.Should().BeEmpty();
     }
 }
