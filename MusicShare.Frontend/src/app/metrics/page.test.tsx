@@ -9,13 +9,16 @@ const { default: MetricsPage, metadata } = await import('./page');
 afterEach(() => vi.clearAllMocks());
 
 describe('MetricsPage', () => {
-  it('renders known service counts and canonical share links', async () => {
+  it('renders resolved platform link counts and canonical share links', async () => {
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({ totalCompletedSongs: 1, serviceCounts: [
-      { service: MusicServiceType.Spotify, count: 1 }, { service: MusicServiceType.AppleMusic, count: 0 }, { service: MusicServiceType.YouTubeMusic, count: 0 },
+      { service: MusicServiceType.Spotify, count: 1 }, { service: MusicServiceType.YouTubeMusic, count: 1 },
     ], recentSongs: [{ songId: 'song-1', shareId: 'abc123def456', title: 'Song', artists: ['Artist'], sourceService: MusicServiceType.Spotify, createdAt: '2026-01-01T00:00:00Z' }] }) });
     render(await MetricsPage());
-    expect(screen.getByText('Spotify')).toBeInTheDocument();
-    expect(screen.getByText('Apple Music')).toBeInTheDocument();
+    expect(screen.getByText('Completed songs')).toBeInTheDocument();
+    expect(screen.getByText('Spotify links')).toBeInTheDocument();
+    expect(screen.getByText('YouTube Music links')).toBeInTheDocument();
+    expect(screen.queryByText('Apple Music')).not.toBeInTheDocument();
+    expect(screen.queryByText(/source platform/i)).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /song/i })).toHaveAttribute('href', '/share/abc123def456');
   });
 

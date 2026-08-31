@@ -7,6 +7,7 @@ namespace MusicShare.Services.Services;
 
 public class PublicMetricsService(
     IShareRequestRepository shareRequests,
+    ISongServiceLinkRepository links,
     ISongRepository songs,
     IPublicMetricsSnapshotRepository snapshots) : IPublicMetricsService
 {
@@ -21,16 +22,17 @@ public class PublicMetricsService(
     public async Task<PublicMetricsRefreshResult> RefreshAsync(CancellationToken cancellationToken = default)
     {
         var snapshotVersion = await snapshots.ReserveVersionAsync(cancellationToken);
-        var counts = await shareRequests.GetCompletedDistinctSongCountsBySourceAsync(cancellationToken);
+        var totalCompletedSongs = await shareRequests.GetCompletedDistinctSongCountAsync(cancellationToken);
+        var counts = await links.GetCompletedDistinctSongLinkCountsAsync(cancellationToken);
         var recentRequests = await shareRequests.GetRecentCompletedDistinctAsync(RecentSongLimit, cancellationToken);
         var songsById = (await songs.GetByIdsAsync(recentRequests.Select(x => x.SongId), cancellationToken))
             .ToDictionary(x => x.Id, StringComparer.Ordinal);
         var candidate = new PublicMetricsSnapshot
         {
-            TotalCompletedSongs = counts.Where(x => IsPublicSourceService(x.Key)).Sum(x => x.Value),
+            TotalCompletedSongs = totalCompletedSongs,
             SnapshotVersion = snapshotVersion,
             GeneratedAt = DateTime.UtcNow,
-            ServiceCounts = Enum.GetValues<ServiceType>().Where(x => x != ServiceType.Unknown)
+            ServiceCounts = PublicMetricsResponse.MetricsPlatforms
                 .Select(x => new PublicMetricsServiceCount { Service = x, Count = counts.GetValueOrDefault(x) }).ToList(),
             RecentSongs = recentRequests.Where(x => IsPublicSourceService(x.SourceService) && songsById.ContainsKey(x.SongId)).Select(x =>
             {
@@ -48,7 +50,8 @@ public class PublicMetricsService(
 
     private static PublicMetricsResponse Map(PublicMetricsSnapshot snapshot) => new(
         snapshot.TotalCompletedSongs, snapshot.GeneratedAt,
-        snapshot.ServiceCounts.Select(x => new PublicMetricsServiceCountResponse(x.Service, x.Count)).ToList(),
+        PublicMetricsResponse.MetricsPlatforms.Select(service => new PublicMetricsServiceCountResponse(
+            service, snapshot.ServiceCounts.FirstOrDefault(x => x.Service == service)?.Count ?? 0)).ToList(),
         snapshot.RecentSongs.Take(RecentSongLimit).Select(x => new PublicMetricsRecentSongResponse(
             x.SongId, x.ShareId, x.Title, x.Artists, x.Album, x.ArtworkUrl, x.SourceService, x.CreatedAt)).ToList());
 

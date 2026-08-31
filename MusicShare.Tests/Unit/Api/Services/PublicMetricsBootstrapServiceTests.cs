@@ -18,8 +18,13 @@ public class PublicMetricsBootstrapServiceTests
         indexes.Setup(x => x.CreateManyAsync(It.IsAny<IEnumerable<CreateIndexModel<ShareRequest>>>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(["status_source", "status_created_song"]);
+        var linkIndexes = new Mock<IMongoIndexManager<SongServiceLink>>();
+        linkIndexes.Setup(x => x.CreateOneAsync(It.IsAny<CreateIndexModel<SongServiceLink>>(), It.IsAny<CreateOneIndexOptions>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync("service_song");
         var context = new Mock<IMusicShareDbContext>();
         context.SetupGet(x => x.ShareRequests.Indexes).Returns(indexes.Object);
+        context.SetupGet(x => x.SongServiceLinks.Indexes).Returns(linkIndexes.Object);
         var published = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var publish = new Mock<IPublishEndpoint>();
         publish.Setup(x => x.Publish(It.IsAny<RefreshPublicMetrics>(), It.IsAny<CancellationToken>()))
@@ -32,6 +37,8 @@ public class PublicMetricsBootstrapServiceTests
         await service.StopAsync(TestContext.Current.CancellationToken);
 
         indexes.Verify(x => x.CreateManyAsync(It.Is<IEnumerable<CreateIndexModel<ShareRequest>>>(models => models.Count() == 2),
+            It.IsAny<CancellationToken>()), Times.Once);
+        linkIndexes.Verify(x => x.CreateOneAsync(It.IsAny<CreateIndexModel<SongServiceLink>>(), It.IsAny<CreateOneIndexOptions>(),
             It.IsAny<CancellationToken>()), Times.Once);
         publish.Verify(x => x.Publish(It.IsAny<RefreshPublicMetrics>(), It.IsAny<CancellationToken>()), Times.Once);
     }
