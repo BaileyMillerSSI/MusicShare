@@ -18,6 +18,7 @@ public class PublicMetricsServiceTests
         result.ServiceCounts.Should().Contain(x => x.Service == ServiceType.Spotify && x.Count == 0)
             .And.Contain(x => x.Service == ServiceType.YouTubeMusic && x.Count == 0);
         result.ServiceCounts.Should().NotContain(x => x.Service == ServiceType.AppleMusic);
+        result.WeeklyCompletedSongs.Should().BeEmpty();
     }
 
     [Fact]
@@ -86,5 +87,31 @@ public class PublicMetricsServiceTests
         result.Snapshot.ServiceCounts.Select(x => x.Service).Should().NotContain(ServiceType.Unknown);
         result.Snapshot.ServiceCounts.Should().NotContain(x => x.Service == ServiceType.AppleMusic || !Enum.IsDefined(x.Service));
         result.Snapshot.RecentSongs.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ItWillZeroFillEightSundayUtcWeeklyBuckets()
+    {
+        using var mock = AutoMock.GetLoose();
+        var currentWeek = PublicMetricsService.GetSundayStartUtc(DateTime.UtcNow);
+        mock.Mock<IShareRequestRepository>().Setup(x => x.GetCompletedDistinctSongCountsByWeekAsync(
+            currentWeek.AddDays(-49), currentWeek.AddDays(7), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new WeeklyCompletedSongCount(currentWeek, 3)]);
+        mock.Mock<IPublicMetricsSnapshotRepository>().Setup(x => x.TryReplaceAsync(It.IsAny<PublicMetricsSnapshot>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        var result = await mock.Create<PublicMetricsService>().RefreshAsync(TestContext.Current.CancellationToken);
+
+        result.Snapshot.WeeklyCompletedSongs.Should().HaveCount(8);
+        result.Snapshot.WeeklyCompletedSongs.Last().Should().BeEquivalentTo(new PublicMetricsWeeklyCompletedSongResponse(currentWeek, 3));
+        result.Snapshot.WeeklyCompletedSongs.Take(7).Should().OnlyContain(x => x.Count == 0);
+    }
+
+    [Fact]
+    public void ItWillCalculateSundayStartsUsingUtc()
+    {
+        PublicMetricsService.GetSundayStartUtc(new DateTime(2026, 1, 10, 23, 59, 0, DateTimeKind.Utc))
+            .Should().Be(new DateTime(2026, 1, 4, 0, 0, 0, DateTimeKind.Utc));
+        Action action = () => PublicMetricsService.GetSundayStartUtc(DateTime.Now);
+        action.Should().Throw<ArgumentException>();
     }
 }

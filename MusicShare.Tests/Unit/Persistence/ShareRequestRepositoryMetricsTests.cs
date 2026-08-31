@@ -54,4 +54,21 @@ public class ShareRequestRepositoryMetricsTests
         completed.SourceService.Should().Be(ServiceType.Spotify);
         completed.CreatedAt.Should().BeCloseTo(createdAt, TimeSpan.FromMilliseconds(1));
     }
+
+    [Fact]
+    public void ItWillBuildAndMaterializeSundayUtcWeeklyCounts()
+    {
+        var start = new DateTime(2026, 1, 4, 0, 0, 0, DateTimeKind.Utc);
+        var pipeline = ShareRequestRepository.DistinctCompletedEarliestPipeline();
+        pipeline[1]["$sort"].AsBsonDocument["createdAt"].Should().Be(1);
+        pipeline[2]["$group"].AsBsonDocument["createdAt"].AsBsonDocument["$first"].AsString.Should().Be("$createdAt");
+
+        var result = ShareRequestRepository.MaterializeWeeklyCompletedSongCounts([
+            new BsonDocument { { "weekStart", start }, { "count", 2 } },
+            new BsonDocument { { "weekStart", start.AddDays(7) }, { "count", -1 } },
+            new BsonDocument { { "weekStart", "bad" }, { "count", 4 } }
+        ]);
+
+        result.Should().Equal(new WeeklyCompletedSongCount(start, 2));
+    }
 }

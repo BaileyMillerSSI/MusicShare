@@ -11,7 +11,7 @@ public class MetricsControllerTests
     [Fact]
     public async Task ItWillReturnTheStoredSnapshot()
     {
-        var expected = new PublicMetricsResponse(1, DateTime.UtcNow, [new PublicMetricsServiceCountResponse(ServiceType.Spotify, 1)], []);
+        var expected = new PublicMetricsResponse(1, DateTime.UtcNow, [new PublicMetricsServiceCountResponse(ServiceType.Spotify, 1)], [], []);
         var metrics = new Mock<IPublicMetricsService>();
         metrics.Setup(x => x.GetAsync(It.IsAny<CancellationToken>())).ReturnsAsync(expected);
 

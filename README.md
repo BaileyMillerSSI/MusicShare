@@ -116,13 +116,13 @@ CI runs the same frontend lint/test/build and backend restore/build/test gates f
 
 Non-secret provider defaults live in `MusicShare.Api/appsettings.json`. Aspire injects service endpoints, MongoDB and RabbitMQ connection strings, Spotify credentials, the shared cache-revalidation secret, and the explicit production CORS origins. `AZURE_FRONTEND_ORIGIN` preserves the MusicShare origin and `AZURE_RESUME_ORIGIN` allows `https://resume.baileymiller.dev`; both are provisioned as `Cors__AllowedOrigins` entries for the API. Do not commit real credentials.
 
-`azure.yaml` points Azure Developer CLI at `MusicShare.AppHost`, which publishes the frontend to Azure Container Apps with an external endpoint while keeping the API and infrastructure internal. After configuring an `azd` environment and the required production parameters, provision and deploy with:
+`azure.yaml` points Azure Developer CLI at `MusicShare.AppHost`, which publishes the frontend to Azure Container Apps with an external endpoint while keeping the API and infrastructure internal. The private API keeps at least one replica running so its UTC weekly metrics refresh can run while the frontend is idle; it has a small always-on production cost. After configuring an `azd` environment and the required production parameters, provision and deploy with:
 
 ```bash
 azd up
 ```
 
-Replica counts can be set with `AZURE_API_MIN_REPLICAS`, `AZURE_API_MAX_REPLICAS`, `AZURE_FRONTEND_MIN_REPLICAS`, and `AZURE_FRONTEND_MAX_REPLICAS`.
+Replica counts can be set with `AZURE_API_MIN_REPLICAS`, `AZURE_API_MAX_REPLICAS`, `AZURE_FRONTEND_MIN_REPLICAS`, and `AZURE_FRONTEND_MAX_REPLICAS`. The published API minimum is clamped to one (`AZURE_API_MIN_REPLICAS=0` is not supported), and its maximum is clamped to at least that minimum. The frontend settings are unchanged and may remain at zero for scale-to-zero behavior.
 
 ## Contributing
 

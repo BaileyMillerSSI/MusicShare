@@ -114,5 +114,5 @@ MusicShare/
 - **Concurrency:** MongoDB optimistic concurrency on saga state — handles parallel events safely
 - **Idempotency:** Consumers check for existing results before re-resolving
 - **Duplicate detection:** Same Spotify URL submitted twice → returns existing result instantly
-- **Autoscaling:** Azure Container Apps scales to zero when idle, scales up under load
+- **Autoscaling:** the public frontend can scale to zero when idle and scales up under load; the private API keeps one replica available for the Sunday UTC metrics refresh, with a small baseline cost
 - **On-demand ISR:** completed share pages are revalidated as the saga finishes
