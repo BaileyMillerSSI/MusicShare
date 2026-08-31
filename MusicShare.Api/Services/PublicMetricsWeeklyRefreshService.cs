@@ -23,7 +23,6 @@ public class PublicMetricsWeeklyRefreshService(
             try
             {
                 await _delayAsync(GetDelayUntilNextSundayUtc(_utcNow()), stoppingToken);
-                await PublishRefreshAsync(stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -33,6 +32,33 @@ public class PublicMetricsWeeklyRefreshService(
             {
                 logger.LogWarning(exception, "Weekly public metrics refresh failed; retrying");
                 await _delayAsync(_retryDelay, stoppingToken);
+                continue;
+            }
+
+            while (!stoppingToken.IsCancellationRequested)
+            {
+                try
+                {
+                    await PublishRefreshAsync(stoppingToken);
+                    break;
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    return;
+                }
+                catch (Exception exception)
+                {
+                    logger.LogWarning(exception, "Weekly public metrics refresh failed; retrying");
+
+                    try
+                    {
+                        await _delayAsync(_retryDelay, stoppingToken);
+                    }
+                    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                    {
+                        return;
+                    }
+                }
             }
         }
     }
