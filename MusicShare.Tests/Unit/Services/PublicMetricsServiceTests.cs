@@ -35,4 +35,23 @@ public class PublicMetricsServiceTests
         result.Snapshot.RecentSongs.Should().HaveCount(20);
         result.Snapshot.RecentSongs.First().ShareId.Should().Be("share-1");
     }
+
+    [Fact]
+    public async Task ItWillNeverPublishUnknownOrUndefinedServices()
+    {
+        using var mock = AutoMock.GetLoose();
+        mock.Mock<IShareRequestRepository>().Setup(x => x.GetCompletedDistinctSongCountsBySourceAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<ServiceType, long> { [ServiceType.Spotify] = 2, [ServiceType.Unknown] = 4, [(ServiceType)999] = 8 });
+        mock.Mock<IShareRequestRepository>().Setup(x => x.GetRecentCompletedDistinctAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new CompletedShareRequest("song", "share", (ServiceType)999, DateTime.UtcNow)]);
+        mock.Mock<ISongRepository>().Setup(x => x.GetByIdsAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        mock.Mock<IPublicMetricsSnapshotRepository>().Setup(x => x.TryReplaceAsync(It.IsAny<PublicMetricsSnapshot>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        var result = await mock.Create<PublicMetricsService>().RefreshAsync();
+
+        result.Snapshot.TotalCompletedSongs.Should().Be(2);
+        result.Snapshot.ServiceCounts.Select(x => x.Service).Should().NotContain(ServiceType.Unknown);
+        result.Snapshot.ServiceCounts.Should().OnlyContain(x => Enum.IsDefined(x.Service));
+        result.Snapshot.RecentSongs.Should().BeEmpty();
+    }
 }

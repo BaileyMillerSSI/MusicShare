@@ -15,10 +15,10 @@ public class PublicMetricsRefreshConsumerTests
         using var mock = AutoMock.GetLoose();
         mock.Mock<IPublicMetricsService>().Setup(x => x.RefreshAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PublicMetricsRefreshResult(true, PublicMetricsResponse.Empty()));
-        mock.Mock<IFrontendRevalidateService>().Setup(x => x.RevalidateMetricsAsync()).ReturnsAsync(true);
+        mock.Mock<IFrontendRevalidateService>().Setup(x => x.RevalidateMetricsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
         var context = new Mock<ConsumeContext<RefreshPublicMetrics>>();
         await mock.Create<PublicMetricsRefreshConsumer>().Consume(context.Object);
-        mock.Mock<IFrontendRevalidateService>().Verify(x => x.RevalidateMetricsAsync(), Times.Once);
+        mock.Mock<IFrontendRevalidateService>().Verify(x => x.RevalidateMetricsAsync(It.IsAny<CancellationToken>()), Times.Once);
         mock.Mock<IPublicMetricsInvalidationRetryService>().Verify(x => x.ScheduleRetry(), Times.Never);
     }
 
@@ -30,7 +30,7 @@ public class PublicMetricsRefreshConsumerTests
             .ReturnsAsync(new PublicMetricsRefreshResult(false, PublicMetricsResponse.Empty()));
         var context = new Mock<ConsumeContext<RefreshPublicMetrics>>();
         await mock.Create<PublicMetricsRefreshConsumer>().Consume(context.Object);
-        mock.Mock<IFrontendRevalidateService>().Verify(x => x.RevalidateMetricsAsync(), Times.Never);
+        mock.Mock<IFrontendRevalidateService>().Verify(x => x.RevalidateMetricsAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -39,7 +39,7 @@ public class PublicMetricsRefreshConsumerTests
         using var mock = AutoMock.GetLoose();
         mock.Mock<IPublicMetricsService>().Setup(x => x.RefreshAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new PublicMetricsRefreshResult(true, PublicMetricsResponse.Empty()));
-        mock.Mock<IFrontendRevalidateService>().Setup(x => x.RevalidateMetricsAsync()).ReturnsAsync(false);
+        mock.Mock<IFrontendRevalidateService>().Setup(x => x.RevalidateMetricsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(false);
         var context = new Mock<ConsumeContext<RefreshPublicMetrics>>();
 
         await mock.Create<PublicMetricsRefreshConsumer>().Consume(context.Object);

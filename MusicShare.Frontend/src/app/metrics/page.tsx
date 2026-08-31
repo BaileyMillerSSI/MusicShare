@@ -19,9 +19,19 @@ async function getMetrics(): Promise<PublicMetricsResponse> {
     const response = await fetch(`${apiBase}/api/metrics`);
     if (!response.ok) return emptyMetrics();
     const data: unknown = await response.json();
-    if (!data || typeof data !== 'object' || !Array.isArray((data as PublicMetricsResponse).serviceCounts) || !Array.isArray((data as PublicMetricsResponse).recentSongs)) return emptyMetrics();
-    return data as PublicMetricsResponse;
+    if (!isMetricsResponse(data)) return emptyMetrics();
+    return data;
   } catch { return emptyMetrics(); }
+}
+
+function isMetricsResponse(value: unknown): value is PublicMetricsResponse {
+  if (!value || typeof value !== 'object') return false;
+  const metrics = value as Partial<PublicMetricsResponse>;
+  if (!Number.isFinite(metrics.totalCompletedSongs) || metrics.totalCompletedSongs! < 0 || !Array.isArray(metrics.serviceCounts) || !Array.isArray(metrics.recentSongs)) return false;
+  return metrics.serviceCounts.every((count) => services.includes(count.service) && Number.isFinite(count.count) && count.count >= 0)
+    && metrics.recentSongs.every((song) => typeof song.songId === 'string' && typeof song.shareId === 'string' && typeof song.title === 'string'
+      && Array.isArray(song.artists) && song.artists.every((artist) => typeof artist === 'string') && services.includes(song.sourceService)
+      && typeof song.createdAt === 'string');
 }
 
 export default async function MetricsPage() {

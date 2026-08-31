@@ -12,9 +12,11 @@ public class ShareRequestRepositoryMetricsTests
         var pipeline = ShareRequestRepository.DistinctCompletedPipeline();
 
         var match = pipeline[0]["$match"].AsBsonDocument;
-        match.ElementCount.Should().Be(2);
+        match.ElementCount.Should().Be(3);
         match["status"].AsString.Should().Be(ShareStatus.Completed.ToString());
         match["songId"].AsBsonDocument["$type"].AsString.Should().Be("objectId");
+        match["sourceService"].AsBsonDocument["$in"].AsBsonArray.Select(x => x.AsString)
+            .Should().BeEquivalentTo([ServiceType.Spotify.ToString(), ServiceType.AppleMusic.ToString(), ServiceType.YouTubeMusic.ToString()]);
         pipeline[1]["$sort"].AsBsonDocument.Names.Should().ContainInOrder("createdAt", "shareId");
         pipeline[2]["$group"].AsBsonDocument["_id"].AsString.Should().Be("$songId");
     }
@@ -33,6 +35,14 @@ public class ShareRequestRepositoryMetricsTests
             new BsonDocument
             {
                 { "songId", "not-an-object-id" }, { "shareId", "share-2" }, { "sourceService", ServiceType.Spotify.ToString() }, { "createdAt", createdAt }
+            },
+            new BsonDocument
+            {
+                { "songId", ObjectId.GenerateNewId() }, { "shareId", "share-3" }, { "sourceService", ServiceType.Unknown.ToString() }, { "createdAt", createdAt }
+            },
+            new BsonDocument
+            {
+                { "songId", ObjectId.GenerateNewId() }, { "shareId", "share-4" }, { "sourceService", "999" }, { "createdAt", createdAt }
             }
         };
 

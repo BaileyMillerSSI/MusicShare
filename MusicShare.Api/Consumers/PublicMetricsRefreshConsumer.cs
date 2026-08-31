@@ -20,7 +20,7 @@ public class PublicMetricsRefreshConsumer(
             return;
         }
 
-        if (!await revalidateService.RevalidateMetricsAsync())
+        if (!await revalidateService.RevalidateMetricsAsync(context.CancellationToken))
         {
             invalidationRetries.ScheduleRetry();
         }

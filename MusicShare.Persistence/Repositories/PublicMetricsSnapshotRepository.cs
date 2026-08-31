@@ -13,7 +13,7 @@ public class PublicMetricsSnapshotRepository(IMusicShareDbContext context) : IPu
     public async Task<bool> TryReplaceAsync(PublicMetricsSnapshot snapshot, CancellationToken cancellationToken = default)
     {
         snapshot.Id = PublicMetricsSnapshot.SingletonId;
-        var filter = BuildNonRegressionFilter(snapshot.TotalCompletedSongs);
+        var filter = BuildNonRegressionFilter(snapshot.TotalCompletedSongs, snapshot.SnapshotVersion);
 
         try
         {
@@ -28,8 +28,12 @@ public class PublicMetricsSnapshotRepository(IMusicShareDbContext context) : IPu
         }
     }
 
-    internal static FilterDefinition<PublicMetricsSnapshot> BuildNonRegressionFilter(long candidateTotal) =>
+    internal static FilterDefinition<PublicMetricsSnapshot> BuildNonRegressionFilter(long candidateTotal, long candidateVersion) =>
         Builders<PublicMetricsSnapshot>.Filter.And(
             Builders<PublicMetricsSnapshot>.Filter.Eq(x => x.Id, PublicMetricsSnapshot.SingletonId),
-            Builders<PublicMetricsSnapshot>.Filter.Lte(x => x.TotalCompletedSongs, candidateTotal));
+            Builders<PublicMetricsSnapshot>.Filter.Or(
+                Builders<PublicMetricsSnapshot>.Filter.Lt(x => x.TotalCompletedSongs, candidateTotal),
+                Builders<PublicMetricsSnapshot>.Filter.And(
+                    Builders<PublicMetricsSnapshot>.Filter.Eq(x => x.TotalCompletedSongs, candidateTotal),
+                    Builders<PublicMetricsSnapshot>.Filter.Lt(x => x.SnapshotVersion, candidateVersion))));
 }

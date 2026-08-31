@@ -65,7 +65,7 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
             new BsonDocument("$group", new BsonDocument { { "_id", "$sourceService" }, { "count", new BsonDocument("$sum", 1) } })]);
         var rows = await _requests.Aggregate<BsonDocument>(pipeline).ToListAsync(cancellationToken);
         return rows.Where(x => x.TryGetValue("_id", out var service) && x.TryGetValue("count", out _)
-            && service.IsString && Enum.TryParse<ServiceType>(service.AsString, out _))
+            && service.IsString && IsPublicSourceService(service.AsString, out _))
             .ToDictionary(x => Enum.Parse<ServiceType>(x["_id"].AsString), x => x["count"].ToInt64());
     }
 
@@ -84,7 +84,8 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
     {
         var stages = new BsonDocument[]
         {
-            new("$match", new BsonDocument { { "status", ShareStatus.Completed.ToString() }, { "songId", new BsonDocument("$type", "objectId") } }),
+            new("$match", new BsonDocument { { "status", ShareStatus.Completed.ToString() }, { "songId", new BsonDocument("$type", "objectId") },
+                { "sourceService", new BsonDocument("$in", new BsonArray(PublicSourceServices())) } }),
             new("$sort", new BsonDocument { { "createdAt", -1 }, { "shareId", -1 } }),
             new("$group", new BsonDocument { { "_id", "$songId" }, { "songId", new BsonDocument("$first", "$songId") }, { "shareId", new BsonDocument("$first", "$shareId") }, { "sourceService", new BsonDocument("$first", "$sourceService") }, { "createdAt", new BsonDocument("$first", "$createdAt") } })
         };
@@ -96,8 +97,14 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
                         && x.TryGetValue("shareId", out var shareId) && shareId.IsString
                         && x.TryGetValue("sourceService", out var sourceService) && sourceService.IsString
                         && x.TryGetValue("createdAt", out var createdAt) && createdAt.IsValidDateTime
-                        && Enum.TryParse<ServiceType>(sourceService.AsString, out _))
+                        && IsPublicSourceService(sourceService.AsString, out _))
             .Select(x => new CompletedShareRequest(
-                x["songId"].AsObjectId.ToString(), x["shareId"].AsString,
-                Enum.Parse<ServiceType>(x["sourceService"].AsString), x["createdAt"].ToUniversalTime())).ToList();
+            x["songId"].AsObjectId.ToString(), x["shareId"].AsString,
+            Enum.Parse<ServiceType>(x["sourceService"].AsString), x["createdAt"].ToUniversalTime())).ToList();
+
+    private static IEnumerable<string> PublicSourceServices() => Enum.GetValues<ServiceType>()
+        .Where(service => service != ServiceType.Unknown).Select(service => service.ToString());
+
+    private static bool IsPublicSourceService(string value, out ServiceType service) =>
+        Enum.TryParse(value, out service) && service != ServiceType.Unknown && Enum.IsDefined(service);
 }

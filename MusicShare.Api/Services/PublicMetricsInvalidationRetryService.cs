@@ -6,9 +6,10 @@ namespace MusicShare.Api.Services;
 /// <summary>Retries only the cheap frontend invalidation after a snapshot has been stored.</summary>
 public class PublicMetricsInvalidationRetryService(
     IServiceScopeFactory scopeFactory,
-    ILogger<PublicMetricsInvalidationRetryService> logger) : BackgroundService, IPublicMetricsInvalidationRetryService
+    ILogger<PublicMetricsInvalidationRetryService> logger,
+    TimeSpan? retryDelay = null) : BackgroundService, IPublicMetricsInvalidationRetryService
 {
-    private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(15);
+    private readonly TimeSpan _retryDelay = retryDelay ?? TimeSpan.FromSeconds(15);
     private readonly Channel<bool> _scheduled = Channel.CreateBounded<bool>(new BoundedChannelOptions(1)
     {
         FullMode = BoundedChannelFullMode.DropWrite
@@ -24,12 +25,12 @@ public class PublicMetricsInvalidationRetryService(
 
             do
             {
-                await Task.Delay(RetryDelay, stoppingToken);
+                await Task.Delay(_retryDelay, stoppingToken);
                 try
                 {
                     using var scope = scopeFactory.CreateScope();
                     var revalidate = scope.ServiceProvider.GetRequiredService<IFrontendRevalidateService>();
-                    if (await revalidate.RevalidateMetricsAsync()) break;
+                    if (await revalidate.RevalidateMetricsAsync(stoppingToken)) break;
 
                     logger.LogInformation("Metrics snapshot is stored, but frontend is not ready for invalidation; retrying");
                 }

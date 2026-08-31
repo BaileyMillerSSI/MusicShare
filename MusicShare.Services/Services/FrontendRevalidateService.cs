@@ -10,18 +10,18 @@ namespace MusicShare.Services.Services
 
         public Task RevalidateShareAsync(string shareId) => RevalidateAsync(new { shareId }, $"ShareId={shareId}");
 
-        public Task<bool> RevalidateMetricsAsync() => RevalidateAsync(new { target = "metrics" }, "metrics", returnSuccess: true);
+        public Task<bool> RevalidateMetricsAsync(CancellationToken cancellationToken = default) => RevalidateAsync(new { target = "metrics" }, "metrics", returnSuccess: true, cancellationToken);
 
         private async Task RevalidateAsync(object request, string target)
         {
             await RevalidateAsync(request, target, returnSuccess: false);
         }
 
-        private async Task<bool> RevalidateAsync(object request, string target, bool returnSuccess = true)
+        private async Task<bool> RevalidateAsync(object request, string target, bool returnSuccess = true, CancellationToken cancellationToken = default)
         {
             try
             {
-                var response = await _client.PostAsJsonAsync("/api/revalidate", request);
+                var response = await _client.PostAsJsonAsync("/api/revalidate", request, cancellationToken);
                 response.EnsureSuccessStatusCode();
 
                 _logger.LogInformation("Revalidation triggered for {Target}", target);

@@ -26,11 +26,12 @@ public class PublicMetricsService(
             .ToDictionary(x => x.Id, StringComparer.Ordinal);
         var candidate = new PublicMetricsSnapshot
         {
-            TotalCompletedSongs = counts.Values.Sum(),
+            TotalCompletedSongs = counts.Where(x => IsPublicSourceService(x.Key)).Sum(x => x.Value),
+            SnapshotVersion = DateTime.UtcNow.Ticks,
             GeneratedAt = DateTime.UtcNow,
             ServiceCounts = Enum.GetValues<ServiceType>().Where(x => x != ServiceType.Unknown)
                 .Select(x => new PublicMetricsServiceCount { Service = x, Count = counts.GetValueOrDefault(x) }).ToList(),
-            RecentSongs = recentRequests.Where(x => songsById.ContainsKey(x.SongId)).Select(x =>
+            RecentSongs = recentRequests.Where(x => IsPublicSourceService(x.SourceService) && songsById.ContainsKey(x.SongId)).Select(x =>
             {
                 var song = songsById[x.SongId];
                 return new PublicMetricsRecentSong
@@ -49,4 +50,7 @@ public class PublicMetricsService(
         snapshot.ServiceCounts.Select(x => new PublicMetricsServiceCountResponse(x.Service, x.Count)).ToList(),
         snapshot.RecentSongs.Take(RecentSongLimit).Select(x => new PublicMetricsRecentSongResponse(
             x.SongId, x.ShareId, x.Title, x.Artists, x.Album, x.ArtworkUrl, x.SourceService, x.CreatedAt)).ToList());
+
+    private static bool IsPublicSourceService(ServiceType service) =>
+        service != ServiceType.Unknown && Enum.IsDefined(service);
 }

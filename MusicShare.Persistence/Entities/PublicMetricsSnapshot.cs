@@ -10,6 +10,8 @@ public class PublicMetricsSnapshot
     [BsonId]
     public string Id { get; set; } = SingletonId;
     public long TotalCompletedSongs { get; set; }
+    /// <summary>Monotonically ordered candidate watermark used to reject stale equal-total refreshes.</summary>
+    public long SnapshotVersion { get; set; }
     public DateTime GeneratedAt { get; set; }
     public List<PublicMetricsServiceCount> ServiceCounts { get; set; } = [];
     public List<PublicMetricsRecentSong> RecentSongs { get; set; } = [];
