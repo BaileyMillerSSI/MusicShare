@@ -47,7 +47,7 @@ public class PublicMetricsServiceTests
         mock.Mock<ISongRepository>().Setup(x => x.GetByIdsAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
         mock.Mock<IPublicMetricsSnapshotRepository>().Setup(x => x.TryReplaceAsync(It.IsAny<PublicMetricsSnapshot>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
-        var result = await mock.Create<PublicMetricsService>().RefreshAsync();
+        var result = await mock.Create<PublicMetricsService>().RefreshAsync(TestContext.Current.CancellationToken);
 
         result.Snapshot.TotalCompletedSongs.Should().Be(2);
         result.Snapshot.ServiceCounts.Select(x => x.Service).Should().NotContain(ServiceType.Unknown);

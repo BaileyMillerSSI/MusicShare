@@ -37,6 +37,7 @@ public class PublicMetricsMongoRepositoryTests : IAsyncLifetime
     [Fact]
     public async Task ItWillAggregateOnlyValidDistinctCompletedSongsInDeterministicBoundedOrder()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var context = new TestDbContext(_database);
         var requests = _database.GetCollection<BsonDocument>("requests");
         var old = DateTime.UtcNow.AddMinutes(-1);
@@ -50,11 +51,11 @@ public class PublicMetricsMongoRepositoryTests : IAsyncLifetime
             RequestDocument(ObjectId.GenerateNewId().ToString(), "unknown", ServiceType.Unknown, newest),
             RequestDocument(ObjectId.GenerateNewId().ToString(), "undefined", (ServiceType)999, newest),
             RequestDocument(ObjectId.GenerateNewId().ToString(), "pending", ServiceType.Spotify, newest, ShareStatus.Pending)
-        ]);
+        ], cancellationToken: cancellationToken);
         var repository = new ShareRequestRepository(context);
 
-        var counts = await repository.GetCompletedDistinctSongCountsBySourceAsync();
-        var recent = await repository.GetRecentCompletedDistinctAsync(1);
+        var counts = await repository.GetCompletedDistinctSongCountsBySourceAsync(cancellationToken);
+        var recent = await repository.GetRecentCompletedDistinctAsync(1, cancellationToken);
 
         counts.Should().BeEquivalentTo(new Dictionary<ServiceType, long> { [ServiceType.YouTubeMusic] = 1, [ServiceType.AppleMusic] = 1 });
         var only = recent.Should().ContainSingle().Which;
@@ -65,30 +66,33 @@ public class PublicMetricsMongoRepositoryTests : IAsyncLifetime
     [Fact]
     public async Task ItWillInsertReplaceAndRejectStaleSnapshotCandidatesIncludingEqualTotals()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var repository = new PublicMetricsSnapshotRepository(new TestDbContext(_database));
 
-        (await repository.TryReplaceAsync(Snapshot(2, 10))).Should().BeTrue();
-        (await repository.TryReplaceAsync(Snapshot(3, 11))).Should().BeTrue();
-        (await repository.TryReplaceAsync(Snapshot(2, 12))).Should().BeFalse();
-        (await repository.TryReplaceAsync(Snapshot(3, 10))).Should().BeFalse();
-        (await repository.GetAsync()).Should().Match<PublicMetricsSnapshot>(x => x.TotalCompletedSongs == 3 && x.SnapshotVersion == 11);
+        (await repository.TryReplaceAsync(Snapshot(2, 10), cancellationToken)).Should().BeTrue();
+        (await repository.TryReplaceAsync(Snapshot(3, 11), cancellationToken)).Should().BeTrue();
+        (await repository.TryReplaceAsync(Snapshot(2, 12), cancellationToken)).Should().BeFalse();
+        (await repository.TryReplaceAsync(Snapshot(3, 10), cancellationToken)).Should().BeFalse();
+        (await repository.GetAsync(cancellationToken)).Should().Match<PublicMetricsSnapshot>(x => x.TotalCompletedSongs == 3 && x.SnapshotVersion == 11);
     }
 
     [Fact]
     public async Task ItWillAcceptOnlyOneOfConcurrentDuplicateCandidates()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var repository = new PublicMetricsSnapshotRepository(new TestDbContext(_database));
         var candidate = Snapshot(4, 20);
 
-        var accepted = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => repository.TryReplaceAsync(candidate)));
+        var accepted = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => repository.TryReplaceAsync(candidate, cancellationToken)));
 
         accepted.Count(x => x).Should().Be(1);
-        (await repository.GetAsync()).Should().Match<PublicMetricsSnapshot>(x => x.TotalCompletedSongs == 4 && x.SnapshotVersion == 20);
+        (await repository.GetAsync(cancellationToken)).Should().Match<PublicMetricsSnapshot>(x => x.TotalCompletedSongs == 4 && x.SnapshotVersion == 20);
     }
 
     [Fact]
     public async Task ItWillRejectAnOlderEqualTotalRefreshAfterANewerAuthoritativeViewPersists()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var context = new TestDbContext(_database);
         var oldCreatedAt = TruncateToMongoMilliseconds(DateTime.UtcNow.AddMinutes(-2));
         var changedCreatedAt = TruncateToMongoMilliseconds(DateTime.UtcNow.AddMinutes(-1));
@@ -98,26 +102,27 @@ public class PublicMetricsMongoRepositoryTests : IAsyncLifetime
         await context.Songs.InsertManyAsync([
             new Song { Id = changedSongId, Title = "Changed Song", Artists = ["Artist"] },
             new Song { Id = anchorSongId, Title = "Anchor Song", Artists = ["Artist"] }
-        ]);
+        ], cancellationToken: cancellationToken);
         await _database.GetCollection<BsonDocument>("requests").InsertManyAsync([
             RequestDocument(changedSongId, "share-old", ServiceType.Spotify, oldCreatedAt),
             RequestDocument(anchorSongId, "share-anchor", ServiceType.Spotify, unchangedGlobalMaximum)
-        ]);
+        ], cancellationToken: cancellationToken);
 
         var delayedRequests = new DelayedAfterRecentReadRepository(new ShareRequestRepository(context));
         var snapshots = new PublicMetricsSnapshotRepository(context);
-        var olderRefresh = new PublicMetricsService(delayedRequests, new SongRepository(context), snapshots).RefreshAsync();
-        await delayedRequests.RecentRead;
+        var olderRefresh = new PublicMetricsService(delayedRequests, new SongRepository(context), snapshots).RefreshAsync(cancellationToken);
+        await delayedRequests.RecentRead.WaitAsync(cancellationToken);
 
         await _database.GetCollection<BsonDocument>("requests").InsertOneAsync(
-            RequestDocument(changedSongId, "share-new", ServiceType.YouTubeMusic, changedCreatedAt));
-        var newerResult = await new PublicMetricsService(new ShareRequestRepository(context), new SongRepository(context), snapshots).RefreshAsync();
+            RequestDocument(changedSongId, "share-new", ServiceType.YouTubeMusic, changedCreatedAt),
+            cancellationToken: cancellationToken);
+        var newerResult = await new PublicMetricsService(new ShareRequestRepository(context), new SongRepository(context), snapshots).RefreshAsync(cancellationToken);
         delayedRequests.Release();
         var olderResult = await olderRefresh;
 
         newerResult.Accepted.Should().BeTrue();
         olderResult.Accepted.Should().BeFalse();
-        (await snapshots.GetAsync()).Should().Match<PublicMetricsSnapshot>(x =>
+        (await snapshots.GetAsync(cancellationToken)).Should().Match<PublicMetricsSnapshot>(x =>
             x.TotalCompletedSongs == 2 &&
             x.SnapshotVersion == 2 &&
             x.RecentSongs.Any(song => song.ShareId == "share-new" && song.SourceService == ServiceType.YouTubeMusic) &&
@@ -127,9 +132,10 @@ public class PublicMetricsMongoRepositoryTests : IAsyncLifetime
     [Fact]
     public async Task ItWillReserveDatabaseOrderedVersionsAcrossConcurrentCallers()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var repository = new PublicMetricsSnapshotRepository(new TestDbContext(_database));
 
-        var versions = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => repository.ReserveVersionAsync()));
+        var versions = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => repository.ReserveVersionAsync(cancellationToken)));
 
         versions.Should().OnlyHaveUniqueItems();
         versions.Order().Should().Equal(Enumerable.Range(1, 8).Select(x => (long)x));

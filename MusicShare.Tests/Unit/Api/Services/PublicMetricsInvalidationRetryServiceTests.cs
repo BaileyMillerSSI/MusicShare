@@ -10,6 +10,7 @@ public class PublicMetricsInvalidationRetryServiceTests
     [Fact]
     public async Task ItWillCoalesceRetriesAndContinueUntilInvalidationSucceeds()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var attempts = 0;
         var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var revalidate = new Mock<IFrontendRevalidateService>();
@@ -20,11 +21,11 @@ public class PublicMetricsInvalidationRetryServiceTests
         });
         var sut = CreateSut(revalidate.Object);
 
-        await sut.StartAsync(CancellationToken.None);
+        await sut.StartAsync(cancellationToken);
         sut.ScheduleRetry();
         sut.ScheduleRetry();
-        await completed.Task.WaitAsync(TimeSpan.FromSeconds(2));
-        await sut.StopAsync(CancellationToken.None);
+        await completed.Task.WaitAsync(TimeSpan.FromSeconds(2), cancellationToken);
+        await sut.StopAsync(cancellationToken);
 
         attempts.Should().Be(3, "the capacity-one queue coalesces duplicate scheduling while retries remain pending");
     }
@@ -32,15 +33,16 @@ public class PublicMetricsInvalidationRetryServiceTests
     [Fact]
     public async Task ItWillStopWithoutStartingAnotherAttemptWhenCancelled()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var revalidate = new Mock<IFrontendRevalidateService>();
         revalidate.Setup(x => x.RevalidateMetricsAsync(It.IsAny<CancellationToken>()))
             .Returns(async (CancellationToken token) => await Task.Delay(Timeout.InfiniteTimeSpan, token).ContinueWith(_ => false));
         var sut = CreateSut(revalidate.Object, TimeSpan.Zero);
 
-        await sut.StartAsync(CancellationToken.None);
+        await sut.StartAsync(cancellationToken);
         sut.ScheduleRetry();
-        await Task.Delay(20);
-        await sut.StopAsync(CancellationToken.None);
+        await Task.Delay(20, cancellationToken);
+        await sut.StopAsync(cancellationToken);
 
         revalidate.Verify(x => x.RevalidateMetricsAsync(It.IsAny<CancellationToken>()), Times.AtMostOnce);
     }

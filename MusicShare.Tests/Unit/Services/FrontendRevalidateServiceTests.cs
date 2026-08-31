@@ -19,9 +19,9 @@ public class FrontendRevalidateServiceTests
     public async Task ItWillPostTheExactSharePayload()
     {
         string? body = null;
-        var sut = CreateSut(new MockHttpMessageHandler(async (request, _) =>
+        var sut = CreateSut(new MockHttpMessageHandler(async (request, cancellationToken) =>
         {
-            body = await request.Content!.ReadAsStringAsync();
+            body = await request.Content!.ReadAsStringAsync(cancellationToken);
             return new HttpResponseMessage(HttpStatusCode.OK);
         }));
         await sut.RevalidateShareAsync("abc123def456");
@@ -32,12 +32,12 @@ public class FrontendRevalidateServiceTests
     public async Task ItWillPostTheFixedMetricsPayload()
     {
         string? body = null;
-        var sut = CreateSut(new MockHttpMessageHandler(async (request, _) =>
+        var sut = CreateSut(new MockHttpMessageHandler(async (request, cancellationToken) =>
         {
-            body = await request.Content!.ReadAsStringAsync();
+            body = await request.Content!.ReadAsStringAsync(cancellationToken);
             return new HttpResponseMessage(HttpStatusCode.OK);
         }));
-        (await sut.RevalidateMetricsAsync()).Should().BeTrue();
+        (await sut.RevalidateMetricsAsync(TestContext.Current.CancellationToken)).Should().BeTrue();
         body.Should().Be("{\"target\":\"metrics\"}");
     }
 
@@ -45,7 +45,7 @@ public class FrontendRevalidateServiceTests
     public async Task ItWillTolerateFrontendFailure()
     {
         var sut = CreateSut(new MockHttpMessageHandler((_, _) => throw new HttpRequestException("offline")));
-        var result = await sut.RevalidateMetricsAsync();
+        var result = await sut.RevalidateMetricsAsync(TestContext.Current.CancellationToken);
         result.Should().BeFalse();
     }
 }
