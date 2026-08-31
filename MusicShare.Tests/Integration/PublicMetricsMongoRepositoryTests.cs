@@ -84,18 +84,27 @@ public class PublicMetricsMongoRepositoryTests : IAsyncLifetime
     public async Task ItWillRejectAnOlderEqualTotalRefreshAfterANewerAuthoritativeViewPersists()
     {
         var context = new TestDbContext(_database);
-        var oldCreatedAt = TruncateToMongoMilliseconds(DateTime.UtcNow.AddMinutes(-1));
-        var newCreatedAt = TruncateToMongoMilliseconds(DateTime.UtcNow);
-        var songId = ObjectId.GenerateNewId().ToString();
-        await context.Songs.InsertOneAsync(new Song { Id = songId, Title = "Song", Artists = ["Artist"] });
-        await _database.GetCollection<BsonDocument>("requests").InsertOneAsync(RequestDocument(songId, "share-old", ServiceType.Spotify, oldCreatedAt));
+        var oldCreatedAt = TruncateToMongoMilliseconds(DateTime.UtcNow.AddMinutes(-2));
+        var changedCreatedAt = TruncateToMongoMilliseconds(DateTime.UtcNow.AddMinutes(-1));
+        var unchangedGlobalMaximum = TruncateToMongoMilliseconds(DateTime.UtcNow);
+        var changedSongId = ObjectId.GenerateNewId().ToString();
+        var anchorSongId = ObjectId.GenerateNewId().ToString();
+        await context.Songs.InsertManyAsync([
+            new Song { Id = changedSongId, Title = "Changed Song", Artists = ["Artist"] },
+            new Song { Id = anchorSongId, Title = "Anchor Song", Artists = ["Artist"] }
+        ]);
+        await _database.GetCollection<BsonDocument>("requests").InsertManyAsync([
+            RequestDocument(changedSongId, "share-old", ServiceType.Spotify, oldCreatedAt),
+            RequestDocument(anchorSongId, "share-anchor", ServiceType.Spotify, unchangedGlobalMaximum)
+        ]);
 
         var delayedRequests = new DelayedAfterRecentReadRepository(new ShareRequestRepository(context));
         var snapshots = new PublicMetricsSnapshotRepository(context);
         var olderRefresh = new PublicMetricsService(delayedRequests, new SongRepository(context), snapshots).RefreshAsync();
         await delayedRequests.RecentRead;
 
-        await _database.GetCollection<BsonDocument>("requests").InsertOneAsync(RequestDocument(songId, "share-new", ServiceType.Spotify, newCreatedAt));
+        await _database.GetCollection<BsonDocument>("requests").InsertOneAsync(
+            RequestDocument(changedSongId, "share-new", ServiceType.YouTubeMusic, changedCreatedAt));
         var newerResult = await new PublicMetricsService(new ShareRequestRepository(context), new SongRepository(context), snapshots).RefreshAsync();
         delayedRequests.Release();
         var olderResult = await olderRefresh;
@@ -103,23 +112,21 @@ public class PublicMetricsMongoRepositoryTests : IAsyncLifetime
         newerResult.Accepted.Should().BeTrue();
         olderResult.Accepted.Should().BeFalse();
         (await snapshots.GetAsync()).Should().Match<PublicMetricsSnapshot>(x =>
-            x.TotalCompletedSongs == 1 && x.SnapshotVersion == newCreatedAt.Ticks && x.RecentSongs.Single().ShareId == "share-new");
+            x.TotalCompletedSongs == 2 &&
+            x.SnapshotVersion == 2 &&
+            x.RecentSongs.Any(song => song.ShareId == "share-new" && song.SourceService == ServiceType.YouTubeMusic) &&
+            x.RecentSongs.Max(song => song.CreatedAt) == unchangedGlobalMaximum);
     }
 
     [Fact]
-    public async Task ItWillUseTheLatestAuthoritativeRequestTimestampAsTheSnapshotVersion()
+    public async Task ItWillReserveDatabaseOrderedVersionsAcrossConcurrentCallers()
     {
-        var context = new TestDbContext(_database);
-        var createdAt = TruncateToMongoMilliseconds(DateTime.UtcNow.AddMinutes(-5));
-        var songId = ObjectId.GenerateNewId().ToString();
-        await context.Songs.InsertOneAsync(new Song { Id = songId, Title = "Song", Artists = ["Artist"] });
-        await _database.GetCollection<BsonDocument>("requests").InsertOneAsync(RequestDocument(songId, "share", ServiceType.Spotify, createdAt));
+        var repository = new PublicMetricsSnapshotRepository(new TestDbContext(_database));
 
-        var result = await new PublicMetricsService(
-            new ShareRequestRepository(context), new SongRepository(context), new PublicMetricsSnapshotRepository(context)).RefreshAsync();
+        var versions = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => repository.ReserveVersionAsync()));
 
-        result.Accepted.Should().BeTrue();
-        (await context.PublicMetricsSnapshots.Find(_ => true).SingleAsync()).SnapshotVersion.Should().Be(createdAt.Ticks);
+        versions.Should().OnlyHaveUniqueItems();
+        versions.Order().Should().Equal(Enumerable.Range(1, 8).Select(x => (long)x));
     }
 
     private static PublicMetricsSnapshot Snapshot(long total, long version) => new() { TotalCompletedSongs = total, SnapshotVersion = version, GeneratedAt = DateTime.UtcNow };

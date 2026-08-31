@@ -5,10 +5,28 @@ namespace MusicShare.Persistence.Repositories;
 
 public class PublicMetricsSnapshotRepository(IMusicShareDbContext context) : IPublicMetricsSnapshotRepository
 {
+    private const string RevisionCounterId = "public-metrics-revision";
     private readonly IMongoCollection<PublicMetricsSnapshot> _snapshots = context.PublicMetricsSnapshots;
 
     public async Task<PublicMetricsSnapshot?> GetAsync(CancellationToken cancellationToken = default) =>
         await _snapshots.Find(x => x.Id == PublicMetricsSnapshot.SingletonId).FirstOrDefaultAsync(cancellationToken);
+
+    public async Task<long> ReserveVersionAsync(CancellationToken cancellationToken = default)
+    {
+        var counter = await _snapshots.FindOneAndUpdateAsync(
+            Builders<PublicMetricsSnapshot>.Filter.Eq(x => x.Id, RevisionCounterId),
+            Builders<PublicMetricsSnapshot>.Update
+                .Inc(x => x.SnapshotVersion, 1)
+                .SetOnInsert(x => x.GeneratedAt, DateTime.UnixEpoch),
+            new FindOneAndUpdateOptions<PublicMetricsSnapshot>
+            {
+                IsUpsert = true,
+                ReturnDocument = ReturnDocument.After
+            },
+            cancellationToken);
+
+        return counter.SnapshotVersion;
+    }
 
     public async Task<bool> TryReplaceAsync(PublicMetricsSnapshot snapshot, CancellationToken cancellationToken = default)
     {

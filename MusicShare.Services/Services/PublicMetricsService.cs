@@ -20,6 +20,7 @@ public class PublicMetricsService(
 
     public async Task<PublicMetricsRefreshResult> RefreshAsync(CancellationToken cancellationToken = default)
     {
+        var snapshotVersion = await snapshots.ReserveVersionAsync(cancellationToken);
         var counts = await shareRequests.GetCompletedDistinctSongCountsBySourceAsync(cancellationToken);
         var recentRequests = await shareRequests.GetRecentCompletedDistinctAsync(RecentSongLimit, cancellationToken);
         var songsById = (await songs.GetByIdsAsync(recentRequests.Select(x => x.SongId), cancellationToken))
@@ -27,8 +28,7 @@ public class PublicMetricsService(
         var candidate = new PublicMetricsSnapshot
         {
             TotalCompletedSongs = counts.Where(x => IsPublicSourceService(x.Key)).Sum(x => x.Value),
-            SnapshotVersion = recentRequests.Where(x => IsPublicSourceService(x.SourceService))
-                .Select(x => x.CreatedAt.Ticks).DefaultIfEmpty(0).Max(),
+            SnapshotVersion = snapshotVersion,
             GeneratedAt = DateTime.UtcNow,
             ServiceCounts = Enum.GetValues<ServiceType>().Where(x => x != ServiceType.Unknown)
                 .Select(x => new PublicMetricsServiceCount { Service = x, Count = counts.GetValueOrDefault(x) }).ToList(),
