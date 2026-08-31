@@ -15,6 +15,7 @@ public class PublicMetricsSnapshot
     public DateTime GeneratedAt { get; set; }
     public List<PublicMetricsServiceCount> ServiceCounts { get; set; } = [];
     public List<PublicMetricsRecentSong> RecentSongs { get; set; } = [];
+    public List<PublicMetricsWeeklyCompletedSong> WeeklyCompletedSongs { get; set; } = [];
 }
 
 public class PublicMetricsServiceCount
@@ -35,4 +36,10 @@ public class PublicMetricsRecentSong
     [BsonRepresentation(MongoDB.Bson.BsonType.String)]
     public ServiceType SourceService { get; set; }
     public DateTime CreatedAt { get; set; }
+}
+
+public class PublicMetricsWeeklyCompletedSong
+{
+    public DateTime WeekStart { get; set; }
+    public long Count { get; set; }
 }

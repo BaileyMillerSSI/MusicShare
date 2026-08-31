@@ -81,6 +81,29 @@ public class PublicMetricsMongoRepositoryTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ItWillCountEachDistinctCompletedSongInItsEarliestSundayUtcWeek()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var requests = _database.GetCollection<BsonDocument>("requests");
+        var firstWeek = new DateTime(2026, 1, 4, 0, 0, 0, DateTimeKind.Utc);
+        var duplicateSong = ObjectId.GenerateNewId().ToString();
+        await requests.InsertManyAsync([
+            RequestDocument(duplicateSong, "first", ServiceType.Spotify, firstWeek.AddDays(1)),
+            RequestDocument(duplicateSong, "later", ServiceType.YouTubeMusic, firstWeek.AddDays(8)),
+            RequestDocument(ObjectId.GenerateNewId().ToString(), "second-week", ServiceType.Spotify, firstWeek.AddDays(7)),
+            RequestDocument(ObjectId.GenerateNewId().ToString(), "excluded", ServiceType.Unknown, firstWeek.AddDays(2)),
+            RequestDocument(ObjectId.GenerateNewId().ToString(), "outside", ServiceType.Spotify, firstWeek.AddDays(-1))
+        ], cancellationToken: cancellationToken);
+
+        var result = await new ShareRequestRepository(new TestDbContext(_database)).GetCompletedDistinctSongCountsByWeekAsync(firstWeek, firstWeek.AddDays(14), cancellationToken);
+
+        result.Should().BeEquivalentTo([
+            new WeeklyCompletedSongCount(firstWeek, 1),
+            new WeeklyCompletedSongCount(firstWeek.AddDays(7), 1)
+        ], options => options.WithStrictOrdering());
+    }
+
+    [Fact]
     public async Task ItWillInsertReplaceAndRejectStaleSnapshotCandidatesIncludingEqualTotals()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
@@ -198,6 +221,7 @@ public class PublicMetricsMongoRepositoryTests : IAsyncLifetime
         public Task<ShareRequest> InsertAsync(ShareRequest request, CancellationToken cancellationToken = default) => inner.InsertAsync(request, cancellationToken);
         public Task UpdateAsync(ShareRequest request, CancellationToken cancellationToken = default) => inner.UpdateAsync(request, cancellationToken);
         public Task<long> GetCompletedDistinctSongCountAsync(CancellationToken cancellationToken = default) => inner.GetCompletedDistinctSongCountAsync(cancellationToken);
+        public Task<IReadOnlyList<WeeklyCompletedSongCount>> GetCompletedDistinctSongCountsByWeekAsync(DateTime rangeStartUtc, DateTime rangeEndUtc, CancellationToken cancellationToken = default) => inner.GetCompletedDistinctSongCountsByWeekAsync(rangeStartUtc, rangeEndUtc, cancellationToken);
 
         public async Task<IReadOnlyList<CompletedShareRequest>> GetRecentCompletedDistinctAsync(int maximum, CancellationToken cancellationToken = default)
         {
