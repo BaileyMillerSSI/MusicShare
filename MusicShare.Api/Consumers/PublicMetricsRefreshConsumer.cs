@@ -1,4 +1,5 @@
 using MassTransit;
+using MusicShare.Api.Services;
 using MusicShare.Contracts.Messages;
 using MusicShare.Services.Services;
 
@@ -7,6 +8,7 @@ namespace MusicShare.Api.Consumers;
 public class PublicMetricsRefreshConsumer(
     IPublicMetricsService metrics,
     IFrontendRevalidateService revalidateService,
+    IPublicMetricsInvalidationRetryService invalidationRetries,
     ILogger<PublicMetricsRefreshConsumer> logger) : IConsumer<RefreshPublicMetrics>
 {
     public async Task Consume(ConsumeContext<RefreshPublicMetrics> context)
@@ -18,6 +20,9 @@ public class PublicMetricsRefreshConsumer(
             return;
         }
 
-        await revalidateService.RevalidateMetricsAsync();
+        if (!await revalidateService.RevalidateMetricsAsync())
+        {
+            invalidationRetries.ScheduleRetry();
+        }
     }
 }

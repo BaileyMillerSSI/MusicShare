@@ -10,9 +10,14 @@ namespace MusicShare.Services.Services
 
         public Task RevalidateShareAsync(string shareId) => RevalidateAsync(new { shareId }, $"ShareId={shareId}");
 
-        public Task RevalidateMetricsAsync() => RevalidateAsync(new { target = "metrics" }, "metrics");
+        public Task<bool> RevalidateMetricsAsync() => RevalidateAsync(new { target = "metrics" }, "metrics", returnSuccess: true);
 
         private async Task RevalidateAsync(object request, string target)
+        {
+            await RevalidateAsync(request, target, returnSuccess: false);
+        }
+
+        private async Task<bool> RevalidateAsync(object request, string target, bool returnSuccess = true)
         {
             try
             {
@@ -20,11 +25,13 @@ namespace MusicShare.Services.Services
                 response.EnsureSuccessStatusCode();
 
                 _logger.LogInformation("Revalidation triggered for {Target}", target);
+                return true;
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex,
                     "Failed to trigger revalidation for {Target}", target);
+                return false;
             }
         }
     }

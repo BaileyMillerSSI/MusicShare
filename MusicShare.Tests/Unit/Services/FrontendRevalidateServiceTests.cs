@@ -37,7 +37,7 @@ public class FrontendRevalidateServiceTests
             body = await request.Content!.ReadAsStringAsync();
             return new HttpResponseMessage(HttpStatusCode.OK);
         }));
-        await sut.RevalidateMetricsAsync();
+        (await sut.RevalidateMetricsAsync()).Should().BeTrue();
         body.Should().Be("{\"target\":\"metrics\"}");
     }
 
@@ -45,6 +45,7 @@ public class FrontendRevalidateServiceTests
     public async Task ItWillTolerateFrontendFailure()
     {
         var sut = CreateSut(new MockHttpMessageHandler((_, _) => throw new HttpRequestException("offline")));
-        await sut.Invoking(x => x.RevalidateMetricsAsync()).Should().NotThrowAsync();
+        var result = await sut.RevalidateMetricsAsync();
+        result.Should().BeFalse();
     }
 }

@@ -43,6 +43,10 @@ builder.AddMessageAccess(
     });
 
 builder.Services.AddHostedService<PublicMetricsBootstrapService>();
+builder.Services.AddSingleton<PublicMetricsInvalidationRetryService>();
+builder.Services.AddSingleton<IPublicMetricsInvalidationRetryService>(provider =>
+    provider.GetRequiredService<PublicMetricsInvalidationRetryService>());
+builder.Services.AddHostedService(provider => provider.GetRequiredService<PublicMetricsInvalidationRetryService>());
 
 var app = builder.Build();
 
