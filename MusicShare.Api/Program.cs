@@ -4,6 +4,7 @@ using MusicShare.Api.Sagas.ShareRequest;
 using MusicShare.Api.Security;
 using MusicShare.Persistence;
 using MusicShare.ServiceDefaults;
+using MusicShare.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
@@ -40,6 +41,12 @@ builder.AddMessageAccess(
                 r.CollectionName = "shareRequestSagas";
             });
     });
+
+builder.Services.AddHostedService<PublicMetricsBootstrapService>();
+builder.Services.AddSingleton<PublicMetricsInvalidationRetryService>();
+builder.Services.AddSingleton<IPublicMetricsInvalidationRetryService>(provider =>
+    provider.GetRequiredService<PublicMetricsInvalidationRetryService>());
+builder.Services.AddHostedService(provider => provider.GetRequiredService<PublicMetricsInvalidationRetryService>());
 
 var app = builder.Build();
 

@@ -35,6 +35,11 @@ describe('Home page', () => {
     expect(screen.getByTestId('share-form')).toBeInTheDocument();
   });
 
+  it('links to the public metrics page', () => {
+    render(<Home />);
+    expect(screen.getByRole('link', { name: /view music metrics/i })).toHaveAttribute('href', '/metrics');
+  });
+
   it('renders the Breadstick Labs footer beneath the primary card', () => {
     const { container } = render(<Home />);
 

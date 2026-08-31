@@ -160,8 +160,23 @@ public class CompleteSagaActivityTests
 
         // Assert
         mock.Mock<IFrontendRevalidateService>().Verify(
-            x => x.RevalidateAsync(It.Is<RevalidateFrontendRequest>(r => r.ShareId == "share-abc123")),
+            x => x.RevalidateShareAsync("share-abc123"),
             Times.Once);
+    }
+
+    [Fact]
+    public async Task ItWillPublishOneMetricsRefreshAfterCompletingTheShare()
+    {
+        using var mock = AutoMock.GetLoose();
+        var saga = CreateSaga(resolvedServices: [ServiceType.AppleMusic]);
+        var context = new Mock<BehaviorContext<ShareRequestSagaState, SourceMetadataResolved>>();
+        context.Setup(x => x.Saga).Returns(saga);
+        var next = new Mock<IBehavior<ShareRequestSagaState, SourceMetadataResolved>>();
+
+        await mock.Create<CompleteSagaActivity>().Execute(context.Object, next.Object);
+
+        mock.Mock<IPublishEndpoint>().Verify(
+            x => x.Publish(It.IsAny<RefreshPublicMetrics>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -323,7 +338,7 @@ public class CompleteSagaActivityTests
 
         // Assert
         mock.Mock<IFrontendRevalidateService>().Verify(
-            x => x.RevalidateAsync(It.Is<RevalidateFrontendRequest>(r => r.ShareId == "share-abc123")),
+            x => x.RevalidateShareAsync("share-abc123"),
             Times.Once);
     }
 

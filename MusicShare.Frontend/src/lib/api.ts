@@ -40,6 +40,29 @@ export interface ServiceLink {
   url: string;
 }
 
+export interface PublicMetricsResponse {
+  totalCompletedSongs: number;
+  generatedAt?: string;
+  serviceCounts: PublicMetricsServiceCount[];
+  recentSongs: PublicMetricsRecentSong[];
+}
+
+export interface PublicMetricsServiceCount {
+  service: MusicServiceType;
+  count: number;
+}
+
+export interface PublicMetricsRecentSong {
+  songId: string;
+  shareId: string;
+  title: string;
+  artists: string[];
+  album?: string;
+  artworkUrl?: string;
+  sourceService: MusicServiceType;
+  createdAt: string;
+}
+
 export const api = {
   async submitShare(url: string): Promise<SubmitShareResponse> {
     const response = await fetch(`/api/share`, {

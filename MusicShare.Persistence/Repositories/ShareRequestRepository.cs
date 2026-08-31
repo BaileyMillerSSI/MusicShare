@@ -1,4 +1,5 @@
 using MongoDB.Driver;
+using MongoDB.Bson;
 using MusicShare.Contracts;
 using MusicShare.Persistence.Entities;
 
@@ -56,4 +57,54 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
         var filter = Builders<ShareRequest>.Filter.Eq(r => r.Id, request.Id);
         await _requests.ReplaceOneAsync(filter, request, cancellationToken: cancellationToken);
     }
+
+    public async Task<IReadOnlyDictionary<ServiceType, long>> GetCompletedDistinctSongCountsBySourceAsync(CancellationToken cancellationToken = default)
+    {
+        var pipeline = PipelineDefinition<ShareRequest, BsonDocument>.Create([
+            .. DistinctCompletedPipeline(),
+            new BsonDocument("$group", new BsonDocument { { "_id", "$sourceService" }, { "count", new BsonDocument("$sum", 1) } })]);
+        var rows = await _requests.Aggregate<BsonDocument>(pipeline).ToListAsync(cancellationToken);
+        return rows.Where(x => x.TryGetValue("_id", out var service) && x.TryGetValue("count", out _)
+            && service.IsString && IsPublicSourceService(service.AsString, out _))
+            .ToDictionary(x => Enum.Parse<ServiceType>(x["_id"].AsString), x => x["count"].ToInt64());
+    }
+
+    public async Task<IReadOnlyList<CompletedShareRequest>> GetRecentCompletedDistinctAsync(int maximum, CancellationToken cancellationToken = default)
+    {
+        if (maximum <= 0) return [];
+        var pipeline = PipelineDefinition<ShareRequest, BsonDocument>.Create([
+            .. DistinctCompletedPipeline(),
+            new BsonDocument("$sort", new BsonDocument { { "createdAt", -1 }, { "shareId", -1 } }),
+            new BsonDocument("$limit", maximum)]);
+        var rows = await _requests.Aggregate<BsonDocument>(pipeline).ToListAsync(cancellationToken);
+        return MaterializeCompletedRequests(rows);
+    }
+
+    internal static BsonDocument[] DistinctCompletedPipeline()
+    {
+        var stages = new BsonDocument[]
+        {
+            new("$match", new BsonDocument { { "status", ShareStatus.Completed.ToString() }, { "songId", new BsonDocument("$type", "objectId") },
+                { "sourceService", new BsonDocument("$in", new BsonArray(PublicSourceServices())) } }),
+            new("$sort", new BsonDocument { { "createdAt", -1 }, { "shareId", -1 } }),
+            new("$group", new BsonDocument { { "_id", "$songId" }, { "songId", new BsonDocument("$first", "$songId") }, { "shareId", new BsonDocument("$first", "$shareId") }, { "sourceService", new BsonDocument("$first", "$sourceService") }, { "createdAt", new BsonDocument("$first", "$createdAt") } })
+        };
+        return stages;
+    }
+
+    internal static IReadOnlyList<CompletedShareRequest> MaterializeCompletedRequests(IEnumerable<BsonDocument> rows) =>
+        rows.Where(x => x.TryGetValue("songId", out var songId) && songId.IsObjectId
+                        && x.TryGetValue("shareId", out var shareId) && shareId.IsString
+                        && x.TryGetValue("sourceService", out var sourceService) && sourceService.IsString
+                        && x.TryGetValue("createdAt", out var createdAt) && createdAt.IsValidDateTime
+                        && IsPublicSourceService(sourceService.AsString, out _))
+            .Select(x => new CompletedShareRequest(
+            x["songId"].AsObjectId.ToString(), x["shareId"].AsString,
+            Enum.Parse<ServiceType>(x["sourceService"].AsString), x["createdAt"].ToUniversalTime())).ToList();
+
+    private static IEnumerable<string> PublicSourceServices() => Enum.GetValues<ServiceType>()
+        .Where(service => service != ServiceType.Unknown).Select(service => service.ToString());
+
+    private static bool IsPublicSourceService(string value, out ServiceType service) =>
+        Enum.TryParse(value, out service) && service != ServiceType.Unknown && Enum.IsDefined(service);
 }

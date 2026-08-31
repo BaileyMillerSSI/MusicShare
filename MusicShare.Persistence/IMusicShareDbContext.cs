@@ -10,4 +10,5 @@ public interface IMusicShareDbContext
     IMongoCollection<Song> Songs { get; }
     IMongoCollection<SongServiceLink> SongServiceLinks { get; }
     IMongoCollection<WorkflowState> WorkflowStates { get; }
+    IMongoCollection<PublicMetricsSnapshot> PublicMetricsSnapshots { get; }
 }

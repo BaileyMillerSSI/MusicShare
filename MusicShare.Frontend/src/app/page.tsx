@@ -19,6 +19,7 @@ export default function Home() {
             <li>Share the universal link with anyone</li>
           </ol>
         </div>
+        <a className="mt-5 inline-block text-sm text-purple-700 hover:underline" href="/metrics">View music metrics</a>
       </div>
       <BreadstickFooter />
     </div>

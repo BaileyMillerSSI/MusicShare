@@ -26,6 +26,7 @@ public static class DependencyInjection
         builder.Services.AddScoped<ISongServiceLinkRepository, SongServiceLinkRepository>();
         builder.Services.AddScoped<IShareRequestRepository, ShareRequestRepository>();
         builder.Services.AddScoped<IWorkflowStateRepository, WorkflowStateRepository>();
+        builder.Services.AddScoped<IPublicMetricsSnapshotRepository, PublicMetricsSnapshotRepository>();
 
         return builder;
     }
