@@ -25,6 +25,12 @@ public static class ReconciliationSnapshots
         ShareRequest canonical, ShareRequest alias, IEnumerable<Song> songs,
         IEnumerable<SongServiceLink> links, IEnumerable<ShareRequest> owners,
         long canonicalPreClaimVersion, long aliasPreClaimVersion)
+        => TryCreate(canonical, alias, songs, links, owners, [], canonicalPreClaimVersion, aliasPreClaimVersion);
+
+    public static ReconciliationSnapshot? TryCreate(
+        ShareRequest canonical, ShareRequest alias, IEnumerable<Song> songs,
+        IEnumerable<SongServiceLink> links, IEnumerable<ShareRequest> owners,
+        IEnumerable<ShareRequest> incomingAliases, long canonicalPreClaimVersion, long aliasPreClaimVersion)
     {
         if (canonical.Status != ShareStatus.Completed || alias.Status != ShareStatus.Completed ||
             string.IsNullOrWhiteSpace(canonical.SongId) || string.IsNullOrWhiteSpace(alias.SongId) ||
@@ -42,6 +48,12 @@ public static class ReconciliationSnapshots
         var sets = perSong.Select(x => x.SelectMany(y => y.Value.Select(id => new ReconciliationIdentity((int)y.Key, id))).ToHashSet()).ToArray();
         var shared = sets[0].Intersect(sets[1]).OrderBy(x => x.ServiceType).ThenBy(x => x.ServiceSongId, StringComparer.Ordinal).ToArray();
         if (shared.Length == 0 || owners.Any(x => x.ShareId != canonical.ShareId && x.ShareId != alias.ShareId && string.IsNullOrWhiteSpace(x.CanonicalShareId))) return null;
+        var incoming = incomingAliases.OrderBy(x => x.CanonicalShareId, StringComparer.Ordinal).ThenBy(x => x.ShareId, StringComparer.Ordinal).ThenBy(x => x.Id, StringComparer.Ordinal).ToArray();
+        // An alias may only ever target a terminal canonical share. Existing aliases of the
+        // proposed canonical remain direct; any third party pointing at the proposed alias
+        // would become a C -> A -> B chain and must stop the operation.
+        if (incoming.Any(x => x.CanonicalShareId != canonical.ShareId && x.CanonicalShareId != alias.ShareId) ||
+            incoming.Any(x => x.CanonicalShareId == alias.ShareId && x.ShareId != alias.ShareId)) return null;
         // Roles are deliberately explicit: choosing A->B is not the same plan as B->A.
         var requestLines = new[] {
             Pack("canonical-request", canonical.ShareId, canonical.Id, canonical.SongId, ((int)canonical.Status).ToString(), canonical.CreatedAt.Ticks.ToString(), ((int)canonical.SourceService).ToString(), canonical.ServiceTrackId, CanonicalSourceIdentityKey(canonical), canonical.SourceIdentityKey, canonical.CanonicalShareId, canonicalPreClaimVersion.ToString()),
@@ -49,8 +61,9 @@ public static class ReconciliationSnapshots
         var songLines = songArray.Select(x => Pack("song", x.Id, ((int)x.Status).ToString(), x.CreatedAt.Ticks.ToString(), x.UpdatedAt.Ticks.ToString()));
         var linkLines = evidence.Select(x => Pack("evidence", x.Id, x.SongId, ((int)x.ServiceType).ToString(), x.ServiceSongId, x.CreatedAt.Ticks.ToString(), x.OriginalUrl, x.NormalizedUrl));
         var ownerLines = owners.OrderBy(x => x.ShareId, StringComparer.Ordinal).ThenBy(x => x.Id, StringComparer.Ordinal).Select(x => Pack("owner", x.ShareId, x.Id, x.SongId, ((int)x.Status).ToString(), x.CanonicalShareId, x.CreatedAt.Ticks.ToString()));
+        var incomingLines = incoming.Select(x => Pack("incoming-alias", x.ShareId, x.Id, x.SongId, ((int)x.Status).ToString(), x.CanonicalShareId, x.ReconciliationId, x.ReconciliationFingerprint, x.CreatedAt.Ticks.ToString(), x.ReconciliationClaimVersion.ToString()));
         var sharedLines = shared.Select(x => Pack("shared", x.ServiceType.ToString(), x.ServiceSongId));
-        var fingerprint = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Pack(requestLines.Concat(songLines).Concat(linkLines).Concat(ownerLines).Concat(sharedLines).ToArray())))).ToLowerInvariant();
+        var fingerprint = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Pack(requestLines.Concat(songLines).Concat(linkLines).Concat(ownerLines).Concat(incomingLines).Concat(sharedLines).ToArray())))).ToLowerInvariant();
         return new(fingerprint, canonicalPreClaimVersion, aliasPreClaimVersion, canonical.SourceService,
             canonical.ServiceTrackId, CanonicalSourceIdentityKey(canonical), shared);
     }

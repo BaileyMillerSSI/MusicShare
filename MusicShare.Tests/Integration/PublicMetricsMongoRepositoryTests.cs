@@ -281,6 +281,7 @@ public class PublicMetricsMongoRepositoryTests : IAsyncLifetime
         public Task<ShareReservation> ReserveBySourceIdentityAsync(ShareRequest request, CancellationToken cancellationToken = default) => inner.ReserveBySourceIdentityAsync(request, cancellationToken);
         public Task<ShareRequest?> ResolveCanonicalAsync(ShareRequest request, CancellationToken cancellationToken = default) => inner.ResolveCanonicalAsync(request, cancellationToken);
         public Task<IReadOnlyList<ShareRequest>> GetByShareIdsAsync(IReadOnlyCollection<string> shareIds, CancellationToken cancellationToken = default) => inner.GetByShareIdsAsync(shareIds, cancellationToken);
+        public Task<IReadOnlyList<ShareRequest>> GetAliasesTargetingShareIdsAsync(IReadOnlyCollection<string> shareIds, CancellationToken cancellationToken = default) => inner.GetAliasesTargetingShareIdsAsync(shareIds, cancellationToken);
         public Task<IReadOnlyList<ShareRequest>> GetBySongIdsAsync(IReadOnlyCollection<string> songIds, CancellationToken cancellationToken = default) => inner.GetBySongIdsAsync(songIds, cancellationToken);
         public Task<ReconciliationWriteResult> TryReconcileAsync(ReconciliationWrite write, CancellationToken cancellationToken = default) => inner.TryReconcileAsync(write, cancellationToken);
         public Task<ShareRequest> InsertAsync(ShareRequest request, CancellationToken cancellationToken = default) => inner.InsertAsync(request, cancellationToken);

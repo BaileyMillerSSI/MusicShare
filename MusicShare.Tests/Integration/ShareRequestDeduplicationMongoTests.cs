@@ -156,6 +156,107 @@ public sealed class ShareRequestDeduplicationMongoTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ItWillReconcileLegacyBsonWithoutClaimFieldsAndAdvanceTheFencedVersion()
+    {
+        var context = new TestDbContext(database);
+        var canonicalSong = ObjectId.GenerateNewId().ToString();
+        var aliasSong = ObjectId.GenerateNewId().ToString();
+        var created = DateTime.UtcNow.AddMinutes(-5);
+        // These are deliberately raw BSON documents: typed zero values would serialize the
+        // new field and fail to exercise production rows created before reconciliation.
+        await database.GetCollection<BsonDocument>("shareRequests").InsertManyAsync([
+            LegacyCompletedDocument("aaaaaaaaaaaa", canonicalSong, created),
+            LegacyCompletedDocument("bbbbbbbbbbbb", aliasSong, created.AddSeconds(1))]);
+        await context.Songs.InsertManyAsync([ResolvedSong(canonicalSong), ResolvedSong(aliasSong)]);
+        await context.SongServiceLinks.InsertManyAsync([Link(canonicalSong, "track"), Link(aliasSong, "track")]);
+        var service = new DuplicateShareReconciliationService(new ShareRequestRepository(context), new SongServiceLinkRepository(context), new SongRepository(context), NullLogger<DuplicateShareReconciliationService>.Instance);
+
+        var dryRun = await service.ReconcileAsync(new("aaaaaaaaaaaa", "bbbbbbbbbbbb", null, DuplicateShareReconciliationMode.DryRun, null), CancellationToken.None);
+        var apply = await service.ReconcileAsync(new("aaaaaaaaaaaa", "bbbbbbbbbbbb", null, DuplicateShareReconciliationMode.Apply, dryRun.Fingerprint), CancellationToken.None);
+        var retry = await service.ReconcileAsync(new("aaaaaaaaaaaa", "bbbbbbbbbbbb", null, DuplicateShareReconciliationMode.Apply, dryRun.Fingerprint), CancellationToken.None);
+
+        dryRun.Success.Should().BeTrue();
+        apply.Should().Match<DuplicateShareReconciliationResult>(x => x.Success && x.Changed);
+        retry.Should().Match<DuplicateShareReconciliationResult>(x => x.Success && !x.Changed);
+        var persisted = await context.ShareRequests.Find(Builders<ShareRequest>.Filter.In(x => x.ShareId, ["aaaaaaaaaaaa", "bbbbbbbbbbbb"])).ToListAsync();
+        persisted.Single(x => x.ShareId == "bbbbbbbbbbbb").CanonicalShareId.Should().Be("aaaaaaaaaaaa");
+        persisted.Should().OnlyContain(x => x.ReconciliationClaimVersion >= 1);
+        (await database.GetCollection<BsonDocument>("shareRequests").Find(new BsonDocument("shareId", "aaaaaaaaaaaa")).FirstAsync()).Contains("reconciliationClaimVersion").Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ItWillRejectPromotingAShareWithIncomingAliasesButAllowItsCanonicalPeer()
+    {
+        var context = new TestDbContext(database);
+        var a = Completed("aaaaaaaaaaaa", ObjectId.GenerateNewId().ToString());
+        var b = Completed("bbbbbbbbbbbb", ObjectId.GenerateNewId().ToString());
+        var c = Completed("cccccccccccc", ObjectId.GenerateNewId().ToString());
+        c.CanonicalShareId = a.ShareId;
+        await context.ShareRequests.InsertManyAsync([a, b, c]);
+        await context.Songs.InsertManyAsync([ResolvedSong(a.SongId!), ResolvedSong(b.SongId!), ResolvedSong(c.SongId!)]);
+        await context.SongServiceLinks.InsertManyAsync([Link(a.SongId!, "track"), Link(b.SongId!, "track")]);
+        var service = new DuplicateShareReconciliationService(new ShareRequestRepository(context), new SongServiceLinkRepository(context), new SongRepository(context), NullLogger<DuplicateShareReconciliationService>.Instance);
+
+        var unsafePlan = await service.ReconcileAsync(new(a.ShareId, b.ShareId, b.ShareId, DuplicateShareReconciliationMode.DryRun, null), CancellationToken.None);
+        unsafePlan.Success.Should().BeFalse();
+        var untouched = await context.ShareRequests.Find(Builders<ShareRequest>.Filter.In(x => x.ShareId, [a.ShareId, b.ShareId])).ToListAsync();
+        untouched.Should().OnlyContain(x => x.SourceIdentityKey == null && x.CanonicalShareId == null && x.ReconciliationId == null && x.ReconciliationFingerprint == null);
+
+        var dryRun = await service.ReconcileAsync(new(a.ShareId, b.ShareId, a.ShareId, DuplicateShareReconciliationMode.DryRun, null), CancellationToken.None);
+        var apply = await service.ReconcileAsync(new(a.ShareId, b.ShareId, a.ShareId, DuplicateShareReconciliationMode.Apply, dryRun.Fingerprint), CancellationToken.None);
+        var retry = await service.ReconcileAsync(new(a.ShareId, b.ShareId, a.ShareId, DuplicateShareReconciliationMode.Apply, dryRun.Fingerprint), CancellationToken.None);
+        apply.Should().Match<DuplicateShareReconciliationResult>(x => x.Success && x.Changed);
+        retry.Should().Match<DuplicateShareReconciliationResult>(x => x.Success && !x.Changed && x.SharedIdentities.Count == 1);
+        var rows = await context.ShareRequests.Find(Builders<ShareRequest>.Filter.In(x => x.ShareId, [a.ShareId, b.ShareId, c.ShareId])).ToListAsync();
+        rows.Single(x => x.ShareId == b.ShareId).CanonicalShareId.Should().Be(a.ShareId);
+        rows.Single(x => x.ShareId == c.ShareId).CanonicalShareId.Should().Be(a.ShareId);
+        var resolvedC = await new ShareRequestRepository(context).ResolveCanonicalAsync(rows.Single(x => x.ShareId == c.ShareId));
+        resolvedC!.ShareId.Should().Be(a.ShareId);
+    }
+
+    [Fact]
+    public async Task ItWillRejectAnIncomingAliasAddedAfterDryRunAndKeepTheAliasUnchanged()
+    {
+        var context = new TestDbContext(database);
+        var a = Completed("aaaaaaaaaaaa", ObjectId.GenerateNewId().ToString());
+        var b = Completed("bbbbbbbbbbbb", ObjectId.GenerateNewId().ToString());
+        var c = Completed("cccccccccccc", ObjectId.GenerateNewId().ToString());
+        await context.ShareRequests.InsertManyAsync([a, b, c]);
+        await context.Songs.InsertManyAsync([ResolvedSong(a.SongId!), ResolvedSong(b.SongId!), ResolvedSong(c.SongId!)]);
+        await context.SongServiceLinks.InsertManyAsync([Link(a.SongId!, "track"), Link(b.SongId!, "track")]);
+        var service = new DuplicateShareReconciliationService(new ShareRequestRepository(context), new SongServiceLinkRepository(context), new SongRepository(context), NullLogger<DuplicateShareReconciliationService>.Instance);
+
+        var dryRun = await service.ReconcileAsync(new(a.ShareId, b.ShareId, a.ShareId, DuplicateShareReconciliationMode.DryRun, null), CancellationToken.None);
+        await context.ShareRequests.UpdateOneAsync(x => x.ShareId == c.ShareId, Builders<ShareRequest>.Update.Set(x => x.CanonicalShareId, b.ShareId));
+        var apply = await service.ReconcileAsync(new(a.ShareId, b.ShareId, a.ShareId, DuplicateShareReconciliationMode.Apply, dryRun.Fingerprint), CancellationToken.None);
+
+        apply.Success.Should().BeFalse();
+        (await context.ShareRequests.Find(x => x.ShareId == b.ShareId).FirstAsync()).CanonicalShareId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ItWillNotCreateAnIncomingAliasWhileItsTargetIsClaimed()
+    {
+        var context = new TestDbContext(database);
+        var canonical = Completed("aaaaaaaaaaaa", ObjectId.GenerateNewId().ToString());
+        var alias = Completed("bbbbbbbbbbbb", ObjectId.GenerateNewId().ToString());
+        await context.ShareRequests.InsertManyAsync([canonical, alias]);
+        await context.Songs.InsertManyAsync([ResolvedSong(canonical.SongId!), ResolvedSong(alias.SongId!)]);
+        await context.SongServiceLinks.InsertManyAsync([Link(canonical.SongId!, "track"), Link(alias.SongId!, "track")]);
+        var write = await WriteAsync(context, canonical, alias);
+        // Any operation which would write B -> A must claim A as well. An exact-token holder
+        // therefore blocks it before it can observe/write a reverse alias state.
+        await context.ShareRequests.UpdateOneAsync(x => x.ShareId == canonical.ShareId, Builders<ShareRequest>.Update
+            .Set(x => x.ReconciliationClaimToken, "holder")
+            .Set(x => x.ReconciliationClaimExpiresAt, DateTime.UtcNow.AddMinutes(1)));
+
+        var result = await new ShareRequestRepository(context).TryReconcileAsync(write);
+
+        result.Succeeded.Should().BeFalse();
+        (await context.ShareRequests.Find(x => x.ShareId == alias.ShareId).FirstAsync()).CanonicalShareId.Should().BeNull();
+    }
+
+    [Fact]
     public async Task ItWillRejectEveryStaleTokenMutationAfterAnExpiredClaimIsTakenOver()
     {
         var context = new TestDbContext(database);
@@ -374,6 +475,12 @@ public sealed class ShareRequestDeduplicationMongoTests : IAsyncLifetime
 
     private static Song ResolvedSong(string id) => new() { Id = id, Status = SongStatus.Resolved, CreatedAt = DateTime.UnixEpoch, UpdatedAt = DateTime.UnixEpoch };
     private static SongServiceLink Link(string songId, string identity, ServiceType serviceType = ServiceType.Spotify) => new() { Id = ObjectId.GenerateNewId().ToString(), SongId = songId, ServiceType = serviceType, ServiceSongId = identity, OriginalUrl = "https://example.test", NormalizedUrl = "https://example.test", CreatedAt = DateTime.UnixEpoch };
+    private static BsonDocument LegacyCompletedDocument(string shareId, string songId, DateTime createdAt) => new()
+    {
+        { "_id", ObjectId.GenerateNewId() }, { "shareId", shareId }, { "sourceUrl", "https://example.test" }, { "sourceService", ServiceType.Spotify.ToString() },
+        { "serviceTrackId", "track" }, { "songId", ObjectId.Parse(songId) }, { "status", ShareStatus.Completed.ToString() },
+        { "correlationId", new BsonBinaryData(Guid.NewGuid(), GuidRepresentation.Standard) }, { "createdAt", createdAt }
+    };
 
     private sealed class TestDbContext(IMongoDatabase db) : IMusicShareDbContext
     {

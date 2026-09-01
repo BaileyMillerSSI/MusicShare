@@ -14,6 +14,8 @@ public interface IShareRequestRepository
     Task<ShareReservation> ReserveBySourceIdentityAsync(ShareRequest request, CancellationToken cancellationToken = default);
     Task<ShareRequest?> ResolveCanonicalAsync(ShareRequest request, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<ShareRequest>> GetByShareIdsAsync(IReadOnlyCollection<string> shareIds, CancellationToken cancellationToken = default);
+    /// <summary>Returns only aliases whose direct canonical target is one of the supplied pair.</summary>
+    Task<IReadOnlyList<ShareRequest>> GetAliasesTargetingShareIdsAsync(IReadOnlyCollection<string> shareIds, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<ShareRequest>> GetBySongIdsAsync(IReadOnlyCollection<string> songIds, CancellationToken cancellationToken = default);
     Task<ReconciliationWriteResult> TryReconcileAsync(ReconciliationWrite write, CancellationToken cancellationToken = default);
     Task<ShareRequest> InsertAsync(ShareRequest request, CancellationToken cancellationToken = default);

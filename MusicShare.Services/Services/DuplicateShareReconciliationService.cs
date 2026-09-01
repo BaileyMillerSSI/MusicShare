@@ -38,11 +38,12 @@ public sealed partial class DuplicateShareReconciliationService(
         var alias = pair.Single(x => x.ShareId != canonical.ShareId);
         if (request.CanonicalShareId is not null && canonical.ShareId != request.CanonicalShareId)
             return DuplicateShareReconciliationResult.Failure("The canonical share must be one of the requested shares.");
-        var preliminary = ReconciliationSnapshots.TryCreate(canonical, alias, existingSongs, songLinks, [], canonical.ReconciliationClaimVersion, alias.ReconciliationClaimVersion);
+        var incomingAliases = await requests.GetAliasesTargetingShareIdsAsync([canonical.ShareId, alias.ShareId], cancellationToken) ?? [];
+        var preliminary = ReconciliationSnapshots.TryCreate(canonical, alias, existingSongs, songLinks, [], incomingAliases, canonical.ReconciliationClaimVersion, alias.ReconciliationClaimVersion);
         if (preliminary is null) return DuplicateShareReconciliationResult.Failure("The shares do not have unambiguous resolved provider evidence.");
         var evidenceOwners = await links.GetByIdentitiesAsync(preliminary.SharedIdentities.Select(x => new SongServiceIdentity(x.ServiceType, x.ServiceSongId)).ToArray(), cancellationToken) ?? [];
         var ownerRequests = await requests.GetBySongIdsAsync(evidenceOwners.Select(x => x.SongId).Distinct(StringComparer.Ordinal).ToArray(), cancellationToken) ?? [];
-        var snapshot = ReconciliationSnapshots.TryCreate(canonical, alias, existingSongs, songLinks, ownerRequests, canonical.ReconciliationClaimVersion, alias.ReconciliationClaimVersion);
+        var snapshot = ReconciliationSnapshots.TryCreate(canonical, alias, existingSongs, songLinks, ownerRequests, incomingAliases, canonical.ReconciliationClaimVersion, alias.ReconciliationClaimVersion);
         if (snapshot is null) return DuplicateShareReconciliationResult.Failure("The provider identities are ambiguous or owned by a third canonical share.");
         if (existingAlias is not null)
         {

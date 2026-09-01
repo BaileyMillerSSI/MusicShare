@@ -86,6 +86,12 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
         return await _requests.Find(Builders<ShareRequest>.Filter.In(x => x.ShareId, shareIds)).ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<ShareRequest>> GetAliasesTargetingShareIdsAsync(IReadOnlyCollection<string> shareIds, CancellationToken cancellationToken = default)
+    {
+        if (shareIds.Count != 2) return [];
+        return await _requests.Find(Builders<ShareRequest>.Filter.In(x => x.CanonicalShareId, shareIds)).ToListAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<ShareRequest>> GetBySongIdsAsync(IReadOnlyCollection<string> songIds, CancellationToken cancellationToken = default)
     {
         if (songIds.Count == 0) return [];
@@ -134,14 +140,15 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
         // using pre-claim versions, so a mutation between dry-run and apply is rejected.
         var currentSongs = await _songs.Find(Builders<Song>.Filter.In(x => x.Id, new[] { canonical.SongId, alias.SongId })).ToListAsync(cancellationToken);
         var currentLinks = await _links.Find(Builders<SongServiceLink>.Filter.In(x => x.SongId, new[] { canonical.SongId, alias.SongId })).ToListAsync(cancellationToken);
-        var preliminary = ReconciliationSnapshots.TryCreate(canonical, alias, currentSongs, currentLinks, [], write.CanonicalPreClaimVersion, write.AliasPreClaimVersion);
+        var incomingAliases = await GetAliasesTargetingShareIdsAsync([canonical.ShareId, alias.ShareId], cancellationToken);
+        var preliminary = ReconciliationSnapshots.TryCreate(canonical, alias, currentSongs, currentLinks, [], incomingAliases, write.CanonicalPreClaimVersion, write.AliasPreClaimVersion);
         if (preliminary is null) return new(false, false, "The reconciliation evidence changed.");
         var identityFilter = Builders<SongServiceLink>.Filter.Or(preliminary.SharedIdentities.Select(x => Builders<SongServiceLink>.Filter.And(
             Builders<SongServiceLink>.Filter.Eq(y => y.ServiceType, (ServiceType)x.ServiceType),
             Builders<SongServiceLink>.Filter.Eq(y => y.ServiceSongId, x.ServiceSongId))));
         var ownerLinks = await _links.Find(identityFilter).ToListAsync(cancellationToken);
         var owners = ownerLinks.Count == 0 ? [] : await _requests.Find(Builders<ShareRequest>.Filter.In(x => x.SongId, ownerLinks.Select(x => x.SongId).Distinct())).ToListAsync(cancellationToken);
-        var snapshot = ReconciliationSnapshots.TryCreate(canonical, alias, currentSongs, currentLinks, owners, write.CanonicalPreClaimVersion, write.AliasPreClaimVersion);
+        var snapshot = ReconciliationSnapshots.TryCreate(canonical, alias, currentSongs, currentLinks, owners, incomingAliases, write.CanonicalPreClaimVersion, write.AliasPreClaimVersion);
         if (snapshot is null || snapshot.Fingerprint != write.Fingerprint) return new(false, false, "The reconciliation plan is stale.");
 
         // The source identity is part of the operator-approved snapshot. Rebuild it
@@ -195,9 +202,14 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
     private async Task<ShareRequest?> TryClaimAsync(string shareId, string token, long expectedVersion, CancellationToken cancellationToken)
     {
         var now = DateTime.UtcNow;
+        var claimVersion = expectedVersion == 0
+            ? Builders<ShareRequest>.Filter.Or(
+                Builders<ShareRequest>.Filter.Eq(x => x.ReconciliationClaimVersion, 0),
+                Builders<ShareRequest>.Filter.Exists("reconciliationClaimVersion", false))
+            : Builders<ShareRequest>.Filter.Eq(x => x.ReconciliationClaimVersion, expectedVersion);
         var filter = Builders<ShareRequest>.Filter.And(
             Builders<ShareRequest>.Filter.Eq(x => x.ShareId, shareId),
-            Builders<ShareRequest>.Filter.Eq(x => x.ReconciliationClaimVersion, expectedVersion),
+            claimVersion,
             Builders<ShareRequest>.Filter.Or(
                 Builders<ShareRequest>.Filter.Eq(x => x.ReconciliationClaimToken, null),
                 Builders<ShareRequest>.Filter.Lte(x => x.ReconciliationClaimExpiresAt, now)));
