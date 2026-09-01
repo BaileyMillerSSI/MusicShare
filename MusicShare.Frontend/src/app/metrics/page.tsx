@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { BreadstickFooter } from '../../components/BreadstickFooter';
 import { MusicServiceType } from '../../lib/api';
 import { getPublicMetrics, metricsShareCopy, previewVersion, publicMetricsOrigin, summarizePublicMetrics } from '../../lib/server/publicMetrics';
+import { WeeklyCompletedSongsChart } from './WeeklyCompletedSongsChart';
 
 export const dynamic = 'force-dynamic';
 const services = [MusicServiceType.Spotify, MusicServiceType.YouTubeMusic];
@@ -42,17 +43,7 @@ export default async function MetricsPage() {
       </section>
       <section className="mt-8" aria-labelledby="weekly-completed-songs">
         <h2 id="weekly-completed-songs" className="text-xl font-semibold text-gray-800">Songs by week</h2>
-        {weeklyCompletedSongs.length === 0 ? <p className="mt-3 text-gray-600">Weekly song data is not available yet.</p> : <ol className="mt-3 grid grid-cols-8 gap-1.5" aria-label="Songs by week, Sunday UTC start">
-          {weeklyCompletedSongs.map((week) => {
-            const height = week.count === 0 || largestWeeklyCount === 0 ? 0 : Math.max(8, Math.round((week.count / largestWeeklyCount) * 100));
-            const label = `${week.weekStart.slice(0, 10)} UTC: ${week.count} songs`;
-            return <li key={week.weekStart} className="min-w-0 text-center text-xs text-gray-600" aria-label={label}>
-              <span className="flex h-28 items-end justify-center rounded bg-gray-100 px-0.5"><span className="w-full rounded-t bg-purple-600" style={{ height: `${height}%` }} aria-hidden="true" /></span>
-              <span className="mt-1 block font-medium text-gray-800">{week.count}</span>
-              <time className="block text-[10px] leading-tight" dateTime={week.weekStart}>{week.weekStart.slice(5, 10)} UTC</time>
-            </li>;
-          })}
-        </ol>}
+        {weeklyCompletedSongs.length === 0 ? <p className="mt-3 text-gray-600">Weekly song data is not available yet.</p> : <WeeklyCompletedSongsChart weeklyCompletedSongs={weeklyCompletedSongs} largestWeeklyCount={largestWeeklyCount} />}
       </section>
       <section className="mt-8" aria-labelledby="recent-songs"><h2 id="recent-songs" className="text-xl font-semibold text-gray-800">Recently added</h2>
         {recentSongs.length === 0 ? <p className="mt-3 text-gray-600">No songs yet.</p> : <ul className="mt-3 divide-y divide-gray-200">
