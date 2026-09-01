@@ -35,6 +35,13 @@ public class ShareRequest
     [BsonIgnoreIfNull]
     public string? CanonicalShareId { get; set; }
 
+    // This is a one-way role marker, not an alias pointer. Once true, a request may
+    // receive direct aliases but may never itself become an alias. Keeping it nullable
+    // leaves historical BSON rows unchanged until they participate in reconciliation.
+    [BsonElement("reconciliationCanonical")]
+    [BsonIgnoreIfNull]
+    public bool? IsReconciliationCanonical { get; set; }
+
     [BsonElement("reconciledAt")]
     [BsonIgnoreIfNull]
     public DateTime? ReconciledAt { get; set; }

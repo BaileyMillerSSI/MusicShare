@@ -6,7 +6,7 @@ The service prevents new same-provider races with a MongoDB unique sparse source
 
 Use **Reconcile duplicate shares** from GitHub Actions with two lowercase 12-character share IDs and `dry-run`. Reconciliation requires at least one exact `(serviceType, serviceSongId)` identity shared by both completed shares. Matching titles, artists, albums, artwork, or durations are not evidence.
 
-The dry run returns a bounded fingerprint, canonical share, alias share, and shared identities. Without an explicit canonical selection, the earliest `ShareRequest.CreatedAt` wins, then the lexical share ID. Keep the workflow run URL and operation ID as the audit record.
+The dry run returns a bounded fingerprint, canonical share, alias share, and shared identities. Without an explicit canonical selection, an already pinned canonical is retained; otherwise the earliest `ShareRequest.CreatedAt` wins, then the lexical share ID. Apply first durably pins the selected canonical under its exact reconciliation claim, then writes the direct alias. A pinned record can receive future direct aliases but can never become an alias itself, including after a partial claim takeover or crash. Keep the workflow run URL and operation ID as the audit record.
 
 ## Apply and verification
 

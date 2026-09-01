@@ -32,8 +32,11 @@ public sealed partial class DuplicateShareReconciliationService(
         var existingSongs = await songs.GetByIdsAsync(songIds, cancellationToken);
         var songLinks = await links.GetBySongIdsAsync(songIds, cancellationToken);
 
+        var pinned = pair.Where(x => x.IsReconciliationCanonical == true).ToArray();
+        if (pinned.Length > 1)
+            return DuplicateShareReconciliationResult.Failure("The shares have conflicting terminal canonical roles.");
         var canonical = existingAlias is null && request.CanonicalShareId is null
-            ? pair.OrderBy(x => x.CreatedAt).ThenBy(x => x.ShareId, StringComparer.Ordinal).First()
+            ? pinned.SingleOrDefault() ?? pair.OrderBy(x => x.CreatedAt).ThenBy(x => x.ShareId, StringComparer.Ordinal).First()
             : pair.Single(x => x.ShareId == (existingAlias?.CanonicalShareId ?? request.CanonicalShareId));
         var alias = pair.Single(x => x.ShareId != canonical.ShareId);
         if (request.CanonicalShareId is not null && canonical.ShareId != request.CanonicalShareId)

@@ -180,8 +180,146 @@ public sealed class ShareRequestDeduplicationMongoTests : IAsyncLifetime
         retry.Should().Match<DuplicateShareReconciliationResult>(x => x.Success && !x.Changed);
         var persisted = await context.ShareRequests.Find(Builders<ShareRequest>.Filter.In(x => x.ShareId, ["aaaaaaaaaaaa", "bbbbbbbbbbbb"])).ToListAsync();
         persisted.Single(x => x.ShareId == "bbbbbbbbbbbb").CanonicalShareId.Should().Be("aaaaaaaaaaaa");
+        persisted.Single(x => x.ShareId == "aaaaaaaaaaaa").IsReconciliationCanonical.Should().BeTrue();
         persisted.Should().OnlyContain(x => x.ReconciliationClaimVersion >= 1);
         (await database.GetCollection<BsonDocument>("shareRequests").Find(new BsonDocument("shareId", "aaaaaaaaaaaa")).FirstAsync()).Contains("reconciliationClaimVersion").Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ItWillNotCreateAChainWhenOnlyTheCanonicalClaimIsTakenOverBeforeThePin()
+    {
+        var context = new TestDbContext(database);
+        var a = Completed("aaaaaaaaaaaa", ObjectId.GenerateNewId().ToString());
+        var b = Completed("bbbbbbbbbbbb", ObjectId.GenerateNewId().ToString());
+        var c = Completed("cccccccccccc", ObjectId.GenerateNewId().ToString());
+        a.CreatedAt = DateTime.UtcNow.AddMinutes(-3);
+        b.CreatedAt = a.CreatedAt.AddMinutes(1);
+        c.CreatedAt = a.CreatedAt.AddMinutes(2);
+        await context.ShareRequests.InsertManyAsync([a, b, c]);
+        await context.Songs.InsertManyAsync([ResolvedSong(a.SongId!), ResolvedSong(b.SongId!), ResolvedSong(c.SongId!)]);
+        // A/B and A/C have different exact identities, so both plans are independently valid.
+        await context.SongServiceLinks.InsertManyAsync([
+            Link(a.SongId!, "spotify-a-b", ServiceType.Spotify),
+            Link(b.SongId!, "spotify-a-b", ServiceType.Spotify),
+            Link(a.SongId!, "youtube-a-c", ServiceType.YouTubeMusic),
+            Link(c.SongId!, "youtube-a-c", ServiceType.YouTubeMusic)]);
+        var ordinaryRepository = new ShareRequestRepository(context);
+        var ordinaryService = new DuplicateShareReconciliationService(ordinaryRepository, new SongServiceLinkRepository(context), new SongRepository(context), NullLogger<DuplicateShareReconciliationService>.Instance);
+        var firstDryRun = await ordinaryService.ReconcileAsync(new(a.ShareId, b.ShareId, a.ShareId, DuplicateShareReconciliationMode.DryRun, null), CancellationToken.None);
+        firstDryRun.Success.Should().BeTrue();
+
+        var paused = new TaskCompletionSource<ReconciliationPinPause>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var resume = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var firstRepository = new ShareRequestRepository(context, async (point, _) =>
+        {
+            paused.TrySetResult(point);
+            await resume.Task;
+        }, null);
+        var firstService = new DuplicateShareReconciliationService(firstRepository, new SongServiceLinkRepository(context), new SongRepository(context), NullLogger<DuplicateShareReconciliationService>.Instance);
+        try
+        {
+            var firstApply = firstService.ReconcileAsync(new(a.ShareId, b.ShareId, a.ShareId, DuplicateShareReconciliationMode.Apply, firstDryRun.Fingerprint), CancellationToken.None);
+            var firstPoint = await paused.Task.WaitAsync(TimeSpan.FromSeconds(10));
+
+            // Simulate only A's holder expiring: B still carries operation one's token.
+            (await context.ShareRequests.UpdateOneAsync(x => x.ShareId == a.ShareId && x.ReconciliationClaimToken == firstPoint.ClaimToken,
+                Builders<ShareRequest>.Update.Set(x => x.ReconciliationClaimExpiresAt, DateTime.UtcNow.AddMinutes(-1)))).ModifiedCount.Should().Be(1);
+
+            var secondDryRun = await ordinaryService.ReconcileAsync(new(a.ShareId, c.ShareId, c.ShareId, DuplicateShareReconciliationMode.DryRun, null), CancellationToken.None);
+            secondDryRun.Success.Should().BeTrue();
+            var secondApply = await ordinaryService.ReconcileAsync(new(a.ShareId, c.ShareId, c.ShareId, DuplicateShareReconciliationMode.Apply, secondDryRun.Fingerprint), CancellationToken.None);
+            secondApply.Should().Match<DuplicateShareReconciliationResult>(x => x.Success && x.Changed);
+
+            resume.TrySetResult();
+            var staleFirst = await firstApply;
+            staleFirst.Success.Should().BeFalse("the canonical pin must fence a holder that lost only A");
+        }
+        finally
+        {
+            resume.TrySetResult();
+        }
+
+        var rows = await context.ShareRequests.Find(Builders<ShareRequest>.Filter.In(x => x.ShareId, [a.ShareId, b.ShareId, c.ShareId])).ToListAsync();
+        rows.Single(x => x.ShareId == c.ShareId).IsReconciliationCanonical.Should().BeTrue();
+        rows.Single(x => x.ShareId == a.ShareId).CanonicalShareId.Should().Be(c.ShareId);
+        rows.Single(x => x.ShareId == b.ShareId).CanonicalShareId.Should().BeNull();
+        rows.Where(row => row.CanonicalShareId != null).Should().OnlyContain(row => rows.Single(x => x.ShareId == row.CanonicalShareId).CanonicalShareId == null);
+    }
+
+    [Fact]
+    public async Task ItWillKeepAPinnedCanonicalTerminalWhileAllowingAnotherDirectAlias()
+    {
+        var context = new TestDbContext(database);
+        var a = Completed("aaaaaaaaaaaa", ObjectId.GenerateNewId().ToString());
+        var b = Completed("bbbbbbbbbbbb", ObjectId.GenerateNewId().ToString());
+        a.CreatedAt = DateTime.UtcNow.AddMinutes(-2);
+        await context.ShareRequests.InsertManyAsync([a, b]);
+        await context.Songs.InsertManyAsync([ResolvedSong(a.SongId!), ResolvedSong(b.SongId!)]);
+        await context.SongServiceLinks.InsertManyAsync([Link(a.SongId!, "track"), Link(b.SongId!, "track")]);
+        await context.ShareRequests.UpdateOneAsync(x => x.ShareId == a.ShareId, Builders<ShareRequest>.Update.Set(x => x.IsReconciliationCanonical, true));
+        var service = new DuplicateShareReconciliationService(new ShareRequestRepository(context), new SongServiceLinkRepository(context), new SongRepository(context), NullLogger<DuplicateShareReconciliationService>.Instance);
+
+        var reverse = await service.ReconcileAsync(new(a.ShareId, b.ShareId, b.ShareId, DuplicateShareReconciliationMode.DryRun, null), CancellationToken.None);
+        reverse.Success.Should().BeFalse("a pinned canonical may never become an alias");
+
+        var directDryRun = await service.ReconcileAsync(new(a.ShareId, b.ShareId, null, DuplicateShareReconciliationMode.DryRun, null), CancellationToken.None);
+        var directApply = await service.ReconcileAsync(new(a.ShareId, b.ShareId, null, DuplicateShareReconciliationMode.Apply, directDryRun.Fingerprint), CancellationToken.None);
+        directApply.Should().Match<DuplicateShareReconciliationResult>(x => x.Success && x.Changed && x.CanonicalShareId == a.ShareId && x.AliasShareId == b.ShareId);
+        (await context.ShareRequests.Find(x => x.ShareId == a.ShareId).FirstAsync()).IsReconciliationCanonical.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ItWillRecoverFromACrashAfterTheCanonicalPinBeforeWritingAliases()
+    {
+        var context = new TestDbContext(database);
+        var a = Completed("aaaaaaaaaaaa", ObjectId.GenerateNewId().ToString());
+        var b = Completed("bbbbbbbbbbbb", ObjectId.GenerateNewId().ToString());
+        var c = Completed("cccccccccccc", ObjectId.GenerateNewId().ToString());
+        a.CreatedAt = DateTime.UtcNow.AddMinutes(-3);
+        await context.ShareRequests.InsertManyAsync([a, b, c]);
+        await context.Songs.InsertManyAsync([ResolvedSong(a.SongId!), ResolvedSong(b.SongId!), ResolvedSong(c.SongId!)]);
+        await context.SongServiceLinks.InsertManyAsync([
+            Link(a.SongId!, "track"), Link(b.SongId!, "track"),
+            Link(a.SongId!, "second-track", ServiceType.YouTubeMusic), Link(c.SongId!, "second-track", ServiceType.YouTubeMusic)]);
+        var ordinaryService = new DuplicateShareReconciliationService(new ShareRequestRepository(context), new SongServiceLinkRepository(context), new SongRepository(context), NullLogger<DuplicateShareReconciliationService>.Instance);
+        var dryRun = await ordinaryService.ReconcileAsync(new(a.ShareId, b.ShareId, a.ShareId, DuplicateShareReconciliationMode.DryRun, null), CancellationToken.None);
+        var crashingRepository = new ShareRequestRepository(context, null, (_, _) => throw new InvalidOperationException("simulated crash after pin"));
+        var crashingService = new DuplicateShareReconciliationService(crashingRepository, new SongServiceLinkRepository(context), new SongRepository(context), NullLogger<DuplicateShareReconciliationService>.Instance);
+
+        Func<Task> crashApply = () => crashingService.ReconcileAsync(new(a.ShareId, b.ShareId, a.ShareId, DuplicateShareReconciliationMode.Apply, dryRun.Fingerprint), CancellationToken.None);
+        await crashApply.Should().ThrowAsync<InvalidOperationException>();
+        var afterCrash = await context.ShareRequests.Find(Builders<ShareRequest>.Filter.In(x => x.ShareId, [a.ShareId, b.ShareId])).ToListAsync();
+        afterCrash.Single(x => x.ShareId == a.ShareId).IsReconciliationCanonical.Should().BeTrue();
+        afterCrash.Single(x => x.ShareId == a.ShareId).SourceIdentityKey.Should().Be("v1:1:track");
+        afterCrash.Single(x => x.ShareId == b.ShareId).CanonicalShareId.Should().BeNull();
+
+        var retryDryRun = await ordinaryService.ReconcileAsync(new(a.ShareId, b.ShareId, null, DuplicateShareReconciliationMode.DryRun, null), CancellationToken.None);
+        var retryApply = await ordinaryService.ReconcileAsync(new(a.ShareId, b.ShareId, null, DuplicateShareReconciliationMode.Apply, retryDryRun.Fingerprint), CancellationToken.None);
+        retryApply.Should().Match<DuplicateShareReconciliationResult>(x => x.Success && x.Changed && x.CanonicalShareId == a.ShareId);
+        var secondAliasDryRun = await ordinaryService.ReconcileAsync(new(a.ShareId, c.ShareId, null, DuplicateShareReconciliationMode.DryRun, null), CancellationToken.None);
+        var secondAliasApply = await ordinaryService.ReconcileAsync(new(a.ShareId, c.ShareId, null, DuplicateShareReconciliationMode.Apply, secondAliasDryRun.Fingerprint), CancellationToken.None);
+        secondAliasApply.Should().Match<DuplicateShareReconciliationResult>(x => x.Success && x.Changed && x.CanonicalShareId == a.ShareId);
+        var rows = await context.ShareRequests.Find(Builders<ShareRequest>.Filter.In(x => x.ShareId, [a.ShareId, b.ShareId, c.ShareId])).ToListAsync();
+        rows.Single(x => x.ShareId == b.ShareId).CanonicalShareId.Should().Be(a.ShareId);
+        rows.Single(x => x.ShareId == c.ShareId).CanonicalShareId.Should().Be(a.ShareId);
+    }
+
+    [Fact]
+    public async Task ItWillRejectPairWithTwoPinnedCanonicalRoles()
+    {
+        var context = new TestDbContext(database);
+        var a = Completed("aaaaaaaaaaaa", ObjectId.GenerateNewId().ToString());
+        var b = Completed("bbbbbbbbbbbb", ObjectId.GenerateNewId().ToString());
+        a.IsReconciliationCanonical = true;
+        b.IsReconciliationCanonical = true;
+        await context.ShareRequests.InsertManyAsync([a, b]);
+        await context.Songs.InsertManyAsync([ResolvedSong(a.SongId!), ResolvedSong(b.SongId!)]);
+        await context.SongServiceLinks.InsertManyAsync([Link(a.SongId!, "track"), Link(b.SongId!, "track")]);
+        var service = new DuplicateShareReconciliationService(new ShareRequestRepository(context), new SongServiceLinkRepository(context), new SongRepository(context), NullLogger<DuplicateShareReconciliationService>.Instance);
+
+        var result = await service.ReconcileAsync(new(a.ShareId, b.ShareId, null, DuplicateShareReconciliationMode.DryRun, null), CancellationToken.None);
+
+        result.Success.Should().BeFalse();
     }
 
     [Fact]

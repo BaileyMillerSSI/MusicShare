@@ -35,7 +35,7 @@ public static class ReconciliationSnapshots
         if (canonical.Status != ShareStatus.Completed || alias.Status != ShareStatus.Completed ||
             string.IsNullOrWhiteSpace(canonical.SongId) || string.IsNullOrWhiteSpace(alias.SongId) ||
             !Defined(canonical.SourceService) || !Defined(alias.SourceService) ||
-            !string.IsNullOrWhiteSpace(canonical.CanonicalShareId) || canonical.SongId == alias.SongId)
+            !string.IsNullOrWhiteSpace(canonical.CanonicalShareId) || alias.IsReconciliationCanonical == true || canonical.SongId == alias.SongId)
             return null;
         var songArray = songs.OrderBy(x => x.Id, StringComparer.Ordinal).ToArray();
         if (songArray.Length != 2 || songArray.Any(x => x.Status != SongStatus.Resolved) ||
@@ -56,8 +56,8 @@ public static class ReconciliationSnapshots
             incoming.Any(x => x.CanonicalShareId == alias.ShareId && x.ShareId != alias.ShareId)) return null;
         // Roles are deliberately explicit: choosing A->B is not the same plan as B->A.
         var requestLines = new[] {
-            Pack("canonical-request", canonical.ShareId, canonical.Id, canonical.SongId, ((int)canonical.Status).ToString(), canonical.CreatedAt.Ticks.ToString(), ((int)canonical.SourceService).ToString(), canonical.ServiceTrackId, CanonicalSourceIdentityKey(canonical), canonical.SourceIdentityKey, canonical.CanonicalShareId, canonicalPreClaimVersion.ToString()),
-            Pack("alias-request", alias.ShareId, alias.Id, alias.SongId, ((int)alias.Status).ToString(), alias.CreatedAt.Ticks.ToString(), ((int)alias.SourceService).ToString(), alias.ServiceTrackId, CanonicalSourceIdentityKey(alias), alias.SourceIdentityKey, alias.CanonicalShareId, aliasPreClaimVersion.ToString()) };
+            Pack("canonical-request", canonical.ShareId, canonical.Id, canonical.SongId, ((int)canonical.Status).ToString(), canonical.CreatedAt.Ticks.ToString(), ((int)canonical.SourceService).ToString(), canonical.ServiceTrackId, CanonicalSourceIdentityKey(canonical), canonical.SourceIdentityKey, canonical.CanonicalShareId, canonical.IsReconciliationCanonical?.ToString(), canonicalPreClaimVersion.ToString()),
+            Pack("alias-request", alias.ShareId, alias.Id, alias.SongId, ((int)alias.Status).ToString(), alias.CreatedAt.Ticks.ToString(), ((int)alias.SourceService).ToString(), alias.ServiceTrackId, CanonicalSourceIdentityKey(alias), alias.SourceIdentityKey, alias.CanonicalShareId, alias.IsReconciliationCanonical?.ToString(), aliasPreClaimVersion.ToString()) };
         var songLines = songArray.Select(x => Pack("song", x.Id, ((int)x.Status).ToString(), x.CreatedAt.Ticks.ToString(), x.UpdatedAt.Ticks.ToString()));
         var linkLines = evidence.Select(x => Pack("evidence", x.Id, x.SongId, ((int)x.ServiceType).ToString(), x.ServiceSongId, x.CreatedAt.Ticks.ToString(), x.OriginalUrl, x.NormalizedUrl));
         var ownerLines = owners.OrderBy(x => x.ShareId, StringComparer.Ordinal).ThenBy(x => x.Id, StringComparer.Ordinal).Select(x => Pack("owner", x.ShareId, x.Id, x.SongId, ((int)x.Status).ToString(), x.CanonicalShareId, x.CreatedAt.Ticks.ToString()));

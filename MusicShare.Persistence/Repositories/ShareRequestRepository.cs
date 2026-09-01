@@ -5,11 +5,28 @@ using MusicShare.Persistence.Entities;
 
 namespace MusicShare.Persistence.Repositories;
 
-public class ShareRequestRepository(IMusicShareDbContext context) : IShareRequestRepository
+public class ShareRequestRepository : IShareRequestRepository
 {
-    private readonly IMongoCollection<ShareRequest> _requests = context.ShareRequests;
-    private readonly IMongoCollection<Song> _songs = context.Songs;
-    private readonly IMongoCollection<SongServiceLink> _links = context.SongServiceLinks;
+    private readonly IMongoCollection<ShareRequest> _requests;
+    private readonly IMongoCollection<Song> _songs;
+    private readonly IMongoCollection<SongServiceLink> _links;
+    private readonly Func<ReconciliationPinPause, CancellationToken, Task>? _beforeCanonicalPinAsyncForTests;
+    private readonly Func<ReconciliationPinPause, CancellationToken, Task>? _afterCanonicalPinAsyncForTests;
+
+    public ShareRequestRepository(IMusicShareDbContext context) : this(context, null, null) { }
+
+    // Test-only deterministic interleaving seams. The internal constructor keeps them
+    // inaccessible to production/API callers and scoped to one repository instance.
+    internal ShareRequestRepository(IMusicShareDbContext context,
+        Func<ReconciliationPinPause, CancellationToken, Task>? beforeCanonicalPinAsyncForTests,
+        Func<ReconciliationPinPause, CancellationToken, Task>? afterCanonicalPinAsyncForTests)
+    {
+        _requests = context.ShareRequests;
+        _songs = context.Songs;
+        _links = context.SongServiceLinks;
+        _beforeCanonicalPinAsyncForTests = beforeCanonicalPinAsyncForTests;
+        _afterCanonicalPinAsyncForTests = afterCanonicalPinAsyncForTests;
+    }
 
     public async Task<ShareRequest?> GetByIdAsync(string id, CancellationToken cancellationToken = default)
     {
@@ -158,28 +175,47 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
             currentSourceIdentityKey != write.CanonicalSourceIdentityKey || snapshot.CanonicalSourceIdentityKey != write.CanonicalSourceIdentityKey)
             return new(false, false, "The canonical source identity changed.");
 
-        // Backfill is a separately fenced idempotent write. If it crashes before the alias
-        // CAS, retrying the same exact pair safely observes the same canonical identity.
-        if (!string.IsNullOrWhiteSpace(write.CanonicalSourceIdentityKey) && string.IsNullOrWhiteSpace(canonical.SourceIdentityKey))
+        var pause = _beforeCanonicalPinAsyncForTests;
+        if (pause is not null)
+            await pause(new(canonical.ShareId, alias.ShareId, token), cancellationToken);
+
+        // The pin and source-key backfill are one fenced durable step. Its match result is
+        // required: if this holder lost the canonical claim, it must not write its still-held
+        // alias after another operation has pinned/reconciled the canonical record.
+        var sourceKeyFilter = string.IsNullOrWhiteSpace(write.CanonicalSourceIdentityKey)
+            ? Builders<ShareRequest>.Filter.Empty
+            : Builders<ShareRequest>.Filter.Or(
+                Builders<ShareRequest>.Filter.Eq(x => x.SourceIdentityKey, null),
+                Builders<ShareRequest>.Filter.Eq(x => x.SourceIdentityKey, write.CanonicalSourceIdentityKey));
+        var pinFilter = Builders<ShareRequest>.Filter.And(
+            Builders<ShareRequest>.Filter.Eq(x => x.ShareId, canonical.ShareId),
+            Builders<ShareRequest>.Filter.Eq(x => x.ReconciliationClaimToken, token),
+            Builders<ShareRequest>.Filter.Eq(x => x.CanonicalShareId, null),
+            sourceKeyFilter);
+        var pinUpdate = Builders<ShareRequest>.Update.Set(x => x.IsReconciliationCanonical, true);
+        if (!string.IsNullOrWhiteSpace(write.CanonicalSourceIdentityKey))
+            pinUpdate = pinUpdate.Set(x => x.SourceIdentityKey, write.CanonicalSourceIdentityKey);
+        try
         {
-            var backfill = Builders<ShareRequest>.Filter.And(
-                Builders<ShareRequest>.Filter.Eq(x => x.ShareId, canonical.ShareId),
-                Builders<ShareRequest>.Filter.Eq(x => x.ReconciliationClaimToken, token),
-                Builders<ShareRequest>.Filter.Eq(x => x.SourceIdentityKey, null));
-            try
-            {
-                await _requests.UpdateOneAsync(backfill, Builders<ShareRequest>.Update.Set(x => x.SourceIdentityKey, write.CanonicalSourceIdentityKey), cancellationToken: cancellationToken);
-            }
-            catch (MongoWriteException exception) when (exception.WriteError?.Category == ServerErrorCategory.DuplicateKey)
-            {
-                return new(false, false, "The canonical source identity is owned by another request.");
-            }
+            var pin = await _requests.UpdateOneAsync(pinFilter, pinUpdate, cancellationToken: cancellationToken);
+            if (pin.MatchedCount != 1)
+                return new(false, false, "The canonical reconciliation claim was lost.");
         }
+        catch (MongoWriteException exception) when (exception.WriteError?.Category == ServerErrorCategory.DuplicateKey)
+        {
+            return new(false, false, "The canonical source identity is owned by another request.");
+        }
+        var afterPin = _afterCanonicalPinAsyncForTests;
+        if (afterPin is not null)
+            await afterPin(new(canonical.ShareId, alias.ShareId, token), cancellationToken);
 
         var filter = Builders<ShareRequest>.Filter.And(
             Builders<ShareRequest>.Filter.Eq(x => x.ShareId, alias.ShareId),
             Builders<ShareRequest>.Filter.Eq(x => x.ReconciliationClaimToken, token),
             Builders<ShareRequest>.Filter.Eq(x => x.CanonicalShareId, null),
+            Builders<ShareRequest>.Filter.Or(
+                Builders<ShareRequest>.Filter.Eq(x => x.IsReconciliationCanonical, null),
+                Builders<ShareRequest>.Filter.Eq(x => x.IsReconciliationCanonical, false)),
             Builders<ShareRequest>.Filter.Eq(x => x.CreatedAt, write.AliasCreatedAt),
             Builders<ShareRequest>.Filter.Eq(x => x.SongId, write.AliasSongId),
             Builders<ShareRequest>.Filter.Eq(x => x.Status, write.AliasStatus));
@@ -360,3 +396,5 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
     private static bool IsPublicSourceService(string value, out ServiceType service) =>
         Enum.TryParse(value, out service) && service != ServiceType.Unknown && Enum.IsDefined(service);
 }
+
+internal sealed record ReconciliationPinPause(string CanonicalShareId, string AliasShareId, string ClaimToken);
