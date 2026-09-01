@@ -238,6 +238,11 @@ public class PublicMetricsMongoRepositoryTests : IAsyncLifetime
         public Task<ShareRequest?> GetByCorrelationIdAsync(Guid correlationId, CancellationToken cancellationToken = default) => inner.GetByCorrelationIdAsync(correlationId, cancellationToken);
         public Task<ShareRequest?> GetBySongIdAsync(string songId, CancellationToken cancellationToken = default) => inner.GetBySongIdAsync(songId, cancellationToken);
         public Task<ShareRequest?> GetByServiceTrackIdAsync(ServiceType serviceType, string serviceTrackId, CancellationToken cancellationToken = default) => inner.GetByServiceTrackIdAsync(serviceType, serviceTrackId, cancellationToken);
+        public Task<ShareRequest?> GetBySourceIdentityKeyAsync(string sourceIdentityKey, CancellationToken cancellationToken = default) => inner.GetBySourceIdentityKeyAsync(sourceIdentityKey, cancellationToken);
+        public Task<ShareReservation> ReserveBySourceIdentityAsync(ShareRequest request, CancellationToken cancellationToken = default) => inner.ReserveBySourceIdentityAsync(request, cancellationToken);
+        public Task<ShareRequest?> ResolveCanonicalAsync(ShareRequest request, CancellationToken cancellationToken = default) => inner.ResolveCanonicalAsync(request, cancellationToken);
+        public Task<IReadOnlyList<ShareRequest>> GetByShareIdsAsync(IReadOnlyCollection<string> shareIds, CancellationToken cancellationToken = default) => inner.GetByShareIdsAsync(shareIds, cancellationToken);
+        public Task<ReconciliationWriteResult> TryReconcileAsync(ReconciliationWrite write, CancellationToken cancellationToken = default) => inner.TryReconcileAsync(write, cancellationToken);
         public Task<ShareRequest> InsertAsync(ShareRequest request, CancellationToken cancellationToken = default) => inner.InsertAsync(request, cancellationToken);
         public Task UpdateAsync(ShareRequest request, CancellationToken cancellationToken = default) => inner.UpdateAsync(request, cancellationToken);
         public Task<long> GetCompletedDistinctSongCountAsync(CancellationToken cancellationToken = default) => inner.GetCompletedDistinctSongCountAsync(cancellationToken);

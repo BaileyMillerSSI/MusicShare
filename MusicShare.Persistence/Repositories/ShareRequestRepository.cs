@@ -9,6 +9,7 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
 {
     private readonly IMongoCollection<ShareRequest> _requests = context.ShareRequests;
     private readonly IMongoCollection<Song> _songs = context.Songs;
+    private readonly IMongoCollection<BsonDocument> _reconciliationLeases = context.Database.GetCollection<BsonDocument>("duplicateShareReconciliationLeases");
 
     public async Task<ShareRequest?> GetByIdAsync(string id, CancellationToken cancellationToken = default)
     {
@@ -87,51 +88,61 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
 
     public async Task<ReconciliationWriteResult> TryReconcileAsync(ReconciliationWrite write, CancellationToken cancellationToken = default)
     {
-        using var session = await context.Database.Client.StartSessionAsync(cancellationToken: cancellationToken);
-        return await session.WithTransactionAsync<ReconciliationWriteResult>(async (transactionSession, token) =>
+        // MongoDB's supported production topology is a standalone server, so this operation may
+        // not use a multi-document transaction.  A single global lease serializes every pair
+        // reconciliation.  It expires automatically after a crashed caller and is released only
+        // by its owner.  The durable mutation below is one document CAS.
+        var owner = Guid.NewGuid().ToString("N");
+        if (!await TryAcquireLeaseAsync(owner, cancellationToken))
+            return new(false, false, "Another duplicate-share reconciliation is in progress. Retry the dry-run.");
+        try
         {
-        var canonical = await _requests.Find(transactionSession, Builders<ShareRequest>.Filter.Eq(x => x.ShareId, write.CanonicalShareId)).FirstOrDefaultAsync(token);
-        var alias = await _requests.Find(transactionSession, Builders<ShareRequest>.Filter.Eq(x => x.ShareId, write.AliasShareId)).FirstOrDefaultAsync(token);
+        var canonical = await _requests.Find(Builders<ShareRequest>.Filter.Eq(x => x.ShareId, write.CanonicalShareId)).FirstOrDefaultAsync(cancellationToken);
+        var alias = await _requests.Find(Builders<ShareRequest>.Filter.Eq(x => x.ShareId, write.AliasShareId)).FirstOrDefaultAsync(cancellationToken);
         if (canonical is null || alias is null || canonical.ShareId == alias.ShareId ||
+            canonical.Status != write.CanonicalStatus || alias.Status != write.AliasStatus ||
             canonical.Status != ShareStatus.Completed || alias.Status != ShareStatus.Completed ||
+            canonical.SongId != write.CanonicalSongId || alias.SongId != write.AliasSongId ||
             !string.IsNullOrEmpty(canonical.CanonicalShareId))
             return new(false, false, "The requested shares are no longer eligible for reconciliation.");
 
-        if (alias.CanonicalShareId == canonical.ShareId && alias.ReconciliationId == write.ReconciliationId)
+        if (alias.CanonicalShareId == canonical.ShareId && alias.ReconciliationId == write.ReconciliationId && alias.ReconciliationFingerprint == write.Fingerprint)
             return new(true, false);
         if (!string.IsNullOrEmpty(alias.CanonicalShareId))
             return new(false, false, "The alias is already reconciled.");
         if (canonical.CreatedAt != write.CanonicalCreatedAt || alias.CreatedAt != write.AliasCreatedAt)
             return new(false, false, "The reconciliation plan is stale.");
 
-        if (!string.IsNullOrEmpty(write.CanonicalSourceIdentityKey))
-        {
-            var owner = await _requests.Find(transactionSession, Builders<ShareRequest>.Filter.Eq(x => x.SourceIdentityKey, write.CanonicalSourceIdentityKey)).FirstOrDefaultAsync(token);
-            if (owner is not null && owner.ShareId != canonical.ShareId)
-                return new(false, false, "The source identity belongs to another share.");
-        }
-
         var filter = Builders<ShareRequest>.Filter.And(
             Builders<ShareRequest>.Filter.Eq(x => x.ShareId, alias.ShareId),
             Builders<ShareRequest>.Filter.Eq(x => x.CanonicalShareId, null),
-            Builders<ShareRequest>.Filter.Eq(x => x.CreatedAt, write.AliasCreatedAt));
+            Builders<ShareRequest>.Filter.Eq(x => x.CreatedAt, write.AliasCreatedAt),
+            Builders<ShareRequest>.Filter.Eq(x => x.SongId, write.AliasSongId),
+            Builders<ShareRequest>.Filter.Eq(x => x.Status, write.AliasStatus));
         var update = Builders<ShareRequest>.Update
             .Set(x => x.CanonicalShareId, canonical.ShareId)
             .Set(x => x.ReconciledAt, DateTime.UtcNow)
-            .Set(x => x.ReconciliationId, write.ReconciliationId);
-        var result = await _requests.UpdateOneAsync(transactionSession, filter, update, cancellationToken: token);
+            .Set(x => x.ReconciliationId, write.ReconciliationId)
+            .Set(x => x.ReconciliationFingerprint, write.Fingerprint);
+        var result = await _requests.UpdateOneAsync(filter, update, cancellationToken: cancellationToken);
         if (result.ModifiedCount != 1) return new(false, false, "The reconciliation plan is stale.");
-
-        if (!string.IsNullOrEmpty(write.CanonicalSourceIdentityKey) && string.IsNullOrEmpty(canonical.SourceIdentityKey))
-        {
-            var identityResult = await _requests.UpdateOneAsync(transactionSession,
-                Builders<ShareRequest>.Filter.And(Builders<ShareRequest>.Filter.Eq(x => x.ShareId, canonical.ShareId), Builders<ShareRequest>.Filter.Eq(x => x.SourceIdentityKey, null)),
-                Builders<ShareRequest>.Update.Set(x => x.SourceIdentityKey, write.CanonicalSourceIdentityKey), cancellationToken: token);
-            if (identityResult.ModifiedCount != 1)
-                return new(false, false, "The canonical source identity changed during reconciliation.");
-        }
         return new(true, true);
-        }, cancellationToken: cancellationToken);
+        }
+        finally { await _reconciliationLeases.DeleteOneAsync(new BsonDocument { { "_id", "global" }, { "owner", owner } }, cancellationToken); }
+    }
+
+    private async Task<bool> TryAcquireLeaseAsync(string owner, CancellationToken cancellationToken)
+    {
+        var now = DateTime.UtcNow;
+        var filter = new BsonDocument { { "_id", "global" }, { "$or", new BsonArray { new BsonDocument("expiresAt", new BsonDocument("$lte", now)), new BsonDocument("owner", owner) } } };
+        var update = new BsonDocument { { "$set", new BsonDocument { { "owner", owner }, { "expiresAt", now.AddMinutes(2) } } }, { "$setOnInsert", new BsonDocument("_id", "global") } };
+        var options = new FindOneAndUpdateOptions<BsonDocument> { IsUpsert = true, ReturnDocument = ReturnDocument.After };
+        try
+        {
+            var lease = await _reconciliationLeases.FindOneAndUpdateAsync(filter, update, options, cancellationToken);
+            return lease["owner"].AsString == owner;
+        }
+        catch (MongoWriteException exception) when (exception.WriteError?.Category == ServerErrorCategory.DuplicateKey) { return false; }
     }
 
     public async Task<ShareRequest> InsertAsync(ShareRequest request, CancellationToken cancellationToken = default)

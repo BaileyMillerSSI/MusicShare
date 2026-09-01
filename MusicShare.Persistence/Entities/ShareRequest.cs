@@ -43,6 +43,10 @@ public class ShareRequest
     [BsonIgnoreIfNull]
     public string? ReconciliationId { get; set; }
 
+    [BsonElement("reconciliationFingerprint")]
+    [BsonIgnoreIfNull]
+    public string? ReconciliationFingerprint { get; set; }
+
     [BsonElement("songId")]
     [BsonRepresentation(BsonType.ObjectId)]
     public string? SongId { get; set; }

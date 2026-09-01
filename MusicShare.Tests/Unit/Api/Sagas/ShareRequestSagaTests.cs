@@ -62,7 +62,7 @@ public class ShareRequestSagaTests
         var mockRevalidateService = new Mock<IFrontendRevalidateService>();
         mockRevalidateService
             .Setup(x => x.RevalidateShareAsync(It.IsAny<string>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(true);
 
         services.AddSingleton(mockSongService.Object);
         services.AddSingleton(mockShareStatusService.Object);

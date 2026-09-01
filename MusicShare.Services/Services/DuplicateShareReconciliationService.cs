@@ -22,7 +22,9 @@ public sealed partial class DuplicateShareReconciliationService(
             return DuplicateShareReconciliationResult.Failure("The canonical share must be one of the requested shares.");
 
         var pair = await requests.GetByShareIdsAsync([request.FirstShareId, request.SecondShareId], cancellationToken);
-        if (pair.Count != 2 || pair.Any(x => x.Status != ShareStatus.Completed || string.IsNullOrWhiteSpace(x.SongId)))
+        if (pair.Count != 2 || pair.Select(x => x.ShareId).Distinct(StringComparer.Ordinal).Count() != 2 ||
+            !pair.Select(x => x.ShareId).ToHashSet(StringComparer.Ordinal).SetEquals([request.FirstShareId, request.SecondShareId]) ||
+            pair.Any(x => x.Status != ShareStatus.Completed || string.IsNullOrWhiteSpace(x.SongId)))
             return DuplicateShareReconciliationResult.Failure("Both shares must be distinct, completed canonical shares with songs.");
         var existingAlias = pair.SingleOrDefault(x => !string.IsNullOrWhiteSpace(x.CanonicalShareId));
         if (existingAlias is not null && (pair.Count(x => !string.IsNullOrWhiteSpace(x.CanonicalShareId)) != 1 || pair.All(x => x.ShareId != existingAlias.CanonicalShareId)))
@@ -34,7 +36,7 @@ public sealed partial class DuplicateShareReconciliationService(
         if (existingSongs.Select(x => x.Id).Distinct(StringComparer.Ordinal).Count() != 2)
             return DuplicateShareReconciliationResult.Failure("Both shares must reference existing, distinct songs.");
         var songLinks = await links.GetBySongIdsAsync(songIds, cancellationToken);
-        var identities = pair.Select(x => songLinks.Where(l => l.SongId == x.SongId && l.ServiceType != ServiceType.Unknown && !string.IsNullOrWhiteSpace(l.ServiceSongId))
+        var identities = pair.Select(x => songLinks.Where(l => l.SongId == x.SongId && Enum.IsDefined(l.ServiceType) && l.ServiceType != ServiceType.Unknown && !string.IsNullOrWhiteSpace(l.ServiceSongId))
             .GroupBy(l => l.ServiceType).ToDictionary(g => g.Key, g => g.Select(l => l.ServiceSongId).Distinct(StringComparer.Ordinal).ToArray())).ToArray();
         if (identities.Any(x => x.Any(y => y.Value.Length != 1)) || identities[0].Keys.Intersect(identities[1].Keys).Any(type => !identities[0][type].SequenceEqual(identities[1][type], StringComparer.Ordinal)))
             return DuplicateShareReconciliationResult.Failure("The provider identities are ambiguous or conflicting.");
@@ -50,19 +52,19 @@ public sealed partial class DuplicateShareReconciliationService(
             return DuplicateShareReconciliationResult.Failure("The canonical share must be one of the requested shares.");
         if (existingAlias is not null)
         {
-            var expectedOperationId = request.Fingerprint is null ? null : $"reconcile-{request.Fingerprint[..16]}";
-            if (request.Fingerprint is null || existingAlias.ReconciliationId != expectedOperationId)
+            var expectedOperationId = request.Fingerprint is null ? null : $"reconcile-{request.Fingerprint}";
+            if (request.Fingerprint is null || existingAlias.ReconciliationId != expectedOperationId || existingAlias.ReconciliationFingerprint != request.Fingerprint)
                 return DuplicateShareReconciliationResult.Failure("The apply fingerprint does not match the existing reconciliation.");
             return new(true, false, null, existingAlias.ReconciliationId, request.Fingerprint, canonical.ShareId, alias.ShareId, shared);
         }
         var fingerprint = Fingerprint(canonical, alias, shared, identities);
-        var operationId = $"reconcile-{fingerprint[..16]}";
+        var operationId = $"reconcile-{fingerprint}";
         if (request.Mode == DuplicateShareReconciliationMode.DryRun)
             return new(true, false, null, operationId, fingerprint, canonical.ShareId, alias.ShareId, shared);
         if (request.Fingerprint != fingerprint) return DuplicateShareReconciliationResult.Failure("The apply fingerprint does not match the current reconciliation plan.");
 
-        var sourceIdentity = canonical.SourceIdentityKey ?? ShareRequestService.BuildSourceIdentityKey(canonical.SourceService, canonical.ServiceTrackId);
-        var write = await requests.TryReconcileAsync(new(canonical.ShareId, alias.ShareId, operationId, fingerprint, sourceIdentity, canonical.CreatedAt, alias.CreatedAt), cancellationToken);
+        var write = await requests.TryReconcileAsync(new(canonical.ShareId, alias.ShareId, operationId, fingerprint,
+            canonical.SongId!, alias.SongId!, canonical.Status, alias.Status, canonical.CreatedAt, alias.CreatedAt), cancellationToken);
         logger.LogInformation("Duplicate share reconciliation {OperationId} apply canonical={CanonicalShareId} alias={AliasShareId} providerIdentities={ProviderIdentities} succeeded={Succeeded} changed={Changed}", operationId, canonical.ShareId, alias.ShareId, shared.Select(x => $"{x.ServiceType}:{x.ServiceSongId}").ToArray(), write.Succeeded, write.Changed);
         return new(write.Succeeded, write.Changed, write.Error, operationId, fingerprint, canonical.ShareId, alias.ShareId, shared);
     }

@@ -39,7 +39,10 @@ public class ShareRequestService(
 
                 if (existingRequest != null)
                 {
-                    var canonical = await shareRequestRepository.ResolveCanonicalAsync(existingRequest, cancellationToken) ?? existingRequest;
+                    var canonical = string.IsNullOrWhiteSpace(existingRequest.CanonicalShareId)
+                        ? existingRequest
+                        : await shareRequestRepository.ResolveCanonicalAsync(existingRequest, cancellationToken);
+                    if (canonical is null) return string.Empty;
                     return canonical.ShareId;
                 }
             }
@@ -59,14 +62,14 @@ public class ShareRequestService(
             CreatedAt = DateTime.UtcNow,
             SourceIdentityKey = BuildSourceIdentityKey(serviceType, serviceTrackId)
         };
-        // Repositories must return a reservation. The compatibility fallback keeps older decorators
-        // operational during rolling upgrades; the Mongo implementation is always atomic.
-        var reservation = await shareRequestRepository.ReserveBySourceIdentityAsync(request, cancellationToken)
-            ?? new ShareReservation(await shareRequestRepository.InsertAsync(request, cancellationToken), true);
+        var reservation = await shareRequestRepository.ReserveBySourceIdentityAsync(request, cancellationToken);
 
         if (!reservation.Inserted)
         {
-            var canonical = await shareRequestRepository.ResolveCanonicalAsync(reservation.Request, cancellationToken) ?? reservation.Request;
+            var canonical = string.IsNullOrWhiteSpace(reservation.Request.CanonicalShareId)
+                ? reservation.Request
+                : await shareRequestRepository.ResolveCanonicalAsync(reservation.Request, cancellationToken);
+            if (canonical is null) return string.Empty;
             return canonical.ShareId;
         }
 
@@ -90,7 +93,10 @@ public class ShareRequestService(
         {
             return null;
         }
-        shareRequest = await shareRequestRepository.ResolveCanonicalAsync(shareRequest, cancellationToken) ?? shareRequest;
+        shareRequest = string.IsNullOrWhiteSpace(shareRequest.CanonicalShareId)
+            ? shareRequest
+            : await shareRequestRepository.ResolveCanonicalAsync(shareRequest, cancellationToken);
+        if (shareRequest is null) return null;
 
         var response = new ShareResultResponse
         {
