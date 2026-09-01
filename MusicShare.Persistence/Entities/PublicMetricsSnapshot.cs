@@ -12,6 +12,12 @@ public class PublicMetricsSnapshot
     public long TotalCompletedSongs { get; set; }
     /// <summary>Monotonically ordered candidate watermark used to reject stale equal-total refreshes.</summary>
     public long SnapshotVersion { get; set; }
+    /// <summary>
+    /// Version of the reconciliation refresh that removed historical duplicate contributions.
+    /// Ordinary snapshots must be newer than this floor so a pre-reconciliation read cannot restore them.
+    /// </summary>
+    [BsonIgnoreIfNull]
+    public long? ReconciliationDecreaseVersionFloor { get; set; }
     public DateTime GeneratedAt { get; set; }
     public List<PublicMetricsServiceCount> ServiceCounts { get; set; } = [];
     public List<PublicMetricsRecentSong> RecentSongs { get; set; } = [];

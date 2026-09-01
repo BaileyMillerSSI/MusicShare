@@ -9,6 +9,7 @@ public interface IPublicMetricsSnapshotRepository
     /// <summary>
     /// Replaces the snapshot if it is not stale. Only a completed duplicate-share reconciliation
     /// may permit a lower total, and it still must have a newer reserved snapshot version.
+    /// Ordinary candidates must also be newer than the persisted reconciliation decrease floor.
     /// </summary>
     Task<bool> TryReplaceAsync(
         PublicMetricsSnapshot snapshot,
