@@ -2,13 +2,14 @@
 
 - Issue: https://github.com/BaileyMillerSSI/MusicShare/issues/97
 - Branch: `issue/97-prevent-concurrent-duplicate-shares`
-- Status: Approved for implementation
+- Follow-up branch: `issue/97-reconciliation-metrics-refresh`
+- Status: Reopened; production verification correction approved for implementation
 
 ## Request
 
 Find the defect that allowed `https://music.baileymiller.dev/share/7c9ff089371a` and `https://music.baileymiller.dev/share/15586c2697d3` to exist as separate public shares for the same song, then provide a race-safe fix and an application-managed way to reconcile these production duplicates without directly editing MongoDB.
 
-The initial request authorized investigation and planning only. After that phase completed, the user explicitly authorized implementation and shipping through the issue-delivery workflow. Shipping this capability does not authorize running the production reconciliation apply operation; that remains a separate operator action after a dry-run and explicit approval.
+The initial request authorized investigation and planning only. After that phase completed, the user explicitly authorized implementation and shipping through the issue-delivery workflow. The user subsequently authorized the production de-duplication cycle. The dry-run and apply completed successfully, but production verification exposed the metrics refresh defect documented below; issue #97 was reopened for this focused correction.
 
 ## Repository findings
 
@@ -26,6 +27,9 @@ The initial request authorized investigation and planning only. After that phase
 - The existing Next.js `/api/revalidate` route and `FrontendRevalidateService` provide the established secret-backed API-to-frontend pattern for invalidating a bounded share path and `/metrics`. Reconciliation can reuse the revalidation service while using a separate maintenance secret and route.
 - CI already provides a real MongoDB 8.0 service through `MUSICSHARE_TEST_MONGODB`. The concurrency guarantee must be proven there; mock-only unit tests cannot validate a unique-index race.
 - The current primary checkout contains unrelated uncommitted metrics work. This issue branch and plan were created from fetched `origin/main` in an isolated worktree so none of that work is mixed into this plan.
+- Production dry-run `33545630772` proved the Chicago records share exact Spotify and YouTube Music identities and selected `7c9ff089371a` as canonical. Apply run `33545692757` durably aliased `15586c2697d3`; the alias now returns HTTP 308 to the canonical page, and an idempotent retry reports `changed: false`.
+- Both apply attempts published `RefreshPublicMetrics`, but production API logs report `Public metrics refresh was superseded by a newer snapshot`. The persisted metrics snapshot remains timestamped before reconciliation and still contains both Chicago rows.
+- `PublicMetricsSnapshotRepository.BuildNonRegressionFilter` intentionally rejects every candidate whose total is lower than the stored total, even when the candidate has a newer reserved version. That is safe for ordinary add-only refreshes but rejects the legitimate one-song decrease caused by reconciliation, leaving the acceptance criterion incomplete.
 
 ## Proposed implementation
 
@@ -73,6 +77,14 @@ Add a manual-only GitHub Actions workflow with production-environment protection
 
 Extend the TypeScript response type to acknowledge that the API may return a canonical `shareId` different from the requested alias. In the server share page, validate both IDs and call `permanentRedirect('/share/{canonicalId}')` before rendering or starting the client poller. Metadata generation should emit the canonical share URL in `alternates.canonical` and `openGraph.url`; an alias request must use the returned canonical ID. Reconciliation revalidates both cached paths so the alias begins redirecting immediately and the canonical page reflects the authoritative data.
 
+### 6. Permit only reconciliation-authorized metrics decreases
+
+Keep the existing non-regression rule for ordinary completion, bootstrap, daily, and manual metrics refreshes. Extend `RefreshPublicMetrics` with an explicit backward-compatible flag that is false when omitted. Only a successful duplicate reconciliation apply publishes the message with that flag enabled; dry-run and unrelated publishers must retain the default.
+
+Pass the flag through `PublicMetricsRefreshConsumer` and `IPublicMetricsService` to `PublicMetricsSnapshotRepository`. The repository's ordinary replace path continues to require a non-decreasing total. The reconciliation-authorized path may replace a lower total only when its database-reserved snapshot version is newer than the persisted singleton. This preserves last-writer ordering: an older authorized candidate cannot overwrite a newer snapshot, including one produced by a concurrent song completion.
+
+Keep the apply operation idempotent. Retrying the completed fingerprint must report `changed: false` while re-running both share-path invalidations and publishing the authorized metrics refresh so a transient post-write failure remains recoverable.
+
 ## Planned operator workflow
 
 The production runbook uses these steps after deployment. This delivery does not execute the apply operation:
@@ -101,6 +113,10 @@ The canonical choice above is based on the consecutive Song ObjectId order avail
 - `MusicShare.Services/DependencyInjection.cs`: register the reconciliation service.
 - `MusicShare.Services/Models/ShareResultResponse.cs`: keep the existing response shape while documenting that `ShareId` is canonical when an alias was requested.
 - `MusicShare.Api/Commands/ReconcileDuplicateShares.cs`: implement the static nested MediatR request/handler/response pattern; orchestrate dry-run/apply, revalidate the two bounded share paths, and publish one metrics refresh after a changed apply.
+- `MusicShare.Contracts/Messages/RefreshPublicMetrics.cs`: add an explicit, backward-compatible authorization flag for a legitimate reconciliation-driven count decrease; default it to false.
+- `MusicShare.Api/Consumers/PublicMetricsRefreshConsumer.cs`: pass the message policy into the metrics refresh service while preserving superseded-snapshot behavior and invalidation retry handling.
+- `MusicShare.Services/Services/IPublicMetricsService.cs` and `MusicShare.Services/Services/PublicMetricsService.cs`: expose the bounded refresh policy without changing ordinary callers, and propagate it to persistence.
+- `MusicShare.Persistence/Repositories/IPublicMetricsSnapshotRepository.cs` and `MusicShare.Persistence/Repositories/PublicMetricsSnapshotRepository.cs`: add an authoritative newer-version replace path that may lower totals while keeping the existing non-regression filter as the default.
 - `MusicShare.Api/Controllers/MaintenanceController.cs`: expose only the fixed duplicate-pair reconciliation action behind the dedicated maintenance authorization policy.
 - `MusicShare.Api/Security/MaintenanceSettings.cs` and `MusicShare.Api/Security/MaintenanceApiKeyAttribute.cs`: bind the dedicated secret, fail closed when absent, and compare the fixed header in constant time.
 - `MusicShare.AppHost/AppHost.cs`: declare the maintenance secret and inject it into the private API and public frontend server environments.
@@ -115,12 +131,14 @@ The canonical choice above is based on the consecutive Song ObjectId order avail
 - `MusicShare.Tests/Unit/Services/DuplicateShareReconciliationServiceTests.cs`: cover exact shared identities, metadata-only false positives, deterministic/explicit canonical choice, dry-run purity/fingerprint, stale/conflicting state, cycles/chains, idempotent apply, and bounded results.
 - `MusicShare.Tests/Unit/Persistence/ShareRequestRepositoryMetricsTests.cs` and `MusicShare.Tests/Integration/PublicMetricsMongoRepositoryTests.cs`: prove aliases are excluded from totals, recent songs, daily counts, and link counts while canonical entries remain.
 - `MusicShare.Tests/Unit/Api/Commands/ReconcileDuplicateSharesHandlerTests.cs`, `MusicShare.Tests/Unit/Api/Controllers/MaintenanceControllerTests.cs`, and `MusicShare.Tests/Unit/Api/Security/MaintenanceApiKeyAttributeTests.cs`: cover orchestration, no side effects during dry-run, one refresh/revalidation sequence after apply, fixed-time auth behavior, absent/invalid secrets, input validation, and minimal responses.
+- `MusicShare.Tests/Unit/Api/Consumers/PublicMetricsRefreshConsumerTests.cs`, `MusicShare.Tests/Unit/Services/PublicMetricsServiceTests.cs`, and `MusicShare.Tests/Integration/PublicMetricsMongoRepositoryTests.cs`: prove the authorization flag is propagated, ordinary lower totals remain rejected, a newer reconciliation-authorized lower total is accepted, and an older authorized candidate cannot overwrite a newer snapshot.
 - `MusicShare.Frontend/src/app/api/maintenance/duplicate-shares/route.test.ts`: cover missing/invalid configuration and keys, malformed/mixed/extra inputs, invalid IDs/fingerprints/modes, timeout/backend failures, fixed target forwarding, and bounded response behavior.
 - `MusicShare.Frontend/src/app/share/[shareId]/page.test.tsx`: cover canonical metadata and permanent alias redirect while preserving canonical rendering/polling behavior.
 
 ## Validation plan
 
 - Run focused unit tests for share creation, reconciliation service/command/controller/security, repository metrics, the maintenance proxy, and share-page redirects.
+- Reproduce the production failure locally by persisting a higher metrics total, then prove an ordinary lower candidate is rejected while a reconciliation-authorized candidate with a newer reserved version is accepted. Race an older authorized decrease against a newer completion refresh and prove the newer version wins.
 - Against `MUSICSHARE_TEST_MONGODB=mongodb://127.0.0.1:27017`, launch many concurrent reservations for one Spotify identity and assert one `ShareRequest`, one inserted winner, one share ID returned to every caller, and one published message at the service boundary.
 - Seed historical duplicate rows without `SourceIdentityKey` before index creation and prove the sparse index deploys. Dry-run and apply a validated pair, rerun apply, and verify one direct alias, no deletions, stable canonical selection, and stale/conflicting operations rejected.
 - Seed same-title/different-provider-ID songs and prove reconciliation rejects them. Seed partial/missing/malformed links and alias chains/cycles and prove fail-closed behavior. Deterministically pause a real repository apply after both claims are validated but before the canonical pin, expire and take over only the canonical claim, complete a competing reconciliation that makes the former canonical an alias, then prove the stale holder cannot pin or write its retained alias and no chain/cycle exists.
@@ -139,6 +157,7 @@ The canonical choice above is based on the consecutive Song ObjectId order avail
 - `GetByServiceAndSongIdAsync` can find a historical duplicate link. Submission must resolve the associated request's alias so it never returns a non-canonical ID after reconciliation.
 - Exact same-provider identity proves the demonstrated race. Same-title metadata does not. Concurrent cross-provider submissions may remain separate until they share at least one exact resolved provider identity; this plan's operator workflow can reconcile them only after that proof exists.
 - Alias records retain their duplicate Song and links. Every public aggregation must start from non-alias canonical requests, or historical duplicates will continue to inflate counts. Direct repository callers need regression coverage.
+- Allowing every refresh to decrease totals would weaken the stale-snapshot guard. The exception must be carried explicitly from reconciliation and still require a strictly newer database-reserved version; do not replace the default filter with an unconditional version-only policy.
 - Redirecting an indefinitely cached alias page requires explicit ISR revalidation. Apply must treat alias/canonical path revalidation and metrics refresh as bounded follow-up outcomes and report failures for safe retry without rolling back the durable alias.
 - A permanent redirect is externally cached. Canonical selection therefore must be deterministic, validated, and protected by a stale-state fingerprint; ordinary operations must never remap an existing alias.
 - A public server route protected only by a shared secret is security-sensitive. Keep it pair-scoped, constant-time authenticated, rate/bounds conscious, independently validated on both frontend and API, minimally disclosive, and separately rotatable. Never expose the private API or accept arbitrary backend URLs/paths.
@@ -155,6 +174,7 @@ The canonical choice above is based on the consecutive Song ObjectId order avail
 - [ ] Dry-run is side-effect free and returns a bounded stale-state fingerprint; apply is compare-and-set, idempotent, directly aliases without deleting data, records reconciliation evidence, uses a verified exact-token canonical-role pin, and cannot create chains/cycles or remap aliases even after a partial claim takeover.
 - [ ] Alias API/page requests resolve to and permanently redirect to the canonical share, with canonical metadata, while old URLs remain usable.
 - [ ] Alias records contribute zero duplicate entries to total, recent, daily, and service-link public metrics; the canonical song remains counted once.
+- [ ] A successful reconciliation apply can persist and revalidate a lower metrics total through an explicit policy, while ordinary lower totals and older authorized candidates remain rejected.
 - [ ] A dedicated, narrowly scoped, authenticated maintenance route plus manual dry-run/apply GitHub workflow lets the owner reconcile the Chicago pair without MongoDB access or credentials.
 - [ ] The operator runbook documents evidence, dry-run, explicit apply approval, idempotent retry, verification, audit, rollback/escalation, and the no-direct-Mongo rule.
 - [ ] Real-Mongo concurrency/reconciliation tests, focused/full backend and frontend tests, Release build, frontend lint/build, workflow validation, and `git diff --check` pass.
