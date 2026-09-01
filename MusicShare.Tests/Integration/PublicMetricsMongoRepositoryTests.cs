@@ -45,6 +45,10 @@ public class PublicMetricsMongoRepositoryTests : IAsyncLifetime
         var firstSong = ObjectId.GenerateNewId().ToString();
         var secondSong = ObjectId.GenerateNewId().ToString();
         var pendingSong = ObjectId.GenerateNewId().ToString();
+        await context.Songs.InsertManyAsync([
+            new Song { Id = firstSong, Title = "First", Artists = ["Artist"], CreatedAt = old },
+            new Song { Id = secondSong, Title = "Second", Artists = ["Artist"], CreatedAt = newest }
+        ], cancellationToken: cancellationToken);
         await requests.InsertManyAsync([
             RequestDocument(firstSong, "share-old", ServiceType.Spotify, old),
             RequestDocument(firstSong, "share-new", ServiceType.YouTubeMusic, newest),
@@ -81,26 +85,42 @@ public class PublicMetricsMongoRepositoryTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task ItWillCountEachDistinctCompletedSongInItsEarliestSundayUtcWeek()
+    public async Task ItWillUseCanonicalSongDatesForWeeklyBucketsAndRecentOrdering()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
+        var context = new TestDbContext(_database);
         var requests = _database.GetCollection<BsonDocument>("requests");
         var firstWeek = new DateTime(2026, 1, 4, 0, 0, 0, DateTimeKind.Utc);
         var duplicateSong = ObjectId.GenerateNewId().ToString();
+        var secondWeekSong = ObjectId.GenerateNewId().ToString();
+        var malformedSong = ObjectId.GenerateNewId().ToString();
+        await context.Songs.InsertManyAsync([
+            new Song { Id = duplicateSong, Title = "First week", Artists = ["Artist"], CreatedAt = firstWeek.AddDays(1) },
+            new Song { Id = secondWeekSong, Title = "Second week", Artists = ["Artist"], CreatedAt = firstWeek.AddDays(7) }
+        ], cancellationToken: cancellationToken);
+        await _database.GetCollection<BsonDocument>("songs").InsertOneAsync(new BsonDocument
+        {
+            { "_id", ObjectId.Parse(malformedSong) }, { "title", "Malformed" }, { "artists", new BsonArray { "Artist" } }, { "createdAt", "not-a-date" }
+        }, cancellationToken: cancellationToken);
         await requests.InsertManyAsync([
-            RequestDocument(duplicateSong, "first", ServiceType.Spotify, firstWeek.AddDays(1)),
-            RequestDocument(duplicateSong, "later", ServiceType.YouTubeMusic, firstWeek.AddDays(8)),
-            RequestDocument(ObjectId.GenerateNewId().ToString(), "second-week", ServiceType.Spotify, firstWeek.AddDays(7)),
-            RequestDocument(ObjectId.GenerateNewId().ToString(), "excluded", ServiceType.Unknown, firstWeek.AddDays(2)),
-            RequestDocument(ObjectId.GenerateNewId().ToString(), "outside", ServiceType.Spotify, firstWeek.AddDays(-1))
+            RequestDocument(duplicateSong, "first", ServiceType.Spotify, firstWeek.AddDays(8)),
+            RequestDocument(duplicateSong, "later", ServiceType.YouTubeMusic, firstWeek.AddDays(9)),
+            RequestDocument(secondWeekSong, "second-week", ServiceType.Spotify, firstWeek.AddDays(1)),
+            RequestDocument(ObjectId.GenerateNewId().ToString(), "orphan", ServiceType.Spotify, firstWeek.AddDays(2)),
+            RequestDocument(malformedSong, "malformed", ServiceType.Spotify, firstWeek.AddDays(2)),
+            RequestDocument(ObjectId.GenerateNewId().ToString(), "excluded", ServiceType.Unknown, firstWeek.AddDays(2))
         ], cancellationToken: cancellationToken);
 
-        var result = await new ShareRequestRepository(new TestDbContext(_database)).GetCompletedDistinctSongCountsByWeekAsync(firstWeek, firstWeek.AddDays(14), cancellationToken);
+        var repository = new ShareRequestRepository(context);
+        var result = await repository.GetCompletedDistinctSongCountsByWeekAsync(firstWeek, firstWeek.AddDays(14), cancellationToken);
 
         result.Should().BeEquivalentTo([
             new WeeklyCompletedSongCount(firstWeek, 1),
             new WeeklyCompletedSongCount(firstWeek.AddDays(7), 1)
         ], options => options.WithStrictOrdering());
+        var recent = await repository.GetRecentCompletedDistinctAsync(10, cancellationToken);
+        recent.Select(x => x.SongId).Should().Equal(secondWeekSong, duplicateSong);
+        recent.First().CreatedAt.Should().Be(firstWeek.AddDays(7));
     }
 
     [Fact]
@@ -140,8 +160,8 @@ public class PublicMetricsMongoRepositoryTests : IAsyncLifetime
         var changedSongId = ObjectId.GenerateNewId().ToString();
         var anchorSongId = ObjectId.GenerateNewId().ToString();
         await context.Songs.InsertManyAsync([
-            new Song { Id = changedSongId, Title = "Changed Song", Artists = ["Artist"] },
-            new Song { Id = anchorSongId, Title = "Anchor Song", Artists = ["Artist"] }
+            new Song { Id = changedSongId, Title = "Changed Song", Artists = ["Artist"], CreatedAt = oldCreatedAt },
+            new Song { Id = anchorSongId, Title = "Anchor Song", Artists = ["Artist"], CreatedAt = unchangedGlobalMaximum }
         ], cancellationToken: cancellationToken);
         await _database.GetCollection<BsonDocument>("requests").InsertManyAsync([
             RequestDocument(changedSongId, "share-old", ServiceType.Spotify, oldCreatedAt),

@@ -56,12 +56,17 @@ public class ShareRequestRepositoryMetricsTests
     }
 
     [Fact]
-    public void ItWillBuildAndMaterializeSundayUtcWeeklyCounts()
+    public void ItWillBuildACanonicalSongLookupAndMaterializeSundayUtcWeeklyCounts()
     {
         var start = new DateTime(2026, 1, 4, 0, 0, 0, DateTimeKind.Utc);
-        var pipeline = ShareRequestRepository.DistinctCompletedEarliestPipeline();
-        pipeline[1]["$sort"].AsBsonDocument["createdAt"].Should().Be(1);
-        pipeline[2]["$group"].AsBsonDocument["createdAt"].AsBsonDocument["$first"].AsString.Should().Be("$createdAt");
+        var pipeline = ShareRequestRepository.CanonicalCompletedPipeline("songs");
+        var lookup = pipeline[3]["$lookup"].AsBsonDocument;
+        lookup["from"].AsString.Should().Be("songs");
+        lookup["let"].AsBsonDocument["songId"].AsString.Should().Be("$songId");
+        var lookupMatch = lookup["pipeline"].AsBsonArray[0]["$match"].AsBsonDocument["$expr"].AsBsonDocument["$and"].AsBsonArray;
+        lookupMatch[1]["$eq"].AsBsonArray[0].AsBsonDocument["$type"].AsString.Should().Be("$createdAt");
+        pipeline[4]["$unwind"].AsString.Should().Be("$canonicalSong");
+        pipeline[5]["$project"].AsBsonDocument["createdAt"].AsString.Should().Be("$canonicalSong.createdAt");
 
         var result = ShareRequestRepository.MaterializeWeeklyCompletedSongCounts([
             new BsonDocument { { "weekStart", start }, { "count", 2 } },
