@@ -15,8 +15,9 @@ describe('WeeklyCompletedSongsChart', () => {
   it('renders deterministic UTC labels in server markup', () => {
     const html = renderToString(<WeeklyCompletedSongsChart weeklyCompletedSongs={weeklyCompletedSongs} largestWeeklyCount={3} />);
 
-    expect(html).toContain('2026-01-04 00:00 UTC through 2026-01-11 00:00 UTC (Sunday UTC week): 0 songs');
+    expect(html).toContain('from 2026-01-04 00:00 UTC until 2026-01-11 00:00 UTC (Sunday UTC week): 0 songs');
     expect(html).toContain('01-04–01-10 UTC');
+    expect(html).toContain('Current week: from 2026-01-11 00:00 UTC until 2026-01-18 00:00 UTC (Sunday UTC week): 3 songs');
     expect(html).toContain('This week');
     expect(html).toContain('Weeks use Sunday UTC boundaries. Historical date ranges adapt to your local calendar after the page loads.');
     expect(html).toContain('dateTime="2026-01-11T00:00:00Z"');
@@ -24,16 +25,28 @@ describe('WeeklyCompletedSongsChart', () => {
 
   it('uses browser-local labels after mount, including a prior local calendar day', async () => {
     const dateTimeFormat = vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(function MockDateTimeFormat(_locale, options) {
-      return { format: () => options?.weekday === 'long' ? 'Saturday, January 3, 2026' : '01/03' } as Intl.DateTimeFormat;
+      return {
+        format: (value) => {
+          const instant = new Date(value as Date).toISOString();
+          if (options?.weekday === 'long') {
+            return instant.startsWith('2026-01-04')
+              ? 'Saturday, January 3, 2026 at 7:00 PM Eastern Standard Time'
+              : 'Saturday, January 10, 2026 at 7:00 PM Eastern Standard Time';
+          }
+          return instant.startsWith('2026-01-04') ? '01/03' : '01/10';
+        },
+      } as Intl.DateTimeFormat;
     });
 
     render(<WeeklyCompletedSongsChart weeklyCompletedSongs={weeklyCompletedSongs} largestWeeklyCount={3} />);
 
-    expect(await screen.findByLabelText('Saturday, January 3, 2026 through Saturday, January 3, 2026 (Sunday UTC week, displayed in local time): 0 songs')).toBeInTheDocument();
-    expect(screen.getByText('01/03–01/03')).toBeInTheDocument();
+    const historical = await screen.findByLabelText('from Saturday, January 3, 2026 at 7:00 PM Eastern Standard Time until Saturday, January 10, 2026 at 7:00 PM Eastern Standard Time (Sunday UTC week, displayed in local time): 0 songs');
+    expect(historical).toBeInTheDocument();
+    expect(screen.getByText('01/03–01/10')).toBeInTheDocument();
+    expect(screen.getByLabelText('Current week: from Saturday, January 10, 2026 at 7:00 PM Eastern Standard Time until Saturday, January 10, 2026 at 7:00 PM Eastern Standard Time (Sunday UTC week, displayed in local time): 3 songs')).toBeInTheDocument();
     expect(screen.getByText('This week')).toBeInTheDocument();
-    expect(screen.getByLabelText(/Saturday/).querySelector('[aria-hidden="true"]')).toHaveStyle({ height: '0%' });
-    expect(dateTimeFormat).toHaveBeenCalledTimes(2);
+    expect(historical.querySelector('[aria-hidden="true"]')).toHaveStyle({ height: '0%' });
+    expect(dateTimeFormat).toHaveBeenCalledTimes(4);
   });
 
   it('preserves bucket identity, counts, and bar heights while localizing labels', async () => {
@@ -43,8 +56,8 @@ describe('WeeklyCompletedSongsChart', () => {
 
     render(<WeeklyCompletedSongsChart weeklyCompletedSongs={weeklyCompletedSongs} largestWeeklyCount={3} />);
 
-    const first = await screen.findByLabelText('Local accessible date through Local accessible date (Sunday UTC week, displayed in local time): 0 songs');
-    const second = screen.getByLabelText('This week (Sunday UTC week): 3 songs');
+    const first = await screen.findByLabelText('from Local accessible date until Local accessible date (Sunday UTC week, displayed in local time): 0 songs');
+    const second = screen.getByLabelText('Current week: from Local accessible date until Local accessible date (Sunday UTC week, displayed in local time): 3 songs');
     expect(first.querySelector('time')).toHaveAttribute('dateTime', '2026-01-04T00:00:00Z');
     expect(second.querySelector('time')).toHaveAttribute('dateTime', '2026-01-11T00:00:00Z');
     expect(first.querySelector('[aria-hidden="true"]')).toHaveStyle({ height: '0%' });
@@ -58,7 +71,7 @@ describe('WeeklyCompletedSongsChart', () => {
 
     render(<WeeklyCompletedSongsChart weeklyCompletedSongs={weeklyCompletedSongs} largestWeeklyCount={3} />);
 
-    expect(await screen.findByLabelText('2026-01-04 00:00 UTC through 2026-01-11 00:00 UTC (Sunday UTC week): 0 songs')).toBeInTheDocument();
+    expect(await screen.findByLabelText('from 2026-01-04 00:00 UTC until 2026-01-11 00:00 UTC (Sunday UTC week): 0 songs')).toBeInTheDocument();
     expect(screen.getByText('01-04–01-10 UTC')).toBeInTheDocument();
   });
 
