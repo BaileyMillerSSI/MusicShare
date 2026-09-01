@@ -97,7 +97,7 @@ export function metricsShareCopy(result: PublicMetricsFetchResult): { title: str
   const summary = summarizePublicMetrics(result.metrics);
   return {
     title: 'Music metrics | MusicShare',
-    description: `${summary.completedSongs} completed songs, ${summary.spotifyLinks} Spotify links, ${summary.youTubeMusicLinks} YouTube Music links, and ${summary.thisWeekCompletedSongs} completed this week.`,
-    imageAlt: `MusicShare metrics: ${summary.completedSongs} completed songs and ${summary.thisWeekCompletedSongs} completed this week.`,
+    description: `${summary.completedSongs} songs, ${summary.spotifyLinks} Spotify links, ${summary.youTubeMusicLinks} YouTube Music links, and ${summary.thisWeekCompletedSongs} completed this week.`,
+    imageAlt: `MusicShare metrics: ${summary.completedSongs} songs and ${summary.thisWeekCompletedSongs} completed this week.`,
   };
 }

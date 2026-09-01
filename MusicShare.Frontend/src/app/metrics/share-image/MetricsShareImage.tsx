@@ -29,7 +29,7 @@ const metricStyle = {
 export function MetricsShareImage({ summary }: MetricsShareImageProps) {
   const content = summary
     ? [
-      ['Completed songs', summary.completedSongs.toLocaleString()],
+      ['Songs', summary.completedSongs.toLocaleString()],
       ['Spotify links', summary.spotifyLinks.toLocaleString()],
       ['YouTube Music links', summary.youTubeMusicLinks.toLocaleString()],
       ['Completed this week', `+${summary.thisWeekCompletedSongs.toLocaleString()}`],
