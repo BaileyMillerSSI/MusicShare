@@ -1,48 +1,35 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BreadstickFooter } from '../../components/BreadstickFooter';
-import { MusicServiceType, type PublicMetricsResponse } from '../../lib/api';
+import { MusicServiceType } from '../../lib/api';
+import { getPublicMetrics, metricsShareCopy, previewVersion, publicMetricsOrigin, summarizePublicMetrics } from '../../lib/server/publicMetrics';
 
 export const dynamic = 'force-dynamic';
-export const metadata: Metadata = { title: 'Music metrics', description: 'Recently shared music and resolved platform link counts.' };
-
 const services = [MusicServiceType.Spotify, MusicServiceType.YouTubeMusic];
 const labels: Record<number, string> = { [MusicServiceType.Spotify]: 'Spotify links', [MusicServiceType.YouTubeMusic]: 'YouTube Music links' };
 
-function emptyMetrics(): PublicMetricsResponse {
-  return { totalCompletedSongs: 0, serviceCounts: services.map((service) => ({ service, count: 0 })), recentSongs: [], weeklyCompletedSongs: [] };
-}
+export async function generateMetadata(): Promise<Metadata> {
+  const result = await getPublicMetrics();
+  const copy = metricsShareCopy(result);
+  const imageUrl = new URL('/metrics/share-image', publicMetricsOrigin);
+  imageUrl.searchParams.set('v', result.available ? previewVersion(result.metrics) : 'unavailable');
+  const image = { url: imageUrl.toString(), width: 1200, height: 630, alt: copy.imageAlt, type: 'image/png' as const };
 
-async function getMetrics(): Promise<PublicMetricsResponse> {
-  const apiBase = process.env.services__api__https__0 ?? process.env.services__api__http__0 ?? '.';
-  try {
-    const response = await fetch(`${apiBase}/api/metrics`);
-    if (!response.ok) return emptyMetrics();
-    const data: unknown = await response.json();
-    if (!isMetricsResponse(data)) return emptyMetrics();
-    return data;
-  } catch { return emptyMetrics(); }
-}
-
-function isMetricsResponse(value: unknown): value is PublicMetricsResponse {
-  if (!value || typeof value !== 'object') return false;
-  const metrics = value as Partial<PublicMetricsResponse>;
-  if (!Number.isFinite(metrics.totalCompletedSongs) || metrics.totalCompletedSongs! < 0 || !Array.isArray(metrics.serviceCounts) || !Array.isArray(metrics.recentSongs)) return false;
-  return metrics.serviceCounts.every((count) => services.includes(count.service) && Number.isFinite(count.count) && count.count >= 0)
-    && metrics.recentSongs.every((song) => typeof song.songId === 'string' && typeof song.shareId === 'string' && typeof song.title === 'string'
-      && Array.isArray(song.artists) && song.artists.every((artist) => typeof artist === 'string')
-      && typeof song.createdAt === 'string')
-    && (metrics.weeklyCompletedSongs === undefined || (Array.isArray(metrics.weeklyCompletedSongs)
-      && metrics.weeklyCompletedSongs.every((week) => typeof week.weekStart === 'string' && !Number.isNaN(Date.parse(week.weekStart))
-        && Number.isFinite(week.count) && week.count >= 0)));
+  return {
+    title: copy.title,
+    description: copy.description,
+    alternates: { canonical: `${publicMetricsOrigin}/metrics` },
+    openGraph: { type: 'website', url: `${publicMetricsOrigin}/metrics`, siteName: 'MusicShare', title: copy.title, description: copy.description, images: [image] },
+    twitter: { card: 'summary_large_image', title: copy.title, description: copy.description, images: [imageUrl.toString()] },
+  };
 }
 
 export default async function MetricsPage() {
-  const metrics = await getMetrics();
-  const counts = new Map(metrics.serviceCounts.map((item) => [item.service, item.count]));
+  const { metrics } = await getPublicMetrics();
+  const summary = summarizePublicMetrics(metrics);
   const recentSongs = metrics.recentSongs.slice(0, 20);
   const weeklyCompletedSongs = metrics.weeklyCompletedSongs ?? [];
-  const thisWeekCount = weeklyCompletedSongs.at(-1)?.count ?? 0;
+  const thisWeekCount = summary.thisWeekCompletedSongs;
   const largestWeeklyCount = Math.max(0, ...weeklyCompletedSongs.map((week) => week.count));
   return <div className="min-h-screen bg-linear-to-br from-purple-500 to-pink-500 flex flex-col items-center gap-4 p-4 py-10">
     <main className="bg-white rounded-lg shadow-xl p-8 max-w-3xl w-full">
@@ -51,7 +38,7 @@ export default async function MetricsPage() {
       <p className="mt-2 text-gray-600">{metrics.totalCompletedSongs} completed songs shared across Music Share.</p>
       <section className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3" aria-label="Resolved platform link counts">
         <div className="rounded-lg bg-gray-100 p-4"><p className="text-sm text-gray-600">Completed songs</p><p className="text-2xl font-bold text-gray-800">{metrics.totalCompletedSongs}</p><p className="mt-1 text-sm font-medium text-purple-700">+{thisWeekCount} this week</p></div>
-        {services.map((service) => <div key={service} className="rounded-lg bg-gray-100 p-4"><p className="text-sm text-gray-600">{labels[service]}</p><p className="text-2xl font-bold text-gray-800">{counts.get(service) ?? 0}</p></div>)}
+        {services.map((service) => <div key={service} className="rounded-lg bg-gray-100 p-4"><p className="text-sm text-gray-600">{labels[service]}</p><p className="text-2xl font-bold text-gray-800">{service === MusicServiceType.Spotify ? summary.spotifyLinks : summary.youTubeMusicLinks}</p></div>)}
       </section>
       <section className="mt-8" aria-labelledby="weekly-completed-songs">
         <h2 id="weekly-completed-songs" className="text-xl font-semibold text-gray-800">Completed songs by week</h2>

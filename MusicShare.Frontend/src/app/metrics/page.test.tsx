@@ -4,7 +4,7 @@ import { MusicServiceType } from '../../lib/api';
 
 const fetchMock = vi.fn();
 vi.stubGlobal('fetch', fetchMock);
-const { default: MetricsPage, dynamic, metadata } = await import('./page');
+const { default: MetricsPage, dynamic, generateMetadata } = await import('./page');
 
 afterEach(() => vi.clearAllMocks());
 
@@ -75,7 +75,9 @@ describe('MetricsPage', () => {
 
     expect(screen.getAllByText('0')).toHaveLength(5);
     expect(screen.getByLabelText('2026-01-04 UTC: 0 completed songs')).toBeInTheDocument();
-    expect(metadata.title).toBe('Music metrics');
+    await expect(generateMetadata()).resolves.toMatchObject({
+      description: '0 completed songs, 0 Spotify links, 0 YouTube Music links, and 0 completed this week.',
+    });
   });
 
   it.each([
@@ -92,5 +94,30 @@ describe('MetricsPage', () => {
     fetchMock.mockResolvedValue({ ok: false });
     render(await MetricsPage());
     expect(screen.getByText(/no completed songs yet/i)).toBeInTheDocument();
+  });
+
+  it('generates factual, versioned canonical social metadata for a valid snapshot', async () => {
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ totalCompletedSongs: 289, generatedAt: '2026-08-31T12:00:00Z', serviceCounts: [
+      { service: MusicServiceType.Spotify, count: 289 }, { service: MusicServiceType.YouTubeMusic, count: 268 },
+    ], recentSongs: [], weeklyCompletedSongs: [{ weekStart: '2026-08-30T00:00:00Z', count: 6 }] }) });
+    const metadata = await generateMetadata();
+    const openGraphImages = metadata.openGraph?.images;
+    const image = (Array.isArray(openGraphImages) ? openGraphImages[0] : openGraphImages) as { url?: string; width?: number; height?: number; type?: string; alt?: string };
+    expect(metadata.alternates?.canonical).toBe('https://music.baileymiller.dev/metrics');
+    expect(metadata.description).toBe('289 completed songs, 289 Spotify links, 268 YouTube Music links, and 6 completed this week.');
+    expect(metadata.openGraph).toMatchObject({ type: 'website', url: 'https://music.baileymiller.dev/metrics', siteName: 'MusicShare' });
+    expect(image).toMatchObject({ width: 1200, height: 630, type: 'image/png', alt: 'MusicShare metrics: 289 completed songs and 6 completed this week.' });
+    expect(image?.url).toBe('https://music.baileymiller.dev/metrics/share-image?v=2026-08-31T12%3A00%3A00.000Z-289-289-268-6');
+    expect(metadata.twitter).toMatchObject({ card: 'summary_large_image', images: [image?.url] });
+  });
+
+  it('uses generic metadata without fallback zero claims when metrics are unavailable', async () => {
+    fetchMock.mockRejectedValue(new Error('offline'));
+    const metadata = await generateMetadata();
+    expect(metadata.description).toBe('Explore public MusicShare activity and resolved platform links.');
+    const openGraphImages = metadata.openGraph?.images;
+    const image = (Array.isArray(openGraphImages) ? openGraphImages[0] : openGraphImages) as { url?: string };
+    expect(image).toMatchObject({ url: 'https://music.baileymiller.dev/metrics/share-image?v=unavailable' });
+    expect(JSON.stringify(metadata)).not.toContain('0 completed songs');
   });
 });
