@@ -6,9 +6,9 @@
 
 ## Request
 
-Find the defect that allowed `https://music.baileymiller.dev/share/7c9ff089371a` and `https://music.baileymiller.dev/share/15586c2697d3` to exist as separate public shares for the same song. Plan and document, but do not implement in this task, a race-safe fix and an application-managed way to reconcile these production duplicates without directly editing MongoDB.
+Find the defect that allowed `https://music.baileymiller.dev/share/7c9ff089371a` and `https://music.baileymiller.dev/share/15586c2697d3` to exist as separate public shares for the same song, then provide a race-safe fix and an application-managed way to reconcile these production duplicates without directly editing MongoDB.
 
-This delivery intentionally stops after the GitHub issue and committed plan. No application code, repair execution, deployment, or production data mutation is authorized in this task.
+The initial request authorized investigation and planning only. After that phase completed, the user explicitly authorized implementation and shipping through the issue-delivery workflow. Shipping this capability does not authorize running the production reconciliation apply operation; that remains a separate operator action after a dry-run and explicit approval.
 
 ## Repository findings
 
@@ -73,7 +73,7 @@ Extend the TypeScript response type to acknowledge that the API may return a can
 
 ## Planned operator workflow
 
-The future production runbook should use these steps; none are executed by this planning task:
+The production runbook uses these steps after deployment. This delivery does not execute the apply operation:
 
 1. Open the manual `Reconcile duplicate shares` GitHub Actions workflow.
 2. Enter `7c9ff089371a` and `15586c2697d3`, leave mode as `dry-run`, and run it.
