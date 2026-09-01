@@ -1,6 +1,6 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
-// The API owns the UTC weekly metrics refresh, so published deployments need one replica
+// The API owns the daily UTC-midnight metrics refresh, so published deployments need one replica
 // available even when the frontend is idle. The frontend may still scale to zero.
 var apiMinReplicas = Math.Max(1, int.TryParse(Environment.GetEnvironmentVariable("AZURE_API_MIN_REPLICAS"), out var apiMin) ? apiMin : 1);
 var apiMaxReplicas = Math.Max(apiMinReplicas, int.TryParse(Environment.GetEnvironmentVariable("AZURE_API_MAX_REPLICAS"), out var apiMax) ? apiMax : 1);

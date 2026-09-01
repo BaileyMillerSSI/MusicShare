@@ -15,6 +15,8 @@ public class PublicMetricsSnapshot
     public DateTime GeneratedAt { get; set; }
     public List<PublicMetricsServiceCount> ServiceCounts { get; set; } = [];
     public List<PublicMetricsRecentSong> RecentSongs { get; set; } = [];
+    public List<PublicMetricsDailyCompletedSong> DailyCompletedSongs { get; set; } = [];
+    /// <summary>Legacy data retained so existing snapshot documents can be read during migration.</summary>
     public List<PublicMetricsWeeklyCompletedSong> WeeklyCompletedSongs { get; set; } = [];
 }
 
@@ -41,5 +43,11 @@ public class PublicMetricsRecentSong
 public class PublicMetricsWeeklyCompletedSong
 {
     public DateTime WeekStart { get; set; }
+    public long Count { get; set; }
+}
+
+public class PublicMetricsDailyCompletedSong
+{
+    public DateTime DayStart { get; set; }
     public long Count { get; set; }
 }

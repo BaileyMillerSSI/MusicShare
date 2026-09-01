@@ -20,11 +20,11 @@ public interface IShareRequestRepository
     Task UpdateAsync(ShareRequest request, CancellationToken cancellationToken = default);
     Task<long> GetCompletedDistinctSongCountAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CompletedShareRequest>> GetRecentCompletedDistinctAsync(int maximum, CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<WeeklyCompletedSongCount>> GetCompletedDistinctSongCountsByWeekAsync(DateTime rangeStartUtc, DateTime rangeEndUtc, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<DailyCompletedSongCount>> GetCompletedDistinctSongCountsByDayAsync(DateTime rangeStartUtc, DateTime rangeEndUtc, CancellationToken cancellationToken = default);
 }
 
 public record CompletedShareRequest(string SongId, string ShareId, ServiceType SourceService, DateTime CreatedAt);
-public record WeeklyCompletedSongCount(DateTime WeekStart, long Count);
+public record DailyCompletedSongCount(DateTime DayStart, long Count);
 public record ShareReservation(ShareRequest Request, bool Inserted);
 public record ReconciliationWrite(
     string CanonicalShareId,

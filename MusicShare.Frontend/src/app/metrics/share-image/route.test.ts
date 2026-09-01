@@ -15,7 +15,7 @@ const { GET, dynamic } = await import('./route');
 
 describe('GET /metrics/share-image', () => {
   it('uses the authoritative snapshot with fixed PNG dimensions and cache behavior', async () => {
-    getPublicMetrics.mockResolvedValue({ available: true, metrics: { totalCompletedSongs: 4, serviceCounts: [], recentSongs: [], weeklyCompletedSongs: [] } });
+    getPublicMetrics.mockResolvedValue({ available: true, metrics: { totalCompletedSongs: 4, serviceCounts: [], recentSongs: [], dailyCompletedSongs: [] } });
     const response = await GET();
     expect(dynamic).toBe('force-dynamic');
     expect(getPublicMetrics).toHaveBeenCalledWith();
@@ -25,7 +25,7 @@ describe('GET /metrics/share-image', () => {
   });
 
   it('renders the generic fallback when the snapshot is unavailable', async () => {
-    getPublicMetrics.mockResolvedValue({ available: false, metrics: { totalCompletedSongs: 0, serviceCounts: [], recentSongs: [], weeklyCompletedSongs: [] } });
+    getPublicMetrics.mockResolvedValue({ available: false, metrics: { totalCompletedSongs: 0, serviceCounts: [], recentSongs: [], dailyCompletedSongs: [] } });
     await GET();
     const element = imageResponse.mock.calls.at(-1)?.[0] as { props: { summary?: unknown } };
     expect(element.props.summary).toBeUndefined();

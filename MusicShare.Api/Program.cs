@@ -45,7 +45,7 @@ builder.AddMessageAccess(
 
 builder.Services.AddHostedService<PublicMetricsBootstrapService>();
 builder.Services.AddHostedService<ShareIdentityIndexInitializer>();
-builder.Services.AddHostedService<PublicMetricsWeeklyRefreshService>();
+builder.Services.AddHostedService<PublicMetricsDailyRefreshService>();
 builder.Services.AddSingleton<PublicMetricsInvalidationRetryService>();
 builder.Services.AddSingleton<IPublicMetricsInvalidationRetryService>(provider =>
     provider.GetRequiredService<PublicMetricsInvalidationRetryService>());
