@@ -10,6 +10,11 @@ public interface IShareRequestRepository
     Task<ShareRequest?> GetByCorrelationIdAsync(Guid correlationId, CancellationToken cancellationToken = default);
     Task<ShareRequest?> GetBySongIdAsync(string songId, CancellationToken cancellationToken = default);
     Task<ShareRequest?> GetByServiceTrackIdAsync(ServiceType serviceType, string serviceTrackId, CancellationToken cancellationToken = default);
+    Task<ShareRequest?> GetBySourceIdentityKeyAsync(string sourceIdentityKey, CancellationToken cancellationToken = default) => Task.FromException<ShareRequest?>(new NotSupportedException());
+    Task<ShareReservation> ReserveBySourceIdentityAsync(ShareRequest request, CancellationToken cancellationToken = default) => Task.FromException<ShareReservation>(new NotSupportedException());
+    Task<ShareRequest?> ResolveCanonicalAsync(ShareRequest request, CancellationToken cancellationToken = default) => Task.FromResult<ShareRequest?>(request);
+    Task<IReadOnlyList<ShareRequest>> GetByShareIdsAsync(IReadOnlyCollection<string> shareIds, CancellationToken cancellationToken = default) => Task.FromException<IReadOnlyList<ShareRequest>>(new NotSupportedException());
+    Task<ReconciliationWriteResult> TryReconcileAsync(ReconciliationWrite write, CancellationToken cancellationToken = default) => Task.FromException<ReconciliationWriteResult>(new NotSupportedException());
     Task<ShareRequest> InsertAsync(ShareRequest request, CancellationToken cancellationToken = default);
     Task UpdateAsync(ShareRequest request, CancellationToken cancellationToken = default);
     Task<long> GetCompletedDistinctSongCountAsync(CancellationToken cancellationToken = default);
@@ -19,3 +24,13 @@ public interface IShareRequestRepository
 
 public record CompletedShareRequest(string SongId, string ShareId, ServiceType SourceService, DateTime CreatedAt);
 public record WeeklyCompletedSongCount(DateTime WeekStart, long Count);
+public record ShareReservation(ShareRequest Request, bool Inserted);
+public record ReconciliationWrite(
+    string CanonicalShareId,
+    string AliasShareId,
+    string ReconciliationId,
+    string Fingerprint,
+    string? CanonicalSourceIdentityKey,
+    DateTime CanonicalCreatedAt,
+    DateTime AliasCreatedAt);
+public record ReconciliationWriteResult(bool Succeeded, bool Changed, string? Error = null);

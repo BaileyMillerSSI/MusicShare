@@ -40,6 +40,12 @@ public class SongServiceLinkRepository(IMusicShareDbContext context) : ISongServ
         return await _links.Find(filter).FirstOrDefaultAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<SongServiceLink>> GetBySongIdsAsync(IReadOnlyCollection<string> songIds, CancellationToken cancellationToken = default)
+    {
+        if (songIds.Count == 0) return [];
+        return await _links.Find(Builders<SongServiceLink>.Filter.In(x => x.SongId, songIds)).ToListAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyDictionary<ServiceType, long>> GetCompletedDistinctSongLinkCountsAsync(CancellationToken cancellationToken = default)
     {
         var pipeline = PipelineDefinition<SongServiceLink, BsonDocument>.Create(BuildCompletedDistinctSongLinkCountPipeline(_requests.CollectionNamespace.CollectionName));
@@ -92,6 +98,7 @@ public class SongServiceLinkRepository(IMusicShareDbContext context) : ISongServ
                     {
                         new BsonDocument("$eq", new BsonArray { "$songId", "$$songId" }),
                         new BsonDocument("$eq", new BsonArray { "$status", ShareStatus.Completed.ToString() }),
+                        new BsonDocument("$eq", new BsonArray { new BsonDocument("$type", "$canonicalShareId"), "missing" }),
                         new BsonDocument("$eq", new BsonArray { new BsonDocument("$type", "$songId"), "objectId" }),
                         new BsonDocument("$in", new BsonArray { "$sourceService", new BsonArray(PublicServices()) })
                     })))

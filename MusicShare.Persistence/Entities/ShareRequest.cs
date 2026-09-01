@@ -26,6 +26,23 @@ public class ShareRequest
     [BsonElement("serviceTrackId")]
     public string? ServiceTrackId { get; set; }
 
+    // A versioned, immutable identity used only for newly-created canonical requests.
+    [BsonElement("sourceIdentityKey")]
+    [BsonIgnoreIfNull]
+    public string? SourceIdentityKey { get; set; }
+
+    [BsonElement("canonicalShareId")]
+    [BsonIgnoreIfNull]
+    public string? CanonicalShareId { get; set; }
+
+    [BsonElement("reconciledAt")]
+    [BsonIgnoreIfNull]
+    public DateTime? ReconciledAt { get; set; }
+
+    [BsonElement("reconciliationId")]
+    [BsonIgnoreIfNull]
+    public string? ReconciliationId { get; set; }
+
     [BsonElement("songId")]
     [BsonRepresentation(BsonType.ObjectId)]
     public string? SongId { get; set; }

@@ -20,6 +20,7 @@ public static class DependencyInjection
         builder.Services.AddScoped<ISongService, SongService>();
         builder.Services.AddScoped<IShareStatusService, ShareStatusService>();
         builder.Services.AddScoped<IShareRequestService, ShareRequestService>();
+        builder.Services.AddScoped<IDuplicateShareReconciliationService, DuplicateShareReconciliationService>();
         builder.Services.AddScoped<IPublicMetricsService, PublicMetricsService>();
 
         return builder

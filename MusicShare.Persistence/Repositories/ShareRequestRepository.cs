@@ -46,6 +46,88 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
         return await _requests.Find(filter).FirstOrDefaultAsync(cancellationToken);
     }
 
+    public async Task<ShareRequest?> GetBySourceIdentityKeyAsync(string sourceIdentityKey, CancellationToken cancellationToken = default) =>
+        await _requests.Find(Builders<ShareRequest>.Filter.Eq(x => x.SourceIdentityKey, sourceIdentityKey))
+            .FirstOrDefaultAsync(cancellationToken);
+
+    public async Task<ShareReservation> ReserveBySourceIdentityAsync(ShareRequest request, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.SourceIdentityKey))
+        {
+            await InsertAsync(request, cancellationToken);
+            return new ShareReservation(request, true);
+        }
+
+        request.CreatedAt = DateTime.UtcNow;
+        try
+        {
+            await _requests.InsertOneAsync(request, cancellationToken: cancellationToken);
+            return new ShareReservation(request, true);
+        }
+        catch (MongoWriteException exception) when (exception.WriteError?.Category == ServerErrorCategory.DuplicateKey)
+        {
+            var winner = await GetBySourceIdentityKeyAsync(request.SourceIdentityKey, cancellationToken);
+            if (winner is null) throw;
+            return new ShareReservation(winner, false);
+        }
+    }
+
+    public async Task<ShareRequest?> ResolveCanonicalAsync(ShareRequest request, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.CanonicalShareId)) return request;
+        var canonical = await GetByShareIdAsync(request.CanonicalShareId, cancellationToken);
+        return canonical is null || !string.IsNullOrWhiteSpace(canonical.CanonicalShareId) ? null : canonical;
+    }
+
+    public async Task<IReadOnlyList<ShareRequest>> GetByShareIdsAsync(IReadOnlyCollection<string> shareIds, CancellationToken cancellationToken = default)
+    {
+        if (shareIds.Count != 2) return [];
+        return await _requests.Find(Builders<ShareRequest>.Filter.In(x => x.ShareId, shareIds)).ToListAsync(cancellationToken);
+    }
+
+    public async Task<ReconciliationWriteResult> TryReconcileAsync(ReconciliationWrite write, CancellationToken cancellationToken = default)
+    {
+        var canonical = await GetByShareIdAsync(write.CanonicalShareId, cancellationToken);
+        var alias = await GetByShareIdAsync(write.AliasShareId, cancellationToken);
+        if (canonical is null || alias is null || canonical.ShareId == alias.ShareId ||
+            canonical.Status != ShareStatus.Completed || alias.Status != ShareStatus.Completed ||
+            !string.IsNullOrEmpty(canonical.CanonicalShareId))
+            return new(false, false, "The requested shares are no longer eligible for reconciliation.");
+
+        if (alias.CanonicalShareId == canonical.ShareId && alias.ReconciliationId == write.ReconciliationId)
+            return new(true, false);
+        if (!string.IsNullOrEmpty(alias.CanonicalShareId))
+            return new(false, false, "The alias is already reconciled.");
+        if (canonical.CreatedAt != write.CanonicalCreatedAt || alias.CreatedAt != write.AliasCreatedAt)
+            return new(false, false, "The reconciliation plan is stale.");
+
+        if (!string.IsNullOrEmpty(write.CanonicalSourceIdentityKey))
+        {
+            var owner = await GetBySourceIdentityKeyAsync(write.CanonicalSourceIdentityKey, cancellationToken);
+            if (owner is not null && owner.ShareId != canonical.ShareId)
+                return new(false, false, "The source identity belongs to another share.");
+        }
+
+        var filter = Builders<ShareRequest>.Filter.And(
+            Builders<ShareRequest>.Filter.Eq(x => x.ShareId, alias.ShareId),
+            Builders<ShareRequest>.Filter.Eq(x => x.CanonicalShareId, null),
+            Builders<ShareRequest>.Filter.Eq(x => x.CreatedAt, write.AliasCreatedAt));
+        var update = Builders<ShareRequest>.Update
+            .Set(x => x.CanonicalShareId, canonical.ShareId)
+            .Set(x => x.ReconciledAt, DateTime.UtcNow)
+            .Set(x => x.ReconciliationId, write.ReconciliationId);
+        var result = await _requests.UpdateOneAsync(filter, update, cancellationToken: cancellationToken);
+        if (result.ModifiedCount != 1) return new(false, false, "The reconciliation plan is stale.");
+
+        if (!string.IsNullOrEmpty(write.CanonicalSourceIdentityKey) && string.IsNullOrEmpty(canonical.SourceIdentityKey))
+        {
+            await _requests.UpdateOneAsync(
+                Builders<ShareRequest>.Filter.And(Builders<ShareRequest>.Filter.Eq(x => x.ShareId, canonical.ShareId), Builders<ShareRequest>.Filter.Eq(x => x.SourceIdentityKey, null)),
+                Builders<ShareRequest>.Update.Set(x => x.SourceIdentityKey, write.CanonicalSourceIdentityKey), cancellationToken: cancellationToken);
+        }
+        return new(true, true);
+    }
+
     public async Task<ShareRequest> InsertAsync(ShareRequest request, CancellationToken cancellationToken = default)
     {
         request.CreatedAt = DateTime.UtcNow;
@@ -115,7 +197,8 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
         var stages = new BsonDocument[]
         {
             new("$match", new BsonDocument { { "status", ShareStatus.Completed.ToString() }, { "songId", new BsonDocument("$type", "objectId") },
-                { "sourceService", new BsonDocument("$in", new BsonArray(PublicSourceServices())) } }),
+                { "sourceService", new BsonDocument("$in", new BsonArray(PublicSourceServices())) },
+                { "canonicalShareId", new BsonDocument("$exists", false) } }),
             new("$sort", new BsonDocument { { "createdAt", -1 }, { "shareId", -1 } }),
             new("$group", new BsonDocument { { "_id", "$songId" }, { "songId", new BsonDocument("$first", "$songId") }, { "shareId", new BsonDocument("$first", "$shareId") }, { "sourceService", new BsonDocument("$first", "$sourceService") }, { "createdAt", new BsonDocument("$first", "$createdAt") } })
         };
