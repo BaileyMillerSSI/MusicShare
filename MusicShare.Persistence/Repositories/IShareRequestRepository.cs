@@ -37,7 +37,9 @@ public record ReconciliationWrite(
     ShareStatus AliasStatus,
     DateTime CanonicalCreatedAt,
     DateTime AliasCreatedAt,
-    string? CanonicalSourceIdentityKey = null,
+    ServiceType CanonicalSourceService,
+    string? CanonicalServiceTrackId,
+    string? CanonicalSourceIdentityKey,
     long CanonicalPreClaimVersion = 0,
     long AliasPreClaimVersion = 0);
 public record ReconciliationWriteResult(bool Succeeded, bool Changed, string? Error = null);

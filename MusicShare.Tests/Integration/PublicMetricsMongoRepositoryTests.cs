@@ -124,6 +124,40 @@ public class PublicMetricsMongoRepositoryTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ItWillExcludeAReconciledAliasFromTotalRecentDailyAndServiceLinkMetrics()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var context = new TestDbContext(_database);
+        var canonicalSong = ObjectId.GenerateNewId().ToString();
+        var aliasSong = ObjectId.GenerateNewId().ToString();
+        var day = new DateTime(2026, 8, 28, 0, 0, 0, DateTimeKind.Utc);
+        await context.Songs.InsertManyAsync([
+            new Song { Id = canonicalSong, Title = "Canonical", Artists = ["Artist"], CreatedAt = day },
+            new Song { Id = aliasSong, Title = "Alias", Artists = ["Artist"], CreatedAt = day }
+        ], cancellationToken: cancellationToken);
+        await _database.GetCollection<BsonDocument>("requests").InsertManyAsync([
+            RequestDocument(canonicalSong, "aaaaaaaaaaaa", ServiceType.Spotify, day),
+            RequestDocument(aliasSong, "bbbbbbbbbbbb", ServiceType.Spotify, day, canonicalShareId: "aaaaaaaaaaaa")
+        ], cancellationToken: cancellationToken);
+        await _database.GetCollection<BsonDocument>("links").InsertManyAsync([
+            LinkDocument(canonicalSong, ServiceType.Spotify),
+            LinkDocument(aliasSong, ServiceType.Spotify),
+            LinkDocument(aliasSong, ServiceType.YouTubeMusic)
+        ], cancellationToken: cancellationToken);
+
+        var requests = new ShareRequestRepository(context);
+        var links = new SongServiceLinkRepository(context);
+
+        (await requests.GetCompletedDistinctSongCountAsync(cancellationToken)).Should().Be(1);
+        (await requests.GetRecentCompletedDistinctAsync(10, cancellationToken)).Should().ContainSingle()
+            .Which.ShareId.Should().Be("aaaaaaaaaaaa");
+        (await requests.GetCompletedDistinctSongCountsByDayAsync(day, day.AddDays(1), cancellationToken))
+            .Should().Equal(new DailyCompletedSongCount(day, 1));
+        (await links.GetCompletedDistinctSongLinkCountsAsync(cancellationToken)).Should().BeEquivalentTo(
+            new Dictionary<ServiceType, long> { [ServiceType.Spotify] = 1 });
+    }
+
+    [Fact]
     public async Task ItWillInsertReplaceAndRejectStaleSnapshotCandidatesIncludingEqualTotals()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
@@ -203,11 +237,16 @@ public class PublicMetricsMongoRepositoryTests : IAsyncLifetime
 
     private static PublicMetricsSnapshot Snapshot(long total, long version) => new() { TotalCompletedSongs = total, SnapshotVersion = version, GeneratedAt = DateTime.UtcNow };
     private static DateTime TruncateToMongoMilliseconds(DateTime value) => new(value.Ticks - value.Ticks % TimeSpan.TicksPerMillisecond, DateTimeKind.Utc);
-    private static BsonDocument RequestDocument(string songId, string shareId, ServiceType service, DateTime createdAt, ShareStatus status = ShareStatus.Completed) => new()
+    private static BsonDocument RequestDocument(string songId, string shareId, ServiceType service, DateTime createdAt, ShareStatus status = ShareStatus.Completed, string? canonicalShareId = null)
     {
-        { "_id", ObjectId.GenerateNewId() }, { "shareId", shareId }, { "sourceUrl", "https://example.test" },
-        { "sourceService", service.ToString() }, { "songId", ObjectId.Parse(songId) }, { "status", status.ToString() }, { "createdAt", createdAt }
-    };
+        var document = new BsonDocument
+        {
+            { "_id", ObjectId.GenerateNewId() }, { "shareId", shareId }, { "sourceUrl", "https://example.test" },
+            { "sourceService", service.ToString() }, { "songId", ObjectId.Parse(songId) }, { "status", status.ToString() }, { "createdAt", createdAt }
+        };
+        if (canonicalShareId is not null) document.Add("canonicalShareId", canonicalShareId);
+        return document;
+    }
 
     private static BsonDocument LinkDocument(string songId, ServiceType service) => new()
     {

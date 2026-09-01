@@ -144,6 +144,13 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
         var snapshot = ReconciliationSnapshots.TryCreate(canonical, alias, currentSongs, currentLinks, owners, write.CanonicalPreClaimVersion, write.AliasPreClaimVersion);
         if (snapshot is null || snapshot.Fingerprint != write.Fingerprint) return new(false, false, "The reconciliation plan is stale.");
 
+        // The source identity is part of the operator-approved snapshot. Rebuild it
+        // from the exact-token-held canonical row rather than trusting a caller value.
+        var currentSourceIdentityKey = ReconciliationSnapshots.CanonicalSourceIdentityKey(canonical);
+        if (canonical.SourceService != write.CanonicalSourceService || canonical.ServiceTrackId != write.CanonicalServiceTrackId ||
+            currentSourceIdentityKey != write.CanonicalSourceIdentityKey || snapshot.CanonicalSourceIdentityKey != write.CanonicalSourceIdentityKey)
+            return new(false, false, "The canonical source identity changed.");
+
         // Backfill is a separately fenced idempotent write. If it crashes before the alias
         // CAS, retrying the same exact pair safely observes the same canonical identity.
         if (!string.IsNullOrWhiteSpace(write.CanonicalSourceIdentityKey) && string.IsNullOrWhiteSpace(canonical.SourceIdentityKey))

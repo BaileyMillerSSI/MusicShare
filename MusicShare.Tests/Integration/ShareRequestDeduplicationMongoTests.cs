@@ -4,12 +4,16 @@ using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;
 using MongoDB.Driver;
 using Microsoft.Extensions.Logging.Abstractions;
+using MassTransit;
+using Moq;
 using MusicShare.Api.Services;
 using MusicShare.Contracts;
+using MusicShare.Contracts.Messages;
 using MusicShare.Persistence;
 using MusicShare.Persistence.Entities;
 using MusicShare.Persistence.Repositories;
 using MusicShare.Services.Services;
+using MusicShare.Services.Services.Music;
 
 namespace MusicShare.Tests.Integration;
 
@@ -65,6 +69,48 @@ public sealed class ShareRequestDeduplicationMongoTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ItWillConvergeConcurrentServiceCreatesAcrossPendingProcessingAndCompletedStatesWithOnePublication()
+    {
+        var context = new TestDbContext(database);
+        await new ShareIdentityIndexInitializer(context).StartAsync(TestContext.Current.CancellationToken);
+        var published = new System.Collections.Concurrent.ConcurrentBag<SongShareSubmitted>();
+        var endpoint = new Mock<IPublishEndpoint>(MockBehavior.Loose);
+        endpoint.Setup(x => x.Publish(It.IsAny<SongShareSubmitted>(), It.IsAny<CancellationToken>()))
+            .Callback<SongShareSubmitted, CancellationToken>((message, _) => published.Add(message))
+            .Returns(Task.CompletedTask);
+        var adapter = new Mock<IMusicServiceAdapter>(MockBehavior.Strict);
+        const string url = "https://open.spotify.com/track/canonical-track";
+        adapter.Setup(x => x.ExtractSongId(url)).Returns("canonical-track");
+        adapter.Setup(x => x.NormalizeUrl(url)).Returns(url);
+        var resolver = new Mock<IMusicServiceResolver>(MockBehavior.Strict);
+        resolver.Setup(x => x.GetAdapter(ServiceType.Spotify)).Returns(adapter.Object);
+        var requests = new ShareRequestRepository(context);
+        var service = new ShareRequestService(endpoint.Object, requests, new SongRepository(context), new SongServiceLinkRepository(context), resolver.Object);
+
+        var initial = await Task.WhenAll(Enumerable.Range(0, 24).Select(_ => service.Create(url, ServiceType.Spotify, TestContext.Current.CancellationToken)));
+        initial.Distinct(StringComparer.Ordinal).Should().ContainSingle();
+        var canonicalId = initial[0];
+        (await context.ShareRequests.CountDocumentsAsync(Builders<ShareRequest>.Filter.Empty)).Should().Be(1);
+        published.Should().ContainSingle(message => message.ShareId == canonicalId);
+
+        foreach (var state in new[] { ShareStatus.Pending, ShareStatus.Processing, ShareStatus.Completed })
+        {
+            await context.ShareRequests.UpdateOneAsync(x => x.ShareId == canonicalId, Builders<ShareRequest>.Update.Set(x => x.Status, state));
+            if (state == ShareStatus.Completed)
+            {
+                var winner = (await requests.GetByShareIdAsync(canonicalId))!;
+                var songId = ObjectId.GenerateNewId().ToString();
+                await context.Songs.InsertOneAsync(ResolvedSong(songId));
+                await context.ShareRequests.UpdateOneAsync(x => x.ShareId == canonicalId, Builders<ShareRequest>.Update.Set(x => x.SongId, songId));
+                await context.SongServiceLinks.InsertOneAsync(Link(songId, "canonical-track"));
+            }
+            var repeated = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => service.Create(url, ServiceType.Spotify, TestContext.Current.CancellationToken)));
+            repeated.Should().OnlyContain(id => id == canonicalId, state.ToString());
+            published.Should().ContainSingle();
+        }
+    }
+
+    [Fact]
     public async Task ItWillFailStartupWhenExistingKeyedRowsWouldViolateTheCorrectnessIndex()
     {
         var context = new TestDbContext(database);
@@ -93,7 +139,8 @@ public sealed class ShareRequestDeduplicationMongoTests : IAsyncLifetime
             await context.Songs.Find(Builders<Song>.Filter.In(x => x.Id, new[] { canonicalSong, aliasSong })).ToListAsync(),
             await context.SongServiceLinks.Find(Builders<SongServiceLink>.Filter.In(x => x.SongId, new[] { canonicalSong, aliasSong })).ToListAsync(),
             [canonical, aliasRequest], canonical.ReconciliationClaimVersion, aliasRequest.ReconciliationClaimVersion)!;
-        var write = new ReconciliationWrite("aaaaaaaaaaaa", "bbbbbbbbbbbb", "op", snapshot.Fingerprint, canonicalSong, aliasSong, ShareStatus.Completed, ShareStatus.Completed, canonical.CreatedAt, aliasRequest.CreatedAt, null, snapshot.CanonicalPreClaimVersion, snapshot.AliasPreClaimVersion);
+        var write = new ReconciliationWrite("aaaaaaaaaaaa", "bbbbbbbbbbbb", "op", snapshot.Fingerprint, canonicalSong, aliasSong, ShareStatus.Completed, ShareStatus.Completed, canonical.CreatedAt, aliasRequest.CreatedAt,
+            snapshot.CanonicalSourceService, snapshot.CanonicalServiceTrackId, snapshot.CanonicalSourceIdentityKey, snapshot.CanonicalPreClaimVersion, snapshot.AliasPreClaimVersion);
 
         // An unexpired first claim represents a crash/other overlapping operation. The second
         // operation must not acquire the pair or mutate either row; expiry makes recovery safe.
@@ -166,6 +213,8 @@ public sealed class ShareRequestDeduplicationMongoTests : IAsyncLifetime
     [InlineData("resolved-song")]
     [InlineData("third-owner")]
     [InlineData("share-request")]
+    [InlineData("source-service")]
+    [InlineData("source-track")]
     public async Task ItWillRejectEachPersistedStaleStateBeforeBackfillOrAliasCas(string mutation)
     {
         var context = new TestDbContext(database);
@@ -181,7 +230,8 @@ public sealed class ShareRequestDeduplicationMongoTests : IAsyncLifetime
             await context.Songs.Find(Builders<Song>.Filter.Empty).ToListAsync(),
             await context.SongServiceLinks.Find(Builders<SongServiceLink>.Filter.Empty).ToListAsync(), [canonical, alias], 0, 0)!;
         var write = new ReconciliationWrite(canonical.ShareId, alias.ShareId, $"reconcile-{snapshot.Fingerprint}", snapshot.Fingerprint,
-            canonicalSong, aliasSong, ShareStatus.Completed, ShareStatus.Completed, canonical.CreatedAt, alias.CreatedAt, "v1:1:track", 0, 0);
+            canonicalSong, aliasSong, ShareStatus.Completed, ShareStatus.Completed, canonical.CreatedAt, alias.CreatedAt,
+            snapshot.CanonicalSourceService, snapshot.CanonicalServiceTrackId, snapshot.CanonicalSourceIdentityKey, 0, 0);
 
         switch (mutation)
         {
@@ -199,6 +249,12 @@ public sealed class ShareRequestDeduplicationMongoTests : IAsyncLifetime
                 break;
             case "share-request":
                 await context.ShareRequests.UpdateOneAsync(x => x.ShareId == alias.ShareId, Builders<ShareRequest>.Update.Inc(x => x.ReconciliationClaimVersion, 1));
+                break;
+            case "source-service":
+                await context.ShareRequests.UpdateOneAsync(x => x.ShareId == canonical.ShareId, Builders<ShareRequest>.Update.Set(x => x.SourceService, ServiceType.YouTubeMusic));
+                break;
+            case "source-track":
+                await context.ShareRequests.UpdateOneAsync(x => x.ShareId == canonical.ShareId, Builders<ShareRequest>.Update.Set(x => x.ServiceTrackId, "replacement-track"));
                 break;
         }
 
@@ -300,7 +356,8 @@ public sealed class ShareRequestDeduplicationMongoTests : IAsyncLifetime
         var songs = await context.Songs.Find(Builders<Song>.Filter.In(x => x.Id, [canonical.SongId!, alias.SongId!])).ToListAsync();
         var links = await context.SongServiceLinks.Find(Builders<SongServiceLink>.Filter.In(x => x.SongId, [canonical.SongId!, alias.SongId!])).ToListAsync();
         var snapshot = ReconciliationSnapshots.TryCreate(canonical, alias, songs, links, [canonical, alias], 0, 0)!;
-        return new(canonical.ShareId, alias.ShareId, $"reconcile-{snapshot.Fingerprint}", snapshot.Fingerprint, canonical.SongId!, alias.SongId!, ShareStatus.Completed, ShareStatus.Completed, canonical.CreatedAt, alias.CreatedAt, null, 0, 0);
+        return new(canonical.ShareId, alias.ShareId, $"reconcile-{snapshot.Fingerprint}", snapshot.Fingerprint, canonical.SongId!, alias.SongId!, ShareStatus.Completed, ShareStatus.Completed, canonical.CreatedAt, alias.CreatedAt,
+            snapshot.CanonicalSourceService, snapshot.CanonicalServiceTrackId, snapshot.CanonicalSourceIdentityKey, 0, 0);
     }
 
     private static ShareRequest Request(string id, string? key) => new()
@@ -312,7 +369,7 @@ public sealed class ShareRequestDeduplicationMongoTests : IAsyncLifetime
     private static ShareRequest Completed(string shareId, string songId) => new()
     {
         Id = MongoDB.Bson.ObjectId.GenerateNewId().ToString(), ShareId = shareId, SongId = songId, SourceUrl = "https://example.test",
-        SourceService = ServiceType.Spotify, CorrelationId = Guid.NewGuid(), Status = ShareStatus.Completed, CreatedAt = DateTime.UtcNow
+        SourceService = ServiceType.Spotify, ServiceTrackId = "track", CorrelationId = Guid.NewGuid(), Status = ShareStatus.Completed, CreatedAt = DateTime.UtcNow
     };
 
     private static Song ResolvedSong(string id) => new() { Id = id, Status = SongStatus.Resolved, CreatedAt = DateTime.UnixEpoch, UpdatedAt = DateTime.UnixEpoch };

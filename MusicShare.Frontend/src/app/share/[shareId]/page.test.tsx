@@ -125,6 +125,15 @@ describe('ShareResultPage', () => {
       expect(metadata.alternates).toMatchObject({ canonical: '/share/bbbbbbbbbbbb' });
     });
 
+    it('uses the API canonical share ID in alias-request metadata', async () => {
+      vi.mocked(global.fetch).mockResolvedValue({ ok: true, json: async () => ({ shareId: 'bbbbbbbbbbbb', status: 'Completed', song: { id: 'song-1', title: 'Canonical Song', artists: ['Artist'], status: 'Resolved', links: [] } }) } as Response);
+
+      const metadata = await generateMetadata({ params: Promise.resolve({ shareId: 'aaaaaaaaaaaa' }) });
+
+      expect(metadata.alternates).toMatchObject({ canonical: '/share/bbbbbbbbbbbb' });
+      expect(metadata.openGraph).toMatchObject({ url: '/share/bbbbbbbbbbbb' });
+    });
+
     it('renders ResultPoller with correct shareId', async () => {
       const params = Promise.resolve({ shareId: 'unique-share-id' });
       const page = await ShareResultPage({ params });

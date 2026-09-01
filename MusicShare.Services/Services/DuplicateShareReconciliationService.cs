@@ -69,13 +69,11 @@ public sealed partial class DuplicateShareReconciliationService(
 
         var write = await requests.TryReconcileAsync(new(canonical.ShareId, alias.ShareId, operationId, fingerprint,
             canonical.SongId!, alias.SongId!, canonical.Status, alias.Status, canonical.CreatedAt, alias.CreatedAt,
-            SourceIdentityKey(canonical), snapshot.CanonicalPreClaimVersion, snapshot.AliasPreClaimVersion), cancellationToken);
+            snapshot.CanonicalSourceService, snapshot.CanonicalServiceTrackId, snapshot.CanonicalSourceIdentityKey,
+            snapshot.CanonicalPreClaimVersion, snapshot.AliasPreClaimVersion), cancellationToken);
         LogOutcome(request.Mode, operationId, canonical.ShareId, alias.ShareId, snapshot.SharedIdentities, write.Succeeded, write.Changed);
         return new(write.Succeeded, write.Changed, write.Error, operationId, fingerprint, canonical.ShareId, alias.ShareId, snapshot.SharedIdentities.Select(x => new DuplicateShareIdentity(x.ServiceType, x.ServiceSongId)).ToArray());
     }
-
-    private static string? SourceIdentityKey(ShareRequest request) => ReconciliationSnapshots.Defined(request.SourceService) && ReconciliationSnapshots.ProviderId(request.ServiceTrackId)
-        ? $"v1:{(int)request.SourceService}:{request.ServiceTrackId}" : null;
 
     private void LogOutcome(DuplicateShareReconciliationMode mode, string operationId, string canonicalShareId, string aliasShareId,
         IReadOnlyList<ReconciliationIdentity> identities, bool success, bool changed) =>

@@ -12,6 +12,9 @@ public sealed record ReconciliationSnapshot(
     string Fingerprint,
     long CanonicalPreClaimVersion,
     long AliasPreClaimVersion,
+    ServiceType CanonicalSourceService,
+    string? CanonicalServiceTrackId,
+    string? CanonicalSourceIdentityKey,
     IReadOnlyList<ReconciliationIdentity> SharedIdentities);
 
 public record ReconciliationIdentity(int ServiceType, string ServiceSongId);
@@ -41,18 +44,24 @@ public static class ReconciliationSnapshots
         if (shared.Length == 0 || owners.Any(x => x.ShareId != canonical.ShareId && x.ShareId != alias.ShareId && string.IsNullOrWhiteSpace(x.CanonicalShareId))) return null;
         // Roles are deliberately explicit: choosing A->B is not the same plan as B->A.
         var requestLines = new[] {
-            Pack("canonical-request", canonical.ShareId, canonical.Id, canonical.SongId, ((int)canonical.Status).ToString(), canonical.CreatedAt.Ticks.ToString(), canonical.SourceIdentityKey, canonical.CanonicalShareId, canonicalPreClaimVersion.ToString()),
-            Pack("alias-request", alias.ShareId, alias.Id, alias.SongId, ((int)alias.Status).ToString(), alias.CreatedAt.Ticks.ToString(), alias.SourceIdentityKey, alias.CanonicalShareId, aliasPreClaimVersion.ToString()) };
+            Pack("canonical-request", canonical.ShareId, canonical.Id, canonical.SongId, ((int)canonical.Status).ToString(), canonical.CreatedAt.Ticks.ToString(), ((int)canonical.SourceService).ToString(), canonical.ServiceTrackId, CanonicalSourceIdentityKey(canonical), canonical.SourceIdentityKey, canonical.CanonicalShareId, canonicalPreClaimVersion.ToString()),
+            Pack("alias-request", alias.ShareId, alias.Id, alias.SongId, ((int)alias.Status).ToString(), alias.CreatedAt.Ticks.ToString(), ((int)alias.SourceService).ToString(), alias.ServiceTrackId, CanonicalSourceIdentityKey(alias), alias.SourceIdentityKey, alias.CanonicalShareId, aliasPreClaimVersion.ToString()) };
         var songLines = songArray.Select(x => Pack("song", x.Id, ((int)x.Status).ToString(), x.CreatedAt.Ticks.ToString(), x.UpdatedAt.Ticks.ToString()));
         var linkLines = evidence.Select(x => Pack("evidence", x.Id, x.SongId, ((int)x.ServiceType).ToString(), x.ServiceSongId, x.CreatedAt.Ticks.ToString(), x.OriginalUrl, x.NormalizedUrl));
         var ownerLines = owners.OrderBy(x => x.ShareId, StringComparer.Ordinal).ThenBy(x => x.Id, StringComparer.Ordinal).Select(x => Pack("owner", x.ShareId, x.Id, x.SongId, ((int)x.Status).ToString(), x.CanonicalShareId, x.CreatedAt.Ticks.ToString()));
         var sharedLines = shared.Select(x => Pack("shared", x.ServiceType.ToString(), x.ServiceSongId));
         var fingerprint = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Pack(requestLines.Concat(songLines).Concat(linkLines).Concat(ownerLines).Concat(sharedLines).ToArray())))).ToLowerInvariant();
-        return new(fingerprint, canonicalPreClaimVersion, aliasPreClaimVersion, shared);
+        return new(fingerprint, canonicalPreClaimVersion, aliasPreClaimVersion, canonical.SourceService,
+            canonical.ServiceTrackId, CanonicalSourceIdentityKey(canonical), shared);
     }
 
     public static bool Defined(ServiceType value) => Enum.IsDefined(value) && value != ServiceType.Unknown;
     public static bool ProviderId(string? value) => !string.IsNullOrWhiteSpace(value) && value.Length <= 256 && value.All(x => !char.IsControl(x));
+
+    public static string? CanonicalSourceIdentityKey(ShareRequest request) =>
+        Defined(request.SourceService) && ProviderId(request.ServiceTrackId)
+            ? $"v1:{(int)request.SourceService}:{request.ServiceTrackId}"
+            : null;
 
     // Length-prefixing keeps values such as "a|b" and separate fields unambiguous.
     private static string Pack(params string?[] values) => string.Concat(values.Select(value =>
