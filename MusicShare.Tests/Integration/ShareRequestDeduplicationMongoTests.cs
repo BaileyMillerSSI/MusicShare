@@ -87,6 +87,59 @@ public sealed class ShareRequestDeduplicationMongoTests : IAsyncLifetime
         (await repo.TryReconcileAsync(write)).Changed.Should().BeFalse("apply is idempotent after crash recovery");
     }
 
+    [Fact]
+    public async Task ItWillRejectEveryStaleTokenMutationAfterAnExpiredClaimIsTakenOver()
+    {
+        var context = new TestDbContext(database);
+        var canonical = Completed("aaaaaaaaaaaa", MongoDB.Bson.ObjectId.GenerateNewId().ToString());
+        var alias = Completed("bbbbbbbbbbbb", MongoDB.Bson.ObjectId.GenerateNewId().ToString());
+        await context.ShareRequests.InsertManyAsync([canonical, alias]);
+
+        // This is the exact claim lifecycle used by ShareRequestRepository: a crashed holder's
+        // expired token is replaced atomically, and every backfill/CAS/release filters on it.
+        const string expiredClaimToken = "old-token";
+        const string activeClaimToken = "new-token";
+        await context.ShareRequests.UpdateManyAsync(
+            x => x.ShareId == canonical.ShareId || x.ShareId == alias.ShareId,
+            Builders<ShareRequest>.Update.Set(x => x.ReconciliationClaimToken, expiredClaimToken)
+                .Set(x => x.ReconciliationClaimExpiresAt, DateTime.UtcNow.AddMinutes(-1)));
+        foreach (var id in new[] { canonical.ShareId, alias.ShareId })
+        {
+            var takeover = await context.ShareRequests.UpdateOneAsync(
+                Builders<ShareRequest>.Filter.And(
+                    Builders<ShareRequest>.Filter.Eq(x => x.ShareId, id),
+                    Builders<ShareRequest>.Filter.Lte(x => x.ReconciliationClaimExpiresAt, DateTime.UtcNow)),
+                Builders<ShareRequest>.Update.Set(x => x.ReconciliationClaimToken, activeClaimToken)
+                    .Set(x => x.ReconciliationClaimExpiresAt, DateTime.UtcNow.AddMinutes(2)));
+            takeover.ModifiedCount.Should().Be(1);
+        }
+
+        var staleBackfill = await context.ShareRequests.UpdateOneAsync(
+            Builders<ShareRequest>.Filter.And(
+                Builders<ShareRequest>.Filter.Eq(x => x.ShareId, canonical.ShareId),
+                Builders<ShareRequest>.Filter.Eq(x => x.ReconciliationClaimToken, expiredClaimToken),
+                Builders<ShareRequest>.Filter.Eq(x => x.SourceIdentityKey, null)),
+            Builders<ShareRequest>.Update.Set(x => x.SourceIdentityKey, "v1:1:stale"));
+        var staleAliasCas = await context.ShareRequests.UpdateOneAsync(
+            Builders<ShareRequest>.Filter.And(
+                Builders<ShareRequest>.Filter.Eq(x => x.ShareId, alias.ShareId),
+                Builders<ShareRequest>.Filter.Eq(x => x.ReconciliationClaimToken, expiredClaimToken),
+                Builders<ShareRequest>.Filter.Eq(x => x.CanonicalShareId, null)),
+            Builders<ShareRequest>.Update.Set(x => x.CanonicalShareId, canonical.ShareId));
+        var staleRelease = await context.ShareRequests.UpdateManyAsync(
+            Builders<ShareRequest>.Filter.And(
+                Builders<ShareRequest>.Filter.In(x => x.ShareId, new[] { canonical.ShareId, alias.ShareId }),
+                Builders<ShareRequest>.Filter.Eq(x => x.ReconciliationClaimToken, expiredClaimToken)),
+            Builders<ShareRequest>.Update.Unset(x => x.ReconciliationClaimToken).Unset(x => x.ReconciliationClaimExpiresAt));
+
+        staleBackfill.ModifiedCount.Should().Be(0);
+        staleAliasCas.ModifiedCount.Should().Be(0);
+        staleRelease.ModifiedCount.Should().Be(0);
+        var rows = await context.ShareRequests.Find(x => x.ShareId == canonical.ShareId || x.ShareId == alias.ShareId).ToListAsync();
+        rows.Should().OnlyContain(x => x.ReconciliationClaimToken == activeClaimToken);
+        rows.Should().OnlyContain(x => x.CanonicalShareId == null);
+    }
+
     private static ShareRequest Request(string id, string? key) => new()
     {
         Id = MongoDB.Bson.ObjectId.GenerateNewId().ToString(), ShareId = id, SourceUrl = "https://example.test", SourceService = ServiceType.Spotify,

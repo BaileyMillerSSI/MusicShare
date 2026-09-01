@@ -46,6 +46,46 @@ public class DuplicateShareReconciliationServiceTests
         result.Success.Should().BeFalse();
     }
 
+    [Fact]
+    public async Task ItWillRejectAThirdCanonicalOwnerOfSharedProviderEvidence()
+    {
+        using var mock = AutoMock.GetLoose();
+        var first = Completed("aaaaaaaaaaaa", "song-a", DateTime.UnixEpoch);
+        var second = Completed("bbbbbbbbbbbb", "song-b", DateTime.UnixEpoch.AddSeconds(1));
+        var third = Completed("cccccccccccc", "song-c", DateTime.UnixEpoch.AddSeconds(2));
+        mock.Mock<IShareRequestRepository>().Setup(x => x.GetByShareIdsAsync(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>())).ReturnsAsync([first, second]);
+        mock.Mock<IShareRequestRepository>().Setup(x => x.GetBySongIdsAsync(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>())).ReturnsAsync([first, second, third]);
+        mock.Mock<ISongServiceLinkRepository>().Setup(x => x.GetBySongIdsAsync(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>())).ReturnsAsync([Link("song-a", ServiceType.Spotify, "track"), Link("song-b", ServiceType.Spotify, "track")]);
+        mock.Mock<ISongServiceLinkRepository>().Setup(x => x.GetByIdentitiesAsync(It.IsAny<IReadOnlyCollection<SongServiceIdentity>>(), It.IsAny<CancellationToken>())).ReturnsAsync([Link("song-a", ServiceType.Spotify, "track"), Link("song-b", ServiceType.Spotify, "track"), Link("song-c", ServiceType.Spotify, "track")]);
+        mock.Mock<ISongRepository>().Setup(x => x.GetByIdsAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>())).ReturnsAsync([new Song { Id = "song-a", Status = SongStatus.Resolved }, new Song { Id = "song-b", Status = SongStatus.Resolved }]);
+        var sut = new DuplicateShareReconciliationService(mock.Mock<IShareRequestRepository>().Object, mock.Mock<ISongServiceLinkRepository>().Object, mock.Mock<ISongRepository>().Object, NullLogger<DuplicateShareReconciliationService>.Instance);
+
+        var result = await sut.ReconcileAsync(new(first.ShareId, second.ShareId, null, DuplicateShareReconciliationMode.DryRun, null), CancellationToken.None);
+
+        result.Success.Should().BeFalse();
+        result.Error.Should().Contain("third canonical");
+    }
+
+    [Fact]
+    public async Task ItWillRejectAnApplyWhenTheDryRunFingerprintNoLongerBindsCurrentEvidence()
+    {
+        using var mock = AutoMock.GetLoose();
+        var first = Completed("aaaaaaaaaaaa", "song-a", DateTime.UnixEpoch);
+        var second = Completed("bbbbbbbbbbbb", "song-b", DateTime.UnixEpoch.AddSeconds(1));
+        mock.Mock<IShareRequestRepository>().Setup(x => x.GetByShareIdsAsync(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>())).ReturnsAsync([first, second]);
+        mock.Mock<ISongRepository>().Setup(x => x.GetByIdsAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>())).ReturnsAsync([new Song { Id = "song-a", Status = SongStatus.Resolved }, new Song { Id = "song-b", Status = SongStatus.Resolved }]);
+        var evidence = new List<SongServiceLink> { Link("song-a", ServiceType.Spotify, "track"), Link("song-b", ServiceType.Spotify, "track") };
+        mock.Mock<ISongServiceLinkRepository>().Setup(x => x.GetBySongIdsAsync(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>())).ReturnsAsync(evidence);
+        var sut = new DuplicateShareReconciliationService(mock.Mock<IShareRequestRepository>().Object, mock.Mock<ISongServiceLinkRepository>().Object, mock.Mock<ISongRepository>().Object, NullLogger<DuplicateShareReconciliationService>.Instance);
+
+        var dryRun = await sut.ReconcileAsync(new(first.ShareId, second.ShareId, null, DuplicateShareReconciliationMode.DryRun, null), CancellationToken.None);
+        evidence[1].ServiceSongId = "changed-track";
+        var apply = await sut.ReconcileAsync(new(first.ShareId, second.ShareId, null, DuplicateShareReconciliationMode.Apply, dryRun.Fingerprint), CancellationToken.None);
+
+        apply.Success.Should().BeFalse();
+        mock.Mock<IShareRequestRepository>().Verify(x => x.TryReconcileAsync(It.IsAny<ReconciliationWrite>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     private static ShareRequest Completed(string shareId, string songId, DateTime createdAt) => new() { ShareId = shareId, SongId = songId, Status = ShareStatus.Completed, CreatedAt = createdAt, SourceService = ServiceType.Spotify };
     private static SongServiceLink Link(string songId, ServiceType service, string identity) => new() { SongId = songId, ServiceType = service, ServiceSongId = identity, OriginalUrl = "https://example.test", NormalizedUrl = "https://example.test" };
 }

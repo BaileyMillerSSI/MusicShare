@@ -3,6 +3,9 @@ import { timingSafeEqual } from 'node:crypto';
 
 const shareId = /^[a-f0-9]{12}$/;
 const fingerprint = /^[a-f0-9]{64}$/;
+const operationId = /^reconcile-[a-f0-9]{64}$/;
+const maximumProviderIdLength = 256;
+const maximumErrorLength = 512;
 
 function validBody(body: unknown): body is { firstShareId: string; secondShareId: string; canonicalShareId?: string; mode: 'dry-run' | 'apply'; fingerprint?: string } {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return false;
@@ -26,10 +29,44 @@ function project(payload: unknown): Record<string, unknown> | null {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
   const value = payload as Record<string, unknown>;
   if (typeof value.success !== 'boolean' || typeof value.changed !== 'boolean') return null;
-  const result: Record<string, unknown> = { success: value.success, changed: value.changed };
-  for (const key of ['error', 'operationId', 'fingerprint', 'canonicalShareId', 'aliasShareId']) if (typeof value[key] === 'string') result[key] = value[key];
-  if (Array.isArray(value.sharedIdentities) && value.sharedIdentities.length <= 8 && value.sharedIdentities.every(x => x && typeof x === 'object' && typeof (x as Record<string, unknown>).serviceType === 'number' && typeof (x as Record<string, unknown>).serviceSongId === 'string')) result.sharedIdentities = value.sharedIdentities.map(x => ({ serviceType: (x as Record<string, unknown>).serviceType, serviceSongId: (x as Record<string, unknown>).serviceSongId }));
-  return result;
+  if (value.changed && !value.success) return null;
+  const countValue = value.affectedShareCount;
+  if (!Number.isSafeInteger(countValue) || typeof countValue !== 'number') return null;
+  const count = countValue;
+  if (count < 0 || count > 2 || (value.success && count !== 2) || (!value.success && count !== 0)) return null;
+  if (value.success) {
+    if (typeof value.operationId !== 'string' || !operationId.test(value.operationId) ||
+        typeof value.fingerprint !== 'string' || !fingerprint.test(value.fingerprint) ||
+        typeof value.canonicalShareId !== 'string' || !shareId.test(value.canonicalShareId) ||
+        typeof value.aliasShareId !== 'string' || !shareId.test(value.aliasShareId) ||
+        value.canonicalShareId === value.aliasShareId || !Array.isArray(value.sharedIdentities) ||
+        value.sharedIdentities.length < 1 || value.sharedIdentities.length > 6 ||
+        !value.sharedIdentities.every(identity => validIdentity(identity))) return null;
+    return {
+      success: true, changed: value.changed, affectedShareCount: count, operationId: value.operationId,
+      fingerprint: value.fingerprint, canonicalShareId: value.canonicalShareId, aliasShareId: value.aliasShareId,
+      sharedIdentities: value.sharedIdentities.map(identity => {
+        const item = identity as Record<string, unknown>;
+        return { serviceType: item.serviceType, serviceSongId: item.serviceSongId };
+      }),
+    };
+  }
+  if (typeof value.error !== 'string' || !validText(value.error, maximumErrorLength)) return null;
+  return { success: false, changed: false, affectedShareCount: 0, error: value.error };
+}
+
+function validIdentity(value: unknown): boolean {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const identity = value as Record<string, unknown>;
+  return typeof identity.serviceType === 'number' && Number.isSafeInteger(identity.serviceType) && identity.serviceType >= 1 && identity.serviceType <= 3 &&
+    typeof identity.serviceSongId === 'string' && validText(identity.serviceSongId, maximumProviderIdLength);
+}
+
+function validText(value: string, maximumLength: number): boolean {
+  return value.length > 0 && value.length <= maximumLength && [...value].every(character => {
+    const code = character.charCodeAt(0);
+    return code > 31 && code !== 127;
+  });
 }
 
 export async function POST(request: Request) {

@@ -58,9 +58,11 @@ jobs:
           curl --fail-with-body --silent --show-error --max-time 15 \
             -H 'content-type: application/json' -H "X-MAINTENANCE-KEY: $MAINTENANCE_SECRET" \
             --data "$payload" https://music.baileymiller.dev/api/maintenance/duplicate-shares | tee reconciliation-result.json
-          jq '{success,changed,operationId,fingerprint,canonicalShareId,aliasShareId,sharedIdentities,error}' reconciliation-result.json >> "$GITHUB_STEP_SUMMARY"
+          jq '{success,changed,affectedShareCount,operationId,fingerprint,canonicalShareId,aliasShareId,sharedIdentities,error}' reconciliation-result.json | tee reconciliation-evidence.json >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
           name: reconciliation-result
-          path: reconciliation-result.json
+          path: |
+            reconciliation-result.json
+            reconciliation-evidence.json
           if-no-files-found: error
