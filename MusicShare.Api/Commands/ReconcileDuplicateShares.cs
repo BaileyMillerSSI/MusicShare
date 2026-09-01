@@ -26,7 +26,9 @@ public static class ReconcileDuplicateShares
                 return Response.Failure("Mode must be dry-run or apply.");
             var result = await reconciliation.ReconcileAsync(new(request.FirstShareId, request.SecondShareId, request.CanonicalShareId, mode.Value, request.Fingerprint), cancellationToken);
             if (!result.Success) return Response.From(result);
-            if (mode == DuplicateShareReconciliationMode.Apply && result.Changed)
+            // These operations are idempotent. Run them for a successful retry even when the
+            // durable alias was already written before a previous follow-up failed.
+            if (mode == DuplicateShareReconciliationMode.Apply)
             {
                 await revalidation.RevalidateShareAsync(result.CanonicalShareId!);
                 await revalidation.RevalidateShareAsync(result.AliasShareId!);

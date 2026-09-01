@@ -19,9 +19,17 @@ describe('POST /api/maintenance/duplicate-shares', () => {
   });
 
   it('forwards only a validated fixed reconciliation request', async () => {
-    vi.mocked(global.fetch).mockResolvedValue(new Response(JSON.stringify({ success: true, changed: false }), { status: 200 }));
+    vi.mocked(global.fetch).mockResolvedValue(new Response(JSON.stringify({ success: true, changed: false, internalDetail: 'must not escape' }), { status: 200 }));
     const response = await POST(request(valid));
     expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ success: true, changed: false });
     expect(global.fetch).toHaveBeenCalledWith('http://api.internal/internal/maintenance/duplicate-shares/reconcile', expect.objectContaining({ method: 'POST', headers: expect.objectContaining({ 'X-MAINTENANCE-KEY': secret }) }));
+  });
+
+  it('rejects coercible values and malformed backend responses', async () => {
+    expect((await POST(request({ ...valid, firstShareId: { toString: () => 'aaaaaaaaaaaa' } }))).status).toBe(400);
+    expect((await POST(request({ ...valid, canonicalShareId: 1 }))).status).toBe(400);
+    vi.mocked(global.fetch).mockResolvedValue(new Response(JSON.stringify({ success: 'true', changed: false }), { status: 200 }));
+    expect((await POST(request(valid))).status).toBe(400);
   });
 });

@@ -17,7 +17,8 @@ public class DuplicateShareReconciliationServiceTests
         mock.Mock<IShareRequestRepository>().Setup(x => x.GetByShareIdsAsync(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>())).ReturnsAsync([first, second]);
         mock.Mock<ISongServiceLinkRepository>().Setup(x => x.GetBySongIdsAsync(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>())).ReturnsAsync([
             Link("song-a", ServiceType.Spotify, "track"), Link("song-b", ServiceType.Spotify, "track")]);
-        var sut = new DuplicateShareReconciliationService(mock.Mock<IShareRequestRepository>().Object, mock.Mock<ISongServiceLinkRepository>().Object, NullLogger<DuplicateShareReconciliationService>.Instance);
+        mock.Mock<ISongRepository>().Setup(x => x.GetByIdsAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>())).ReturnsAsync([new Song { Id = "song-a" }, new Song { Id = "song-b" }]);
+        var sut = new DuplicateShareReconciliationService(mock.Mock<IShareRequestRepository>().Object, mock.Mock<ISongServiceLinkRepository>().Object, mock.Mock<ISongRepository>().Object, NullLogger<DuplicateShareReconciliationService>.Instance);
 
         var result = await sut.ReconcileAsync(new(first.ShareId, second.ShareId, null, DuplicateShareReconciliationMode.DryRun, null), CancellationToken.None);
 
@@ -37,7 +38,8 @@ public class DuplicateShareReconciliationServiceTests
         mock.Mock<IShareRequestRepository>().Setup(x => x.GetByShareIdsAsync(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>())).ReturnsAsync([first, second]);
         mock.Mock<ISongServiceLinkRepository>().Setup(x => x.GetBySongIdsAsync(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>())).ReturnsAsync([
             Link("song-a", ServiceType.Spotify, "one"), Link("song-b", ServiceType.Spotify, "two")]);
-        var sut = new DuplicateShareReconciliationService(mock.Mock<IShareRequestRepository>().Object, mock.Mock<ISongServiceLinkRepository>().Object, NullLogger<DuplicateShareReconciliationService>.Instance);
+        mock.Mock<ISongRepository>().Setup(x => x.GetByIdsAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>())).ReturnsAsync([new Song { Id = "song-a" }, new Song { Id = "song-b" }]);
+        var sut = new DuplicateShareReconciliationService(mock.Mock<IShareRequestRepository>().Object, mock.Mock<ISongServiceLinkRepository>().Object, mock.Mock<ISongRepository>().Object, NullLogger<DuplicateShareReconciliationService>.Instance);
 
         var result = await sut.ReconcileAsync(new(first.ShareId, second.ShareId, null, DuplicateShareReconciliationMode.DryRun, null), CancellationToken.None);
 

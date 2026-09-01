@@ -87,8 +87,11 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
 
     public async Task<ReconciliationWriteResult> TryReconcileAsync(ReconciliationWrite write, CancellationToken cancellationToken = default)
     {
-        var canonical = await GetByShareIdAsync(write.CanonicalShareId, cancellationToken);
-        var alias = await GetByShareIdAsync(write.AliasShareId, cancellationToken);
+        using var session = await context.Database.Client.StartSessionAsync(cancellationToken: cancellationToken);
+        return await session.WithTransactionAsync<ReconciliationWriteResult>(async (transactionSession, token) =>
+        {
+        var canonical = await _requests.Find(transactionSession, Builders<ShareRequest>.Filter.Eq(x => x.ShareId, write.CanonicalShareId)).FirstOrDefaultAsync(token);
+        var alias = await _requests.Find(transactionSession, Builders<ShareRequest>.Filter.Eq(x => x.ShareId, write.AliasShareId)).FirstOrDefaultAsync(token);
         if (canonical is null || alias is null || canonical.ShareId == alias.ShareId ||
             canonical.Status != ShareStatus.Completed || alias.Status != ShareStatus.Completed ||
             !string.IsNullOrEmpty(canonical.CanonicalShareId))
@@ -103,7 +106,7 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
 
         if (!string.IsNullOrEmpty(write.CanonicalSourceIdentityKey))
         {
-            var owner = await GetBySourceIdentityKeyAsync(write.CanonicalSourceIdentityKey, cancellationToken);
+            var owner = await _requests.Find(transactionSession, Builders<ShareRequest>.Filter.Eq(x => x.SourceIdentityKey, write.CanonicalSourceIdentityKey)).FirstOrDefaultAsync(token);
             if (owner is not null && owner.ShareId != canonical.ShareId)
                 return new(false, false, "The source identity belongs to another share.");
         }
@@ -116,16 +119,19 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
             .Set(x => x.CanonicalShareId, canonical.ShareId)
             .Set(x => x.ReconciledAt, DateTime.UtcNow)
             .Set(x => x.ReconciliationId, write.ReconciliationId);
-        var result = await _requests.UpdateOneAsync(filter, update, cancellationToken: cancellationToken);
+        var result = await _requests.UpdateOneAsync(transactionSession, filter, update, cancellationToken: token);
         if (result.ModifiedCount != 1) return new(false, false, "The reconciliation plan is stale.");
 
         if (!string.IsNullOrEmpty(write.CanonicalSourceIdentityKey) && string.IsNullOrEmpty(canonical.SourceIdentityKey))
         {
-            await _requests.UpdateOneAsync(
+            var identityResult = await _requests.UpdateOneAsync(transactionSession,
                 Builders<ShareRequest>.Filter.And(Builders<ShareRequest>.Filter.Eq(x => x.ShareId, canonical.ShareId), Builders<ShareRequest>.Filter.Eq(x => x.SourceIdentityKey, null)),
-                Builders<ShareRequest>.Update.Set(x => x.SourceIdentityKey, write.CanonicalSourceIdentityKey), cancellationToken: cancellationToken);
+                Builders<ShareRequest>.Update.Set(x => x.SourceIdentityKey, write.CanonicalSourceIdentityKey), cancellationToken: token);
+            if (identityResult.ModifiedCount != 1)
+                return new(false, false, "The canonical source identity changed during reconciliation.");
         }
         return new(true, true);
+        }, cancellationToken: cancellationToken);
     }
 
     public async Task<ShareRequest> InsertAsync(ShareRequest request, CancellationToken cancellationToken = default)
