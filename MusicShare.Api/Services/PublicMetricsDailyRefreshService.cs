@@ -4,10 +4,10 @@ using MusicShare.Services.Services;
 
 namespace MusicShare.Api.Services;
 
-/// <summary>Publishes a metrics rebuild at each Sunday 00:00 UTC boundary.</summary>
-public class PublicMetricsWeeklyRefreshService(
+/// <summary>Publishes a metrics rebuild at each UTC midnight boundary.</summary>
+public class PublicMetricsDailyRefreshService(
     IServiceScopeFactory scopeFactory,
-    ILogger<PublicMetricsWeeklyRefreshService> logger,
+    ILogger<PublicMetricsDailyRefreshService> logger,
     Func<DateTime>? utcNow = null,
     Func<TimeSpan, CancellationToken, Task>? delayAsync = null,
     TimeSpan? retryDelay = null) : BackgroundService
@@ -22,7 +22,7 @@ public class PublicMetricsWeeklyRefreshService(
         {
             try
             {
-                await _delayAsync(GetDelayUntilNextSundayUtc(_utcNow()), stoppingToken);
+                await _delayAsync(GetDelayUntilNextMidnightUtc(_utcNow()), stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -30,7 +30,7 @@ public class PublicMetricsWeeklyRefreshService(
             }
             catch (Exception exception)
             {
-                logger.LogWarning(exception, "Weekly public metrics refresh failed; retrying");
+                logger.LogWarning(exception, "Daily public metrics refresh failed; retrying");
                 await _delayAsync(_retryDelay, stoppingToken);
                 continue;
             }
@@ -48,7 +48,7 @@ public class PublicMetricsWeeklyRefreshService(
                 }
                 catch (Exception exception)
                 {
-                    logger.LogWarning(exception, "Weekly public metrics refresh failed; retrying");
+                    logger.LogWarning(exception, "Daily public metrics refresh failed; retrying");
 
                     try
                     {
@@ -63,12 +63,12 @@ public class PublicMetricsWeeklyRefreshService(
         }
     }
 
-    public static TimeSpan GetDelayUntilNextSundayUtc(DateTime utcNow)
+    public static TimeSpan GetDelayUntilNextMidnightUtc(DateTime utcNow)
     {
         if (utcNow.Kind != DateTimeKind.Utc)
             throw new ArgumentException("The current time must be UTC.", nameof(utcNow));
 
-        return PublicMetricsService.GetSundayStartUtc(utcNow).AddDays(7) - utcNow;
+        return utcNow.Date.AddDays(1) - utcNow;
     }
 
     private async Task PublishRefreshAsync(CancellationToken cancellationToken)

@@ -183,4 +183,4 @@ Show a PR or commit that was AI-generated.
 > Partially — the adapter is a mock because Apple doesn't have a public search API. The infrastructure is there for when they open one up.
 
 **"How much did Azure cost?"**
-> Minimal — the public frontend can scale to zero when idle, while the private API keeps one replica available for the Sunday UTC metrics refresh. That creates a small baseline cost, plus actual usage.
+> Minimal — the public frontend can scale to zero when idle, while the private API keeps one replica available for the daily UTC-midnight metrics refresh. That creates a small baseline cost, plus actual usage.

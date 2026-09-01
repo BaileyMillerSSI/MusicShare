@@ -45,7 +45,7 @@ export interface PublicMetricsResponse {
   generatedAt?: string;
   serviceCounts: PublicMetricsServiceCount[];
   recentSongs: PublicMetricsRecentSong[];
-  weeklyCompletedSongs?: PublicMetricsWeeklyCompletedSong[];
+  dailyCompletedSongs?: PublicMetricsDailyCompletedSong[];
 }
 
 export interface PublicMetricsServiceCount {
@@ -64,8 +64,8 @@ export interface PublicMetricsRecentSong {
   createdAt: string;
 }
 
-export interface PublicMetricsWeeklyCompletedSong {
-  weekStart: string;
+export interface PublicMetricsDailyCompletedSong {
+  dayStart: string;
   count: number;
 }
 
