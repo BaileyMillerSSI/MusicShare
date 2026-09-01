@@ -18,12 +18,13 @@ describe('MetricsPage', () => {
       { service: MusicServiceType.Spotify, count: 1 }, { service: MusicServiceType.YouTubeMusic, count: 1 },
     ], recentSongs: [{ songId: 'song-1', shareId: 'abc123def456', title: 'Song', artists: ['Artist'], sourceService: MusicServiceType.Spotify, createdAt: '2026-01-01T00:00:00Z' }] }) });
     render(await MetricsPage());
-    expect(screen.getByText('Completed songs')).toBeInTheDocument();
+    expect(screen.getByText('Songs')).toBeInTheDocument();
     expect(screen.getByText('Spotify links')).toBeInTheDocument();
     expect(screen.getByText('YouTube Music links')).toBeInTheDocument();
     expect(screen.queryByText('Apple Music')).not.toBeInTheDocument();
     expect(screen.queryByText(/source platform/i)).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /song/i })).toHaveAttribute('href', '/share/abc123def456');
+    expect(document.body.textContent).not.toContain('completed songs');
   });
 
   it('renders the current weekly change and simple weekly chart including zeroes', async () => {
@@ -36,11 +37,11 @@ describe('MetricsPage', () => {
     render(await MetricsPage());
 
     expect(screen.getByText('+3 this week')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Completed songs by week' })).toBeInTheDocument();
-    expect(screen.getByLabelText('2026-01-04 UTC: 0 completed songs')).toBeInTheDocument();
-    expect(screen.getByLabelText('2026-02-22 UTC: 3 completed songs')).toBeInTheDocument();
-    expect(screen.getByLabelText('2026-01-04 UTC: 0 completed songs').querySelector('[aria-hidden="true"]')).toHaveStyle({ height: '0%' });
-    expect(screen.getByLabelText('2026-01-11 UTC: 2 completed songs').querySelector('[aria-hidden="true"]')).toHaveStyle({ height: '67%' });
+    expect(screen.getByRole('heading', { name: 'Songs by week' })).toBeInTheDocument();
+    expect(screen.getByLabelText('2026-01-04 UTC: 0 songs')).toBeInTheDocument();
+    expect(screen.getByLabelText('2026-02-22 UTC: 3 songs')).toBeInTheDocument();
+    expect(screen.getByLabelText('2026-01-04 UTC: 0 songs').querySelector('[aria-hidden="true"]')).toHaveStyle({ height: '0%' });
+    expect(screen.getByLabelText('2026-01-11 UTC: 2 songs').querySelector('[aria-hidden="true"]')).toHaveStyle({ height: '67%' });
   });
 
   it('supports snapshots created before weekly metrics were stored', async () => {
@@ -53,7 +54,7 @@ describe('MetricsPage', () => {
   it('renders a safe empty state when the internal API is unavailable', async () => {
     fetchMock.mockRejectedValue(new Error('offline'));
     render(await MetricsPage());
-    expect(screen.getByText(/no completed songs yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/no songs yet/i)).toBeInTheDocument();
   });
 
   it('preserves backend newest-first order and caps the rendered list at 20', async () => {
@@ -74,9 +75,9 @@ describe('MetricsPage', () => {
     render(await MetricsPage());
 
     expect(screen.getAllByText('0')).toHaveLength(5);
-    expect(screen.getByLabelText('2026-01-04 UTC: 0 completed songs')).toBeInTheDocument();
+    expect(screen.getByLabelText('2026-01-04 UTC: 0 songs')).toBeInTheDocument();
     await expect(generateMetadata()).resolves.toMatchObject({
-      description: '0 completed songs, 0 Spotify links, 0 YouTube Music links, and 0 completed this week.',
+      description: '0 songs, 0 Spotify links, 0 YouTube Music links, and 0 completed this week.',
     });
   });
 
@@ -87,13 +88,13 @@ describe('MetricsPage', () => {
   ])('renders a safe empty state for malformed successful payloads', async (payload) => {
     fetchMock.mockResolvedValue({ ok: true, json: async () => payload });
     render(await MetricsPage());
-    expect(screen.getByText(/no completed songs yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/no songs yet/i)).toBeInTheDocument();
   });
 
   it('renders a safe empty state for unsuccessful responses', async () => {
     fetchMock.mockResolvedValue({ ok: false });
     render(await MetricsPage());
-    expect(screen.getByText(/no completed songs yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/no songs yet/i)).toBeInTheDocument();
   });
 
   it('generates factual, versioned canonical social metadata for a valid snapshot', async () => {
@@ -104,9 +105,9 @@ describe('MetricsPage', () => {
     const openGraphImages = metadata.openGraph?.images;
     const image = (Array.isArray(openGraphImages) ? openGraphImages[0] : openGraphImages) as { url?: string; width?: number; height?: number; type?: string; alt?: string };
     expect(metadata.alternates?.canonical).toBe('https://music.baileymiller.dev/metrics');
-    expect(metadata.description).toBe('289 completed songs, 289 Spotify links, 268 YouTube Music links, and 6 completed this week.');
+    expect(metadata.description).toBe('289 songs, 289 Spotify links, 268 YouTube Music links, and 6 completed this week.');
     expect(metadata.openGraph).toMatchObject({ type: 'website', url: 'https://music.baileymiller.dev/metrics', siteName: 'MusicShare' });
-    expect(image).toMatchObject({ width: 1200, height: 630, type: 'image/png', alt: 'MusicShare metrics: 289 completed songs and 6 completed this week.' });
+    expect(image).toMatchObject({ width: 1200, height: 630, type: 'image/png', alt: 'MusicShare metrics: 289 songs and 6 completed this week.' });
     expect(image?.url).toBe('https://music.baileymiller.dev/metrics/share-image?v=2026-08-31T12%3A00%3A00.000Z-289-289-268-6');
     expect(metadata.twitter).toMatchObject({ card: 'summary_large_image', images: [image?.url] });
   });
@@ -118,6 +119,6 @@ describe('MetricsPage', () => {
     const openGraphImages = metadata.openGraph?.images;
     const image = (Array.isArray(openGraphImages) ? openGraphImages[0] : openGraphImages) as { url?: string };
     expect(image).toMatchObject({ url: 'https://music.baileymiller.dev/metrics/share-image?v=unavailable' });
-    expect(JSON.stringify(metadata)).not.toContain('0 completed songs');
+    expect(JSON.stringify(metadata)).not.toContain('0 songs');
   });
 });

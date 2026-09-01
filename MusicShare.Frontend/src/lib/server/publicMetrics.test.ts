@@ -35,7 +35,7 @@ describe('public metrics boundary', () => {
   it('derives factual sharing values and changes its version when displayed data changes', () => {
     expect(summarizePublicMetrics(snapshot)).toEqual({ completedSongs: 4, spotifyLinks: 3, youTubeMusicLinks: 2, thisWeekCompletedSongs: 1 });
     expect(previewVersion(snapshot)).not.toBe(previewVersion({ ...snapshot, totalCompletedSongs: 5 }));
-    expect(metricsShareCopy({ available: true, metrics: snapshot }).description).toContain('4 completed songs');
+    expect(metricsShareCopy({ available: true, metrics: snapshot }).description).toContain('4 songs');
     expect(metricsShareCopy({ available: false, metrics: snapshot }).description).not.toMatch(/\d/);
     expect(resolvePublicMetricsApiOrigin({ services__api__http__0: 'http://api.internal' })).toBe('http://api.internal');
   });
