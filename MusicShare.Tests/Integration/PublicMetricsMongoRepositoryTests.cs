@@ -171,6 +171,105 @@ public class PublicMetricsMongoRepositoryTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ItWillPermitOnlyNewerReconciliationAuthorizedMetricDecreases()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var repository = new PublicMetricsSnapshotRepository(new TestDbContext(_database));
+
+        (await repository.TryReplaceAsync(Snapshot(3, 10), cancellationToken)).Should().BeTrue();
+        (await repository.TryReplaceAsync(Snapshot(2, 11), cancellationToken)).Should().BeFalse("ordinary refreshes are non-decreasing");
+        (await repository.TryReplaceAsync(Snapshot(2, 11), cancellationToken, allowReconciliationDecrease: true)).Should().BeTrue();
+        (await repository.TryReplaceAsync(Snapshot(1, 10), cancellationToken, allowReconciliationDecrease: true)).Should().BeFalse("authorized candidates are still version ordered");
+        (await repository.GetAsync(cancellationToken)).Should().Match<PublicMetricsSnapshot>(x =>
+            x.TotalCompletedSongs == 2 && x.SnapshotVersion == 11 && x.ReconciliationDecreaseVersionFloor == 11);
+        (await repository.TryReplaceAsync(Snapshot(3, 12), cancellationToken)).Should().BeTrue("a later completion may increase the total");
+        (await repository.GetAsync(cancellationToken)).Should().Match<PublicMetricsSnapshot>(x =>
+            x.TotalCompletedSongs == 3 && x.SnapshotVersion == 12 && x.ReconciliationDecreaseVersionFloor == 11);
+    }
+
+    [Fact]
+    public async Task ItWillRejectAnOlderAuthorizedDecreaseAfterANewerCompletionSnapshot()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var repository = new PublicMetricsSnapshotRepository(new TestDbContext(_database));
+
+        (await repository.TryReplaceAsync(Snapshot(5, 20), cancellationToken)).Should().BeTrue();
+        (await repository.TryReplaceAsync(Snapshot(6, 22), cancellationToken)).Should().BeTrue("the newer completion refresh wins");
+        (await repository.TryReplaceAsync(Snapshot(4, 21), cancellationToken, allowReconciliationDecrease: true)).Should().BeFalse();
+        (await repository.GetAsync(cancellationToken)).Should().Match<PublicMetricsSnapshot>(x => x.TotalCompletedSongs == 6 && x.SnapshotVersion == 22);
+    }
+
+    [Fact]
+    public async Task ItWillRejectAnOlderAuthorizedDecreaseRacedByANewerCompletionRefresh()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var context = new TestDbContext(_database);
+        var canonicalSong = ObjectId.GenerateNewId().ToString();
+        var aliasSong = ObjectId.GenerateNewId().ToString();
+        var completionSong = ObjectId.GenerateNewId().ToString();
+        var now = DateTime.UtcNow;
+        await _database.GetCollection<BsonDocument>("requests").InsertManyAsync([
+            RequestDocument(canonicalSong, "aaaaaaaaaaaa", ServiceType.Spotify, now),
+            RequestDocument(aliasSong, "bbbbbbbbbbbb", ServiceType.Spotify, now, canonicalShareId: "aaaaaaaaaaaa")
+        ], cancellationToken: cancellationToken);
+        var snapshots = new PublicMetricsSnapshotRepository(context);
+        (await snapshots.TryReplaceAsync(Snapshot(2, 0), cancellationToken)).Should().BeTrue();
+
+        var delayedRequests = new DelayedAfterRecentReadRepository(new ShareRequestRepository(context));
+        var olderAuthorizedRefresh = new PublicMetricsService(delayedRequests, new SongServiceLinkRepository(context), new SongRepository(context), snapshots)
+            .RefreshAsync(cancellationToken, allowReconciliationDecrease: true);
+        await delayedRequests.RecentRead.WaitAsync(cancellationToken);
+
+        await _database.GetCollection<BsonDocument>("requests").InsertOneAsync(
+            RequestDocument(completionSong, "cccccccccccc", ServiceType.Spotify, now.AddSeconds(1)),
+            cancellationToken: cancellationToken);
+        var newerCompletion = await new PublicMetricsService(new ShareRequestRepository(context), new SongServiceLinkRepository(context), new SongRepository(context), snapshots)
+            .RefreshAsync(cancellationToken);
+        delayedRequests.Release();
+        var olderAuthorized = await olderAuthorizedRefresh;
+
+        newerCompletion.Accepted.Should().BeTrue();
+        olderAuthorized.Accepted.Should().BeFalse();
+        (await snapshots.GetAsync(cancellationToken)).Should().Match<PublicMetricsSnapshot>(x =>
+            x.TotalCompletedSongs == 2 && x.SnapshotVersion == 2);
+    }
+
+    [Fact]
+    public async Task ItWillNotLetAPreReconciliationOrdinaryRefreshRestoreTheDuplicateTotal()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var context = new TestDbContext(_database);
+        var canonicalSong = ObjectId.GenerateNewId().ToString();
+        var aliasSong = ObjectId.GenerateNewId().ToString();
+        var now = DateTime.UtcNow;
+        await _database.GetCollection<BsonDocument>("requests").InsertManyAsync([
+            RequestDocument(canonicalSong, "aaaaaaaaaaaa", ServiceType.Spotify, now),
+            RequestDocument(aliasSong, "bbbbbbbbbbbb", ServiceType.Spotify, now)
+        ], cancellationToken: cancellationToken);
+        var snapshots = new PublicMetricsSnapshotRepository(context);
+        (await snapshots.TryReplaceAsync(Snapshot(2, 0), cancellationToken)).Should().BeTrue();
+
+        var delayedRequests = new DelayedAfterRecentReadRepository(new ShareRequestRepository(context));
+        var preReconciliationRefresh = new PublicMetricsService(delayedRequests, new SongServiceLinkRepository(context), new SongRepository(context), snapshots)
+            .RefreshAsync(cancellationToken);
+        await delayedRequests.RecentRead.WaitAsync(cancellationToken);
+
+        await _database.GetCollection<BsonDocument>("requests").UpdateOneAsync(
+            Builders<BsonDocument>.Filter.Eq("shareId", "bbbbbbbbbbbb"),
+            Builders<BsonDocument>.Update.Set("canonicalShareId", "aaaaaaaaaaaa"),
+            cancellationToken: cancellationToken);
+        var reconciliationRefresh = await new PublicMetricsService(new ShareRequestRepository(context), new SongServiceLinkRepository(context), new SongRepository(context), snapshots)
+            .RefreshAsync(cancellationToken, allowReconciliationDecrease: true);
+        delayedRequests.Release();
+        var preReconciliation = await preReconciliationRefresh;
+
+        reconciliationRefresh.Accepted.Should().BeTrue();
+        preReconciliation.Accepted.Should().BeFalse();
+        (await snapshots.GetAsync(cancellationToken)).Should().Match<PublicMetricsSnapshot>(x =>
+            x.TotalCompletedSongs == 1 && x.SnapshotVersion == 2 && x.ReconciliationDecreaseVersionFloor == 2);
+    }
+
+    [Fact]
     public async Task ItWillAcceptOnlyOneOfConcurrentDuplicateCandidates()
     {
         var cancellationToken = TestContext.Current.CancellationToken;

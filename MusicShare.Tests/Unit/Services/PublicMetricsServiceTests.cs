@@ -54,7 +54,7 @@ public class PublicMetricsServiceTests
         mock.Mock<IShareRequestRepository>().Setup(x => x.GetRecentCompletedDistinctAsync(20, It.IsAny<CancellationToken>())).ReturnsAsync(requests.Take(20).ToList());
         mock.Mock<ISongRepository>().Setup(x => x.GetByIdsAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(requests.Select(x => new Song { Id = x.SongId, Title = x.SongId, Artists = ["Artist"] }).ToList());
-        mock.Mock<IPublicMetricsSnapshotRepository>().Setup(x => x.TryReplaceAsync(It.IsAny<PublicMetricsSnapshot>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        mock.Mock<IPublicMetricsSnapshotRepository>().Setup(x => x.TryReplaceAsync(It.IsAny<PublicMetricsSnapshot>(), It.IsAny<CancellationToken>(), false)).ReturnsAsync(true);
         var result = await mock.Create<PublicMetricsService>().RefreshAsync(TestContext.Current.CancellationToken);
         result.Accepted.Should().BeTrue();
         result.Snapshot.RecentSongs.Should().HaveCount(20);
@@ -75,7 +75,7 @@ public class PublicMetricsServiceTests
         mock.Mock<IShareRequestRepository>().Setup(x => x.GetRecentCompletedDistinctAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([new CompletedShareRequest("song", "share", (ServiceType)999, DateTime.UtcNow)]);
         mock.Mock<ISongRepository>().Setup(x => x.GetByIdsAsync(It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
-        mock.Mock<IPublicMetricsSnapshotRepository>().Setup(x => x.TryReplaceAsync(It.IsAny<PublicMetricsSnapshot>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        mock.Mock<IPublicMetricsSnapshotRepository>().Setup(x => x.TryReplaceAsync(It.IsAny<PublicMetricsSnapshot>(), It.IsAny<CancellationToken>(), false)).ReturnsAsync(true);
 
         var result = await mock.Create<PublicMetricsService>().RefreshAsync(TestContext.Current.CancellationToken);
 
@@ -97,7 +97,7 @@ public class PublicMetricsServiceTests
         mock.Mock<IShareRequestRepository>().Setup(x => x.GetCompletedDistinctSongCountsByDayAsync(
             currentDay.AddDays(-6), currentDay.AddDays(1), It.IsAny<CancellationToken>()))
             .ReturnsAsync([new DailyCompletedSongCount(currentDay, 3)]);
-        mock.Mock<IPublicMetricsSnapshotRepository>().Setup(x => x.TryReplaceAsync(It.IsAny<PublicMetricsSnapshot>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        mock.Mock<IPublicMetricsSnapshotRepository>().Setup(x => x.TryReplaceAsync(It.IsAny<PublicMetricsSnapshot>(), It.IsAny<CancellationToken>(), false)).ReturnsAsync(true);
 
         var result = await mock.Create<PublicMetricsService>().RefreshAsync(TestContext.Current.CancellationToken);
 
@@ -113,5 +113,21 @@ public class PublicMetricsServiceTests
             .Should().Be(new DateTime(2026, 1, 10, 0, 0, 0, DateTimeKind.Utc));
         Action action = () => PublicMetricsService.GetDayStartUtc(DateTime.Now);
         action.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public async Task ItWillPassReconciliationDecreaseAuthorizationToSnapshotPersistence()
+    {
+        using var mock = AutoMock.GetLoose();
+        mock.Mock<IPublicMetricsSnapshotRepository>()
+            .Setup(x => x.TryReplaceAsync(It.IsAny<PublicMetricsSnapshot>(), It.IsAny<CancellationToken>(), true))
+            .ReturnsAsync(true);
+
+        var result = await mock.Create<PublicMetricsService>().RefreshAsync(
+            TestContext.Current.CancellationToken, allowReconciliationDecrease: true);
+
+        result.Accepted.Should().BeTrue();
+        mock.Mock<IPublicMetricsSnapshotRepository>().Verify(
+            x => x.TryReplaceAsync(It.IsAny<PublicMetricsSnapshot>(), It.IsAny<CancellationToken>(), true), Times.Once);
     }
 }

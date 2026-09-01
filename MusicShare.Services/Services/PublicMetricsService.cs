@@ -20,7 +20,9 @@ public class PublicMetricsService(
         return snapshot is null ? PublicMetricsResponse.Empty() : Map(snapshot);
     }
 
-    public async Task<PublicMetricsRefreshResult> RefreshAsync(CancellationToken cancellationToken = default)
+    public async Task<PublicMetricsRefreshResult> RefreshAsync(
+        CancellationToken cancellationToken = default,
+        bool allowReconciliationDecrease = false)
     {
         var generatedAt = DateTime.UtcNow;
         var currentDayStart = GetDayStartUtc(generatedAt);
@@ -55,7 +57,7 @@ public class PublicMetricsService(
                 return new PublicMetricsDailyCompletedSong { DayStart = dayStart, Count = dailyCounts.FirstOrDefault(x => x.DayStart == dayStart)?.Count ?? 0 };
             }).ToList()
         };
-        var accepted = await snapshots.TryReplaceAsync(candidate, cancellationToken);
+        var accepted = await snapshots.TryReplaceAsync(candidate, cancellationToken, allowReconciliationDecrease);
         return new PublicMetricsRefreshResult(accepted, Map(candidate));
     }
 

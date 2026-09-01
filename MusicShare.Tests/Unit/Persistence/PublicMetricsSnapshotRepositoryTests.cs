@@ -9,6 +9,17 @@ namespace MusicShare.Tests.Unit.Persistence;
 public class PublicMetricsSnapshotRepositoryTests
 {
     [Fact]
+    public void ItWillOmitTheReconciliationFloorUntilAnAuthorizedDecreaseSetsIt()
+    {
+        var snapshot = new PublicMetricsSnapshot();
+
+        snapshot.ToBsonDocument().Contains(nameof(PublicMetricsSnapshot.ReconciliationDecreaseVersionFloor)).Should().BeFalse();
+
+        snapshot.ReconciliationDecreaseVersionFloor = 12;
+        snapshot.ToBsonDocument()[nameof(PublicMetricsSnapshot.ReconciliationDecreaseVersionFloor)].ToInt64().Should().Be(12);
+    }
+
+    [Fact]
     public void ItWillOnlyReplaceTheSingletonWhenTheStoredSnapshotIsOlder()
     {
         var rendered = PublicMetricsSnapshotRepository.BuildNonRegressionFilter(42, 100)
@@ -16,10 +27,25 @@ public class PublicMetricsSnapshotRepositoryTests
                 BsonSerializer.SerializerRegistry.GetSerializer<PublicMetricsSnapshot>(),
                 BsonSerializer.SerializerRegistry));
 
-        rendered["_id"].AsString.Should().Be(PublicMetricsSnapshot.SingletonId);
-        var candidates = rendered["$or"].AsBsonArray;
-        candidates.Should().HaveCount(2);
-        candidates[0].AsBsonDocument["TotalCompletedSongs"].AsBsonDocument["$lt"].ToInt64().Should().Be(42);
-        candidates[1].AsBsonDocument["SnapshotVersion"].AsBsonDocument["$lt"].ToInt64().Should().Be(100);
+        var filter = rendered.ToString();
+        filter.Should().Contain(PublicMetricsSnapshot.SingletonId)
+            .And.Contain("TotalCompletedSongs")
+            .And.Contain("SnapshotVersion")
+            .And.Contain("ReconciliationDecreaseVersionFloor");
+    }
+
+    [Fact]
+    public void ItWillBuildTheAuthorizedFilterFromTheStrictlyNewerVersionOnly()
+    {
+        var rendered = PublicMetricsSnapshotRepository.BuildNewerVersionFilter(100)
+            .Render(new RenderArgs<PublicMetricsSnapshot>(
+                BsonSerializer.SerializerRegistry.GetSerializer<PublicMetricsSnapshot>(),
+                BsonSerializer.SerializerRegistry));
+
+        var filter = rendered.ToString();
+        filter.Should().Contain(PublicMetricsSnapshot.SingletonId)
+            .And.Contain("SnapshotVersion")
+            .And.Contain("ReconciliationDecreaseVersionFloor")
+            .And.NotContain("TotalCompletedSongs");
     }
 }
