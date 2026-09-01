@@ -39,11 +39,11 @@ describe('MetricsPage', () => {
     expect(screen.getByText('+6 in the last 7 days')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Songs added in the last 7 days' })).toBeInTheDocument();
     expect(screen.getByText('Days use UTC calendar boundaries.')).toBeInTheDocument();
-    const  dailyChart = screen.getByRole('list', { name: /songs added in the last 7 days, utc calendar days/i });
-    const [firstBucket, secondBucket] = Array.from( dailyChart.querySelectorAll('li'));
-    expect(firstBucket?.querySelector('time')).toHaveAttribute('dateTime', '2026-01-04T00:00:00Z');
+    const dailyChart = screen.getByRole('list', { name: /songs added in the last 7 days, utc calendar days/i });
+    const [firstBucket, secondBucket] = Array.from(dailyChart.querySelectorAll('li'));
+    expect(screen.getByText('01-04')).toHaveAttribute('dateTime', '2026-01-04T00:00:00Z');
     expect(firstBucket?.querySelector('[aria-hidden="true"]')).toHaveStyle({ height: '0%' });
-    expect(secondBucket?.querySelector('time')).toHaveAttribute('dateTime', '2026-01-05T00:00:00Z');
+    expect(screen.getByText('01-05')).toHaveAttribute('dateTime', '2026-01-05T00:00:00Z');
     expect(secondBucket?.querySelector('[aria-hidden="true"]')).toHaveStyle({ height: '67%' });
     expect(screen.getByText('Today')).toBeInTheDocument();
   });
@@ -82,9 +82,9 @@ describe('MetricsPage', () => {
     render(await MetricsPage());
 
     expect(screen.getAllByText('0')).toHaveLength(10);
-    const  dailyChart = screen.getByRole('list', { name: /songs added in the last 7 days, utc calendar days/i });
+    const dailyChart = screen.getByRole('list', { name: /songs added in the last 7 days, utc calendar days/i });
     expect(dailyChart.querySelectorAll('li')).toHaveLength(7);
-    expect(dailyChart.querySelector('li time')).toHaveAttribute('dateTime', '2026-01-04T00:00:00Z');
+    expect(screen.getByText('01-04')).toHaveAttribute('dateTime', '2026-01-04T00:00:00Z');
     await expect(generateMetadata()).resolves.toMatchObject({
       description: '0 songs, 0 Spotify links, 0 YouTube Music links, and 0 added in the last 7 days.',
     });

@@ -13,8 +13,11 @@ describe('DailySongAdditionsChart', () => {
     expect(screen.getByText('Days use UTC calendar boundaries.')).toBeInTheDocument();
     const graph = screen.getByRole('list', { name: /songs added in the last 7 days, utc calendar days/i });
     expect(graph.querySelectorAll('li')).toHaveLength(7);
+    expect(screen.getAllByTestId('daily-chart-frame')).toHaveLength(1);
+    expect(graph.querySelectorAll('[aria-hidden="true"]')).toHaveLength(7);
     expect(screen.getByLabelText('2026-01-04 UTC: 0 songs added')).toBeInTheDocument();
     expect(screen.getByLabelText('Today, 2026-01-10 UTC: 0 songs added')).toBeInTheDocument();
+    expect(screen.getByText('01-10')).toBeInTheDocument();
     expect(screen.getByText('Today')).toBeInTheDocument();
     expect(graph.querySelector('[aria-hidden="true"]')).toHaveStyle({ height: '0%' });
   });
