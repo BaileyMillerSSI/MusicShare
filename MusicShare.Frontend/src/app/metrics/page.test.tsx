@@ -4,11 +4,15 @@ import { MusicServiceType } from '../../lib/api';
 
 const fetchMock = vi.fn();
 vi.stubGlobal('fetch', fetchMock);
-const { default: MetricsPage, metadata } = await import('./page');
+const { default: MetricsPage, dynamic, metadata } = await import('./page');
 
 afterEach(() => vi.clearAllMocks());
 
 describe('MetricsPage', () => {
+  it('is rendered from the internal metrics snapshot at request time', () => {
+    expect(dynamic).toBe('force-dynamic');
+  });
+
   it('renders resolved platform link counts and canonical share links', async () => {
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({ totalCompletedSongs: 1, serviceCounts: [
       { service: MusicServiceType.Spotify, count: 1 }, { service: MusicServiceType.YouTubeMusic, count: 1 },

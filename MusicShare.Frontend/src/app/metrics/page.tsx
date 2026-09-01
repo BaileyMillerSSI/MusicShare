@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { BreadstickFooter } from '../../components/BreadstickFooter';
 import { MusicServiceType, type PublicMetricsResponse } from '../../lib/api';
 
-export const revalidate = false;
+export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Music metrics', description: 'Recently shared music and resolved platform link counts.' };
 
 const services = [MusicServiceType.Spotify, MusicServiceType.YouTubeMusic];
