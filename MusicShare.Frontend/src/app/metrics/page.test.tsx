@@ -38,12 +38,14 @@ describe('MetricsPage', () => {
 
     expect(screen.getByText('+3 this week')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Songs by week' })).toBeInTheDocument();
-    const weeklyChart = screen.getByRole('list', { name: 'Songs by week, Sunday UTC start' });
+    expect(screen.getByText('Weeks use Sunday UTC boundaries. Historical date ranges adapt to your local calendar after the page loads.')).toBeInTheDocument();
+    const weeklyChart = screen.getByRole('list', { name: /songs by week, sunday utc boundaries/i });
     const [firstBucket, secondBucket] = Array.from(weeklyChart.querySelectorAll('li'));
     expect(firstBucket?.querySelector('time')).toHaveAttribute('dateTime', '2026-01-04T00:00:00Z');
     expect(firstBucket?.querySelector('[aria-hidden="true"]')).toHaveStyle({ height: '0%' });
     expect(secondBucket?.querySelector('time')).toHaveAttribute('dateTime', '2026-01-11T00:00:00Z');
     expect(secondBucket?.querySelector('[aria-hidden="true"]')).toHaveStyle({ height: '67%' });
+    expect(screen.getByText('This week')).toBeInTheDocument();
   });
 
   it('supports snapshots created before weekly metrics were stored', async () => {
@@ -77,7 +79,7 @@ describe('MetricsPage', () => {
     render(await MetricsPage());
 
     expect(screen.getAllByText('0')).toHaveLength(5);
-    const weeklyChart = screen.getByRole('list', { name: 'Songs by week, Sunday UTC start' });
+    const weeklyChart = screen.getByRole('list', { name: /songs by week, sunday utc boundaries/i });
     expect(weeklyChart.querySelector('li time')).toHaveAttribute('dateTime', '2026-01-04T00:00:00Z');
     await expect(generateMetadata()).resolves.toMatchObject({
       description: '0 songs, 0 Spotify links, 0 YouTube Music links, and 0 completed this week.',

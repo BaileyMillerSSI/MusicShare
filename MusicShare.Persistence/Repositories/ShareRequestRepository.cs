@@ -8,6 +8,7 @@ namespace MusicShare.Persistence.Repositories;
 public class ShareRequestRepository(IMusicShareDbContext context) : IShareRequestRepository
 {
     private readonly IMongoCollection<ShareRequest> _requests = context.ShareRequests;
+    private readonly IMongoCollection<Song> _songs = context.Songs;
 
     public async Task<ShareRequest?> GetByIdAsync(string id, CancellationToken cancellationToken = default)
     {
@@ -71,7 +72,7 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
     {
         if (maximum <= 0) return [];
         var pipeline = PipelineDefinition<ShareRequest, BsonDocument>.Create([
-            .. DistinctCompletedPipeline(),
+            .. CanonicalCompletedPipeline(_songs.CollectionNamespace.CollectionName),
             new BsonDocument("$sort", new BsonDocument { { "createdAt", -1 }, { "shareId", -1 } }),
             new BsonDocument("$limit", maximum)]);
         var rows = await _requests.Aggregate<BsonDocument>(pipeline).ToListAsync(cancellationToken);
@@ -86,7 +87,7 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
         if (rangeStartUtc >= rangeEndUtc) throw new ArgumentException("The range end must be after the range start.", nameof(rangeEndUtc));
 
         var pipeline = PipelineDefinition<ShareRequest, BsonDocument>.Create([
-            .. DistinctCompletedEarliestPipeline(),
+            .. CanonicalCompletedPipeline(_songs.CollectionNamespace.CollectionName),
             new BsonDocument("$match", new BsonDocument("createdAt", new BsonDocument { { "$gte", rangeStartUtc }, { "$lt", rangeEndUtc } })),
             new BsonDocument("$group", new BsonDocument { { "_id", new BsonDocument("$dateTrunc", new BsonDocument { { "date", "$createdAt" }, { "unit", "week" }, { "timezone", "UTC" }, { "startOfWeek", "Sunday" } }) }, { "count", new BsonDocument("$sum", 1) } }),
             new BsonDocument("$project", new BsonDocument { { "_id", 0 }, { "weekStart", "$_id" }, { "count", 1 } }),
@@ -98,7 +99,7 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
         }
         catch (MongoCommandException exception) when (exception.Message.Contains("$dateTrunc", StringComparison.Ordinal))
         {
-            var fallbackPipeline = PipelineDefinition<ShareRequest, BsonDocument>.Create(DistinctCompletedEarliestPipeline());
+            var fallbackPipeline = PipelineDefinition<ShareRequest, BsonDocument>.Create(CanonicalCompletedPipeline(_songs.CollectionNamespace.CollectionName));
             var fallbackRows = await _requests.Aggregate<BsonDocument>(fallbackPipeline).ToListAsync(cancellationToken);
             return fallbackRows.Where(x => x.TryGetValue("createdAt", out var createdAt) && createdAt.IsValidDateTime)
                 .Select(x => x["createdAt"].ToUniversalTime())
@@ -121,12 +122,29 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
         return stages;
     }
 
-    internal static BsonDocument[] DistinctCompletedEarliestPipeline() =>
+    internal static BsonDocument[] CanonicalCompletedPipeline(string songsCollectionName) =>
     [
-        new("$match", new BsonDocument { { "status", ShareStatus.Completed.ToString() }, { "songId", new BsonDocument("$type", "objectId") },
-            { "sourceService", new BsonDocument("$in", new BsonArray(PublicSourceServices())) } }),
-        new("$sort", new BsonDocument { { "createdAt", 1 }, { "shareId", 1 } }),
-        new("$group", new BsonDocument { { "_id", "$songId" }, { "createdAt", new BsonDocument("$first", "$createdAt") } })
+        .. DistinctCompletedPipeline(),
+        new("$lookup", new BsonDocument
+        {
+            { "from", songsCollectionName },
+            { "let", new BsonDocument("songId", "$songId") },
+            { "pipeline", new BsonArray
+                {
+                    new BsonDocument("$match", new BsonDocument("$expr", new BsonDocument("$and", new BsonArray
+                    {
+                        new BsonDocument("$eq", new BsonArray { "$_id", "$$songId" }),
+                        new BsonDocument("$eq", new BsonArray { new BsonDocument("$type", "$createdAt"), "date" })
+                    })))
+                }
+            },
+            { "as", "canonicalSong" }
+        }),
+        new("$unwind", "$canonicalSong"),
+        new("$project", new BsonDocument
+        {
+            { "_id", 0 }, { "songId", 1 }, { "shareId", 1 }, { "sourceService", 1 }, { "createdAt", "$canonicalSong.createdAt" }
+        })
     ];
 
     internal static IReadOnlyList<CompletedShareRequest> MaterializeCompletedRequests(IEnumerable<BsonDocument> rows) =>
