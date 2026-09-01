@@ -9,6 +9,7 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
 {
     private readonly IMongoCollection<ShareRequest> _requests = context.ShareRequests;
     private readonly IMongoCollection<Song> _songs = context.Songs;
+    private readonly IMongoCollection<SongServiceLink> _links = context.SongServiceLinks;
 
     public async Task<ShareRequest?> GetByIdAsync(string id, CancellationToken cancellationToken = default)
     {
@@ -99,9 +100,11 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
         // from writing after an expiry/takeover.
         var token = Guid.NewGuid().ToString("N");
         var ordered = new[] { write.CanonicalShareId, write.AliasShareId }.OrderBy(x => x, StringComparer.Ordinal).ToArray();
-        var first = await TryClaimAsync(ordered[0], token, cancellationToken);
+        var firstExpectedVersion = ordered[0] == write.CanonicalShareId ? write.CanonicalPreClaimVersion : write.AliasPreClaimVersion;
+        var secondExpectedVersion = ordered[1] == write.CanonicalShareId ? write.CanonicalPreClaimVersion : write.AliasPreClaimVersion;
+        var first = await TryClaimAsync(ordered[0], token, firstExpectedVersion, cancellationToken);
         if (first is null) return new(false, false, "Another duplicate-share reconciliation is in progress. Retry the dry-run.");
-        var second = await TryClaimAsync(ordered[1], token, cancellationToken);
+        var second = await TryClaimAsync(ordered[1], token, secondExpectedVersion, cancellationToken);
         if (second is null)
         {
             await ReleaseClaimAsync(ordered[0], token, cancellationToken);
@@ -112,6 +115,7 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
         var canonical = await GetClaimedAsync(write.CanonicalShareId, token, cancellationToken);
         var alias = await GetClaimedAsync(write.AliasShareId, token, cancellationToken);
         if (canonical is null || alias is null || canonical.ShareId == alias.ShareId ||
+            canonical.ReconciliationClaimVersion != write.CanonicalPreClaimVersion + 1 || alias.ReconciliationClaimVersion != write.AliasPreClaimVersion + 1 ||
             canonical.Status != write.CanonicalStatus || alias.Status != write.AliasStatus ||
             canonical.Status != ShareStatus.Completed || alias.Status != ShareStatus.Completed ||
             canonical.SongId != write.CanonicalSongId || alias.SongId != write.AliasSongId ||
@@ -124,6 +128,21 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
             return new(false, false, "The alias is already reconciled.");
         if (canonical.CreatedAt != write.CanonicalCreatedAt || alias.CreatedAt != write.AliasCreatedAt)
             return new(false, false, "The reconciliation plan is stale.");
+
+        // The dry-run does not authorize a write by itself. Re-read every piece of
+        // evidence after both exact-token claims are held and rebuild the same snapshot
+        // using pre-claim versions, so a mutation between dry-run and apply is rejected.
+        var currentSongs = await _songs.Find(Builders<Song>.Filter.In(x => x.Id, new[] { canonical.SongId, alias.SongId })).ToListAsync(cancellationToken);
+        var currentLinks = await _links.Find(Builders<SongServiceLink>.Filter.In(x => x.SongId, new[] { canonical.SongId, alias.SongId })).ToListAsync(cancellationToken);
+        var preliminary = ReconciliationSnapshots.TryCreate(canonical, alias, currentSongs, currentLinks, [], write.CanonicalPreClaimVersion, write.AliasPreClaimVersion);
+        if (preliminary is null) return new(false, false, "The reconciliation evidence changed.");
+        var identityFilter = Builders<SongServiceLink>.Filter.Or(preliminary.SharedIdentities.Select(x => Builders<SongServiceLink>.Filter.And(
+            Builders<SongServiceLink>.Filter.Eq(y => y.ServiceType, (ServiceType)x.ServiceType),
+            Builders<SongServiceLink>.Filter.Eq(y => y.ServiceSongId, x.ServiceSongId))));
+        var ownerLinks = await _links.Find(identityFilter).ToListAsync(cancellationToken);
+        var owners = ownerLinks.Count == 0 ? [] : await _requests.Find(Builders<ShareRequest>.Filter.In(x => x.SongId, ownerLinks.Select(x => x.SongId).Distinct())).ToListAsync(cancellationToken);
+        var snapshot = ReconciliationSnapshots.TryCreate(canonical, alias, currentSongs, currentLinks, owners, write.CanonicalPreClaimVersion, write.AliasPreClaimVersion);
+        if (snapshot is null || snapshot.Fingerprint != write.Fingerprint) return new(false, false, "The reconciliation plan is stale.");
 
         // Backfill is a separately fenced idempotent write. If it crashes before the alias
         // CAS, retrying the same exact pair safely observes the same canonical identity.
@@ -166,11 +185,12 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
         }
     }
 
-    private async Task<ShareRequest?> TryClaimAsync(string shareId, string token, CancellationToken cancellationToken)
+    private async Task<ShareRequest?> TryClaimAsync(string shareId, string token, long expectedVersion, CancellationToken cancellationToken)
     {
         var now = DateTime.UtcNow;
         var filter = Builders<ShareRequest>.Filter.And(
             Builders<ShareRequest>.Filter.Eq(x => x.ShareId, shareId),
+            Builders<ShareRequest>.Filter.Eq(x => x.ReconciliationClaimVersion, expectedVersion),
             Builders<ShareRequest>.Filter.Or(
                 Builders<ShareRequest>.Filter.Eq(x => x.ReconciliationClaimToken, null),
                 Builders<ShareRequest>.Filter.Lte(x => x.ReconciliationClaimExpiresAt, now)));

@@ -70,9 +70,15 @@ public sealed class ShareRequestDeduplicationMongoTests : IAsyncLifetime
         var canonical = Completed("aaaaaaaaaaaa", canonicalSong);
         var aliasRequest = Completed("bbbbbbbbbbbb", aliasSong);
         await context.ShareRequests.InsertManyAsync([canonical, aliasRequest]);
+        await context.Songs.InsertManyAsync([ResolvedSong(canonicalSong), ResolvedSong(aliasSong)]);
+        await context.SongServiceLinks.InsertManyAsync([Link(canonicalSong, "track"), Link(aliasSong, "track")]);
         canonical = (await repo.GetByShareIdAsync(canonical.ShareId))!;
         aliasRequest = (await repo.GetByShareIdAsync(aliasRequest.ShareId))!;
-        var write = new ReconciliationWrite("aaaaaaaaaaaa", "bbbbbbbbbbbb", "op", "fingerprint", canonicalSong, aliasSong, ShareStatus.Completed, ShareStatus.Completed, canonical.CreatedAt, aliasRequest.CreatedAt);
+        var snapshot = ReconciliationSnapshots.TryCreate(canonical, aliasRequest,
+            await context.Songs.Find(Builders<Song>.Filter.In(x => x.Id, new[] { canonicalSong, aliasSong })).ToListAsync(),
+            await context.SongServiceLinks.Find(Builders<SongServiceLink>.Filter.In(x => x.SongId, new[] { canonicalSong, aliasSong })).ToListAsync(),
+            [canonical, aliasRequest], canonical.ReconciliationClaimVersion, aliasRequest.ReconciliationClaimVersion)!;
+        var write = new ReconciliationWrite("aaaaaaaaaaaa", "bbbbbbbbbbbb", "op", snapshot.Fingerprint, canonicalSong, aliasSong, ShareStatus.Completed, ShareStatus.Completed, canonical.CreatedAt, aliasRequest.CreatedAt, null, snapshot.CanonicalPreClaimVersion, snapshot.AliasPreClaimVersion);
 
         // An unexpired first claim represents a crash/other overlapping operation. The second
         // operation must not acquire the pair or mutate either row; expiry makes recovery safe.
@@ -151,6 +157,9 @@ public sealed class ShareRequestDeduplicationMongoTests : IAsyncLifetime
         Id = MongoDB.Bson.ObjectId.GenerateNewId().ToString(), ShareId = shareId, SongId = songId, SourceUrl = "https://example.test",
         SourceService = ServiceType.Spotify, CorrelationId = Guid.NewGuid(), Status = ShareStatus.Completed, CreatedAt = DateTime.UtcNow
     };
+
+    private static Song ResolvedSong(string id) => new() { Id = id, Status = SongStatus.Resolved, CreatedAt = DateTime.UnixEpoch, UpdatedAt = DateTime.UnixEpoch };
+    private static SongServiceLink Link(string songId, string identity) => new() { Id = ObjectId.GenerateNewId().ToString(), SongId = songId, ServiceType = ServiceType.Spotify, ServiceSongId = identity, OriginalUrl = "https://example.test", NormalizedUrl = "https://example.test", CreatedAt = DateTime.UnixEpoch };
 
     private sealed class TestDbContext(IMongoDatabase db) : IMusicShareDbContext
     {
