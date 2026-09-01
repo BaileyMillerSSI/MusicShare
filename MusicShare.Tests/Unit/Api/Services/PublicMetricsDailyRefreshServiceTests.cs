@@ -6,23 +6,23 @@ using MusicShare.Contracts.Messages;
 
 namespace MusicShare.Tests.Unit.Api.Services;
 
-public class PublicMetricsWeeklyRefreshServiceTests
+public class PublicMetricsDailyRefreshServiceTests
 {
     [Theory]
     [InlineData(2026, 1, 10, 23, 59, 0, 0, 0, 1)]
-    [InlineData(2026, 1, 11, 0, 0, 0, 7, 0, 0)]
-    public void ItWillWaitUntilTheNextSundayUtcBoundary(
+    [InlineData(2026, 1, 11, 0, 0, 0, 1, 0, 0)]
+    public void ItWillWaitUntilTheNextMidnightUtcBoundary(
         int year, int month, int day, int hour, int minute, int second,
         int expectedDays, int expectedHours, int expectedMinutes)
     {
         var now = new DateTime(year, month, day, hour, minute, second, DateTimeKind.Utc);
 
-        PublicMetricsWeeklyRefreshService.GetDelayUntilNextSundayUtc(now)
+        PublicMetricsDailyRefreshService.GetDelayUntilNextMidnightUtc(now)
             .Should().Be(new TimeSpan(expectedDays, expectedHours, expectedMinutes, 0));
     }
 
     [Fact]
-    public async Task ItWillPublishARefreshAtSundayRolloverWithoutANewSong()
+    public async Task ItWillPublishARefreshAtMidnightWithoutANewSong()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         var now = new DateTime(2026, 1, 10, 23, 59, 0, DateTimeKind.Utc);
@@ -52,7 +52,7 @@ public class PublicMetricsWeeklyRefreshServiceTests
     }
 
     [Fact]
-    public async Task ItWillRetryTheSameSundayRefreshAfterAPublishFailure()
+    public async Task ItWillRetryTheSameDailyRefreshAfterAPublishFailure()
     {
         var now = new DateTime(2026, 1, 10, 23, 59, 0, DateTimeKind.Utc);
         var delays = new List<TimeSpan>();
@@ -123,12 +123,12 @@ public class PublicMetricsWeeklyRefreshServiceTests
     [Fact]
     public void ItWillRejectNonUtcRolloverTimes()
     {
-        Action action = () => PublicMetricsWeeklyRefreshService.GetDelayUntilNextSundayUtc(DateTime.Now);
+        Action action = () => PublicMetricsDailyRefreshService.GetDelayUntilNextMidnightUtc(DateTime.Now);
 
         action.Should().Throw<ArgumentException>();
     }
 
-    private static PublicMetricsWeeklyRefreshService CreateSut(
+    private static PublicMetricsDailyRefreshService CreateSut(
         IPublishEndpoint publish,
         Func<DateTime> utcNow,
         Func<TimeSpan, CancellationToken, Task> delayAsync,
@@ -140,9 +140,9 @@ public class PublicMetricsWeeklyRefreshServiceTests
         scope.SetupGet(x => x.ServiceProvider).Returns(provider.Object);
         var scopes = new Mock<IServiceScopeFactory>();
         scopes.Setup(x => x.CreateScope()).Returns(scope.Object);
-        return new PublicMetricsWeeklyRefreshService(
+        return new PublicMetricsDailyRefreshService(
             scopes.Object,
-            Mock.Of<ILogger<PublicMetricsWeeklyRefreshService>>(),
+            Mock.Of<ILogger<PublicMetricsDailyRefreshService>>(),
             utcNow,
             delayAsync,
             retryDelay);

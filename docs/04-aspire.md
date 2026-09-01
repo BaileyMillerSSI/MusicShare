@@ -114,7 +114,7 @@ builder.AddProject<Projects.MusicShare_Api>("api")
 // Autoscaling declared right in the AppHost
 api.PublishAsAzureContainerApp((module, app) =>
 {
-    app.Template.Scale.MinReplicas = apiMinReplicas;  // clamped to at least 1 for the weekly UTC refresh
+    app.Template.Scale.MinReplicas = apiMinReplicas;  // clamped to at least 1 for the daily UTC-midnight refresh
     app.Template.Scale.MaxReplicas = apiMaxReplicas;  // clamped to at least the API minimum
 });
 
@@ -130,7 +130,7 @@ frontend.PublishAsAzureContainerApp((module, app) =>
 - No hand-written Bicep or ARM templates
 - Aspire generates the infrastructure as code from the AppHost
 - `azd provision` deploys everything to Azure Container Apps
-- The API remains private but keeps one replica running for the Sunday 00:00 UTC public-metrics refresh. `AZURE_API_MIN_REPLICAS=0` is clamped to one, which adds a small baseline production cost. The public frontend's replica settings are unchanged and can still scale to zero.
+- The API remains private but keeps one replica running for the daily UTC-midnight public-metrics refresh. `AZURE_API_MIN_REPLICAS=0` is clamped to one, which adds a small baseline production cost. The public frontend's replica settings are unchanged and can still scale to zero.
 
 ---
 

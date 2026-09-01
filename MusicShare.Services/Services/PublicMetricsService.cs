@@ -12,7 +12,7 @@ public class PublicMetricsService(
     IPublicMetricsSnapshotRepository snapshots) : IPublicMetricsService
 {
     private const int RecentSongLimit = 20;
-    private const int WeeklyCompletedSongBucketCount = 8;
+    private const int DailyCompletedSongBucketCount = 7;
 
     public async Task<PublicMetricsResponse> GetAsync(CancellationToken cancellationToken = default)
     {
@@ -23,14 +23,14 @@ public class PublicMetricsService(
     public async Task<PublicMetricsRefreshResult> RefreshAsync(CancellationToken cancellationToken = default)
     {
         var generatedAt = DateTime.UtcNow;
-        var currentWeekStart = GetSundayStartUtc(generatedAt);
-        var rangeStart = currentWeekStart.AddDays(-7 * (WeeklyCompletedSongBucketCount - 1));
-        var rangeEnd = currentWeekStart.AddDays(7);
+        var currentDayStart = GetDayStartUtc(generatedAt);
+        var rangeStart = currentDayStart.AddDays(-(DailyCompletedSongBucketCount - 1));
+        var rangeEnd = currentDayStart.AddDays(1);
         var snapshotVersion = await snapshots.ReserveVersionAsync(cancellationToken);
         var totalCompletedSongs = await shareRequests.GetCompletedDistinctSongCountAsync(cancellationToken);
         var counts = await links.GetCompletedDistinctSongLinkCountsAsync(cancellationToken) ?? new Dictionary<ServiceType, long>();
         var recentRequests = await shareRequests.GetRecentCompletedDistinctAsync(RecentSongLimit, cancellationToken) ?? [];
-        var weeklyCounts = await shareRequests.GetCompletedDistinctSongCountsByWeekAsync(rangeStart, rangeEnd, cancellationToken) ?? [];
+        var dailyCounts = await shareRequests.GetCompletedDistinctSongCountsByDayAsync(rangeStart, rangeEnd, cancellationToken) ?? [];
         var songsById = (await songs.GetByIdsAsync(recentRequests.Select(x => x.SongId), cancellationToken) ?? [])
             .ToDictionary(x => x.Id, StringComparer.Ordinal);
         var candidate = new PublicMetricsSnapshot
@@ -49,10 +49,10 @@ public class PublicMetricsService(
                     Album = song.Album, ArtworkUrl = song.ArtworkUrl, SourceService = x.SourceService, CreatedAt = x.CreatedAt
                 };
             }).Take(RecentSongLimit).ToList(),
-            WeeklyCompletedSongs = Enumerable.Range(0, WeeklyCompletedSongBucketCount).Select(index =>
+            DailyCompletedSongs = Enumerable.Range(0, DailyCompletedSongBucketCount).Select(index =>
             {
-                var weekStart = rangeStart.AddDays(index * 7);
-                return new PublicMetricsWeeklyCompletedSong { WeekStart = weekStart, Count = weeklyCounts.FirstOrDefault(x => x.WeekStart == weekStart)?.Count ?? 0 };
+                var dayStart = rangeStart.AddDays(index);
+                return new PublicMetricsDailyCompletedSong { DayStart = dayStart, Count = dailyCounts.FirstOrDefault(x => x.DayStart == dayStart)?.Count ?? 0 };
             }).ToList()
         };
         var accepted = await snapshots.TryReplaceAsync(candidate, cancellationToken);
@@ -65,12 +65,12 @@ public class PublicMetricsService(
             service, snapshot.ServiceCounts.FirstOrDefault(x => x.Service == service)?.Count ?? 0)).ToList(),
         snapshot.RecentSongs.Take(RecentSongLimit).Select(x => new PublicMetricsRecentSongResponse(
             x.SongId, x.ShareId, x.Title, x.Artists, x.Album, x.ArtworkUrl, x.SourceService, x.CreatedAt)).ToList(),
-        (snapshot.WeeklyCompletedSongs ?? []).Where(x => x.Count >= 0).OrderBy(x => x.WeekStart).Select(x => new PublicMetricsWeeklyCompletedSongResponse(x.WeekStart, x.Count)).ToList());
+        (snapshot.DailyCompletedSongs ?? []).Where(x => x.Count >= 0).OrderBy(x => x.DayStart).Select(x => new PublicMetricsDailyCompletedSongResponse(x.DayStart, x.Count)).ToList());
 
-    public static DateTime GetSundayStartUtc(DateTime utcTimestamp)
+    public static DateTime GetDayStartUtc(DateTime utcTimestamp)
     {
         if (utcTimestamp.Kind != DateTimeKind.Utc) throw new ArgumentException("The timestamp must be UTC.", nameof(utcTimestamp));
-        return utcTimestamp.Date.AddDays(-(int)utcTimestamp.DayOfWeek);
+        return utcTimestamp.Date;
     }
 
     private static bool IsPublicSourceService(ServiceType service) =>

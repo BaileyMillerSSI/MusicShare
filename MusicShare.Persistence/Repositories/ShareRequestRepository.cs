@@ -79,7 +79,7 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
         return MaterializeCompletedRequests(rows);
     }
 
-    public async Task<IReadOnlyList<WeeklyCompletedSongCount>> GetCompletedDistinctSongCountsByWeekAsync(
+    public async Task<IReadOnlyList<DailyCompletedSongCount>> GetCompletedDistinctSongCountsByDayAsync(
         DateTime rangeStartUtc, DateTime rangeEndUtc, CancellationToken cancellationToken = default)
     {
         if (rangeStartUtc.Kind != DateTimeKind.Utc) throw new ArgumentException("The range start must be UTC.", nameof(rangeStartUtc));
@@ -89,13 +89,13 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
         var pipeline = PipelineDefinition<ShareRequest, BsonDocument>.Create([
             .. CanonicalCompletedPipeline(_songs.CollectionNamespace.CollectionName),
             new BsonDocument("$match", new BsonDocument("createdAt", new BsonDocument { { "$gte", rangeStartUtc }, { "$lt", rangeEndUtc } })),
-            new BsonDocument("$group", new BsonDocument { { "_id", new BsonDocument("$dateTrunc", new BsonDocument { { "date", "$createdAt" }, { "unit", "week" }, { "timezone", "UTC" }, { "startOfWeek", "Sunday" } }) }, { "count", new BsonDocument("$sum", 1) } }),
-            new BsonDocument("$project", new BsonDocument { { "_id", 0 }, { "weekStart", "$_id" }, { "count", 1 } }),
-            new BsonDocument("$sort", new BsonDocument("weekStart", 1))]);
+            new BsonDocument("$group", new BsonDocument { { "_id", new BsonDocument("$dateTrunc", new BsonDocument { { "date", "$createdAt" }, { "unit", "day" }, { "timezone", "UTC" } }) }, { "count", new BsonDocument("$sum", 1) } }),
+            new BsonDocument("$project", new BsonDocument { { "_id", 0 }, { "dayStart", "$_id" }, { "count", 1 } }),
+            new BsonDocument("$sort", new BsonDocument("dayStart", 1))]);
         try
         {
             var rows = await _requests.Aggregate<BsonDocument>(pipeline).ToListAsync(cancellationToken);
-            return MaterializeWeeklyCompletedSongCounts(rows);
+            return MaterializeDailyCompletedSongCounts(rows);
         }
         catch (MongoCommandException exception) when (exception.Message.Contains("$dateTrunc", StringComparison.Ordinal))
         {
@@ -104,9 +104,9 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
             return fallbackRows.Where(x => x.TryGetValue("createdAt", out var createdAt) && createdAt.IsValidDateTime)
                 .Select(x => x["createdAt"].ToUniversalTime())
                 .Where(x => x >= rangeStartUtc && x < rangeEndUtc)
-                .GroupBy(GetSundayStartUtc)
-                .Select(x => new WeeklyCompletedSongCount(x.Key, x.LongCount()))
-                .OrderBy(x => x.WeekStart).ToList();
+                .GroupBy(x => x.Date)
+                .Select(x => new DailyCompletedSongCount(x.Key, x.LongCount()))
+                .OrderBy(x => x.DayStart).ToList();
         }
     }
 
@@ -157,16 +157,14 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
             x["songId"].AsObjectId.ToString(), x["shareId"].AsString,
             Enum.Parse<ServiceType>(x["sourceService"].AsString), x["createdAt"].ToUniversalTime())).ToList();
 
-    internal static IReadOnlyList<WeeklyCompletedSongCount> MaterializeWeeklyCompletedSongCounts(IEnumerable<BsonDocument> rows) =>
+    internal static IReadOnlyList<DailyCompletedSongCount> MaterializeDailyCompletedSongCounts(IEnumerable<BsonDocument> rows) =>
         rows.Select(row =>
         {
-            if (!row.TryGetValue("weekStart", out var weekStart) || !row.TryGetValue("count", out var count) || !count.IsNumeric || count.ToInt64() < 0)
+            if (!row.TryGetValue("dayStart", out var dayStart) || !row.TryGetValue("count", out var count) || !count.IsNumeric || count.ToInt64() < 0)
                 return null;
-            try { return new WeeklyCompletedSongCount(weekStart.ToUniversalTime(), count.ToInt64()); }
+            try { return new DailyCompletedSongCount(dayStart.ToUniversalTime().Date, count.ToInt64()); }
             catch (Exception exception) when (exception is InvalidCastException or NotSupportedException) { return null; }
-        }).OfType<WeeklyCompletedSongCount>().OrderBy(x => x.WeekStart).ToList();
-
-    private static DateTime GetSundayStartUtc(DateTime utcTimestamp) => utcTimestamp.Date.AddDays(-(int)utcTimestamp.DayOfWeek);
+        }).OfType<DailyCompletedSongCount>().OrderBy(x => x.DayStart).ToList();
 
     private static IEnumerable<string> PublicSourceServices() => Enum.GetValues<ServiceType>()
         .Where(service => service != ServiceType.Unknown).Select(service => service.ToString());

@@ -13,7 +13,7 @@ export type PublicMetricsSummary = {
   completedSongs: number;
   spotifyLinks: number;
   youTubeMusicLinks: number;
-  thisWeekCompletedSongs: number;
+  lastSevenDaysCompletedSongs: number;
 };
 
 type MetricsDependencies = {
@@ -26,7 +26,7 @@ export function emptyPublicMetrics(): PublicMetricsResponse {
     totalCompletedSongs: 0,
     serviceCounts: services.map((service) => ({ service, count: 0 })),
     recentSongs: [],
-    weeklyCompletedSongs: [],
+    dailyCompletedSongs: [],
   };
 }
 
@@ -47,8 +47,9 @@ export function isPublicMetricsResponse(value: unknown): value is PublicMetricsR
     && metrics.recentSongs.every((song) => typeof song.songId === 'string' && typeof song.shareId === 'string'
       && typeof song.title === 'string' && Array.isArray(song.artists) && song.artists.every((artist) => typeof artist === 'string')
       && typeof song.createdAt === 'string')
-    && (metrics.weeklyCompletedSongs === undefined || (Array.isArray(metrics.weeklyCompletedSongs)
-      && metrics.weeklyCompletedSongs.every((week) => typeof week.weekStart === 'string' && !Number.isNaN(Date.parse(week.weekStart))
+    && (metrics.dailyCompletedSongs === undefined || (Array.isArray(metrics.dailyCompletedSongs)
+      && (metrics.dailyCompletedSongs.length === 0 || metrics.dailyCompletedSongs.length === 7)
+      && metrics.dailyCompletedSongs.every((week) => typeof week.dayStart === 'string' && !Number.isNaN(Date.parse(week.dayStart))
         && Number.isFinite(week.count) && week.count >= 0)));
 }
 
@@ -75,14 +76,14 @@ export function summarizePublicMetrics(metrics: PublicMetricsResponse): PublicMe
     completedSongs: metrics.totalCompletedSongs,
     spotifyLinks: counts.get(MusicServiceType.Spotify) ?? 0,
     youTubeMusicLinks: counts.get(MusicServiceType.YouTubeMusic) ?? 0,
-    thisWeekCompletedSongs: metrics.weeklyCompletedSongs?.at(-1)?.count ?? 0,
+    lastSevenDaysCompletedSongs: metrics.dailyCompletedSongs?.reduce((total, day) => total + day.count, 0) ?? 0,
   };
 }
 
 export function previewVersion(metrics: PublicMetricsResponse): string {
   const summary = summarizePublicMetrics(metrics);
   const generatedAt = metrics.generatedAt && !Number.isNaN(Date.parse(metrics.generatedAt)) ? new Date(metrics.generatedAt).toISOString() : 'snapshot';
-  return `${generatedAt}-${summary.completedSongs}-${summary.spotifyLinks}-${summary.youTubeMusicLinks}-${summary.thisWeekCompletedSongs}`;
+  return `${generatedAt}-${summary.completedSongs}-${summary.spotifyLinks}-${summary.youTubeMusicLinks}-${summary.lastSevenDaysCompletedSongs}`;
 }
 
 export function metricsShareCopy(result: PublicMetricsFetchResult): { title: string; description: string; imageAlt: string } {
@@ -97,7 +98,7 @@ export function metricsShareCopy(result: PublicMetricsFetchResult): { title: str
   const summary = summarizePublicMetrics(result.metrics);
   return {
     title: 'Music metrics | MusicShare',
-    description: `${summary.completedSongs} songs, ${summary.spotifyLinks} Spotify links, ${summary.youTubeMusicLinks} YouTube Music links, and ${summary.thisWeekCompletedSongs} completed this week.`,
-    imageAlt: `MusicShare metrics: ${summary.completedSongs} songs and ${summary.thisWeekCompletedSongs} completed this week.`,
+    description: `${summary.completedSongs} songs, ${summary.spotifyLinks} Spotify links, ${summary.youTubeMusicLinks} YouTube Music links, and ${summary.lastSevenDaysCompletedSongs} added in the last 7 days.`,
+    imageAlt: `MusicShare metrics: ${summary.completedSongs} songs and ${summary.lastSevenDaysCompletedSongs} added in the last 7 days.`,
   };
 }

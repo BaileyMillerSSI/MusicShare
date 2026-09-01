@@ -56,7 +56,7 @@ public class ShareRequestRepositoryMetricsTests
     }
 
     [Fact]
-    public void ItWillBuildACanonicalSongLookupAndMaterializeSundayUtcWeeklyCounts()
+    public void ItWillBuildACanonicalSongLookupAndMaterializeUtcDailyCounts()
     {
         var start = new DateTime(2026, 1, 4, 0, 0, 0, DateTimeKind.Utc);
         var pipeline = ShareRequestRepository.CanonicalCompletedPipeline("songs");
@@ -68,12 +68,12 @@ public class ShareRequestRepositoryMetricsTests
         pipeline[4]["$unwind"].AsString.Should().Be("$canonicalSong");
         pipeline[5]["$project"].AsBsonDocument["createdAt"].AsString.Should().Be("$canonicalSong.createdAt");
 
-        var result = ShareRequestRepository.MaterializeWeeklyCompletedSongCounts([
-            new BsonDocument { { "weekStart", start }, { "count", 2 } },
-            new BsonDocument { { "weekStart", start.AddDays(7) }, { "count", -1 } },
-            new BsonDocument { { "weekStart", "bad" }, { "count", 4 } }
+        var result = ShareRequestRepository.MaterializeDailyCompletedSongCounts([
+            new BsonDocument { { "dayStart", start }, { "count", 2 } },
+            new BsonDocument { { "dayStart", start.AddDays(7) }, { "count", -1 } },
+            new BsonDocument { { "dayStart", "bad" }, { "count", 4 } }
         ]);
 
-        result.Should().Equal(new WeeklyCompletedSongCount(start, 2));
+        result.Should().Equal(new DailyCompletedSongCount(start, 2));
     }
 }

@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { BreadstickFooter } from '../../components/BreadstickFooter';
 import { MusicServiceType } from '../../lib/api';
 import { getPublicMetrics, metricsShareCopy, previewVersion, publicMetricsOrigin, summarizePublicMetrics } from '../../lib/server/publicMetrics';
-import { WeeklyCompletedSongsChart } from './WeeklyCompletedSongsChart';
+import { DailySongAdditionsChart } from './DailySongAdditionsChart';
 
 export const dynamic = 'force-dynamic';
 const services = [MusicServiceType.Spotify, MusicServiceType.YouTubeMusic];
@@ -29,21 +29,21 @@ export default async function MetricsPage() {
   const { metrics } = await getPublicMetrics();
   const summary = summarizePublicMetrics(metrics);
   const recentSongs = metrics.recentSongs.slice(0, 20);
-  const weeklyCompletedSongs = metrics.weeklyCompletedSongs ?? [];
-  const thisWeekCount = summary.thisWeekCompletedSongs;
-  const largestWeeklyCount = Math.max(0, ...weeklyCompletedSongs.map((week) => week.count));
+  const dailyCompletedSongs = metrics.dailyCompletedSongs ?? [];
+  const lastSevenDaysCount = summary.lastSevenDaysCompletedSongs;
+  const largestDailyCount = Math.max(0, ...dailyCompletedSongs.map((day) => day.count));
   return <div className="min-h-screen bg-linear-to-br from-purple-500 to-pink-500 flex flex-col items-center gap-4 p-4 py-10">
     <main className="bg-white rounded-lg shadow-xl p-8 max-w-3xl w-full">
       <Link className="text-sm text-purple-700 hover:underline" href="/">← Share music</Link>
       <h1 className="mt-4 text-3xl font-bold text-gray-800">Music metrics</h1>
       <p className="mt-2 text-gray-600">{metrics.totalCompletedSongs} songs shared across Music Share.</p>
       <section className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3" aria-label="Resolved platform link counts">
-        <div className="rounded-lg bg-gray-100 p-4"><p className="text-sm text-gray-600">Songs</p><p className="text-2xl font-bold text-gray-800">{metrics.totalCompletedSongs}</p><p className="mt-1 text-sm font-medium text-purple-700">+{thisWeekCount} this week</p></div>
+        <div className="rounded-lg bg-gray-100 p-4"><p className="text-sm text-gray-600">Songs</p><p className="text-2xl font-bold text-gray-800">{metrics.totalCompletedSongs}</p><p className="mt-1 text-sm font-medium text-purple-700">+{lastSevenDaysCount} in the last 7 days</p></div>
         {services.map((service) => <div key={service} className="rounded-lg bg-gray-100 p-4"><p className="text-sm text-gray-600">{labels[service]}</p><p className="text-2xl font-bold text-gray-800">{service === MusicServiceType.Spotify ? summary.spotifyLinks : summary.youTubeMusicLinks}</p></div>)}
       </section>
-      <section className="mt-8" aria-labelledby="weekly-completed-songs">
-        <h2 id="weekly-completed-songs" className="text-xl font-semibold text-gray-800">Songs by week</h2>
-        {weeklyCompletedSongs.length === 0 ? <p className="mt-3 text-gray-600">Weekly song data is not available yet.</p> : <WeeklyCompletedSongsChart weeklyCompletedSongs={weeklyCompletedSongs} largestWeeklyCount={largestWeeklyCount} />}
+      <section className="mt-8" aria-labelledby="daily-completed-songs">
+        <h2 id="daily-completed-songs" className="text-xl font-semibold text-gray-800">Songs added in the last 7 days</h2>
+        {dailyCompletedSongs.length === 0 ? <p className="mt-3 text-gray-600">Daily song data is not available yet.</p> : <DailySongAdditionsChart dailyCompletedSongs={dailyCompletedSongs} largestDailyCount={largestDailyCount} />}
       </section>
       <section className="mt-8" aria-labelledby="recent-songs"><h2 id="recent-songs" className="text-xl font-semibold text-gray-800">Recently added</h2>
         {recentSongs.length === 0 ? <p className="mt-3 text-gray-600">No songs yet.</p> : <ul className="mt-3 divide-y divide-gray-200">

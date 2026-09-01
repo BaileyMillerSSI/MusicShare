@@ -32,7 +32,7 @@ export function MetricsShareImage({ summary }: MetricsShareImageProps) {
       ['Songs', summary.completedSongs.toLocaleString()],
       ['Spotify links', summary.spotifyLinks.toLocaleString()],
       ['YouTube Music links', summary.youTubeMusicLinks.toLocaleString()],
-      ['Completed this week', `+${summary.thisWeekCompletedSongs.toLocaleString()}`],
+      ['Added in the last 7 days', `+${summary.lastSevenDaysCompletedSongs.toLocaleString()}`],
     ]
     : [];
 
