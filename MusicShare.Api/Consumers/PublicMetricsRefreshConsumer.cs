@@ -13,7 +13,7 @@ public class PublicMetricsRefreshConsumer(
 {
     public async Task Consume(ConsumeContext<RefreshPublicMetrics> context)
     {
-        var result = await metrics.RefreshAsync(context.CancellationToken);
+        var result = await metrics.RefreshAsync(context.CancellationToken, context.Message.AllowReconciliationDecrease);
         if (!result.Accepted)
         {
             logger.LogInformation("Public metrics refresh was superseded by a newer snapshot");

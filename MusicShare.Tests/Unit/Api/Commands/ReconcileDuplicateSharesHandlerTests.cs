@@ -46,7 +46,7 @@ public class ReconcileDuplicateSharesHandlerTests
         publish.Setup(x => x.Publish(It.IsAny<RefreshPublicMetrics>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         var result = await new ReconcileDuplicateShares.Handler(reconciliation.Object, revalidation.Object, publish.Object).Handle(Request(), CancellationToken.None);
         result.Success.Should().BeTrue(); result.AffectedShareCount.Should().Be(2);
-        publish.Verify(x => x.Publish(It.IsAny<RefreshPublicMetrics>(), It.IsAny<CancellationToken>()), Times.Once);
+        publish.Verify(x => x.Publish(It.Is<RefreshPublicMetrics>(message => message.AllowReconciliationDecrease), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     private static ReconcileDuplicateShares.Request Request() => new("aaaaaaaaaaaa", "bbbbbbbbbbbb", null, "apply", "f");

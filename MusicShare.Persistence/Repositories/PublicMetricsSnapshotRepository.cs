@@ -28,10 +28,15 @@ public class PublicMetricsSnapshotRepository(IMusicShareDbContext context) : IPu
         return counter.SnapshotVersion;
     }
 
-    public async Task<bool> TryReplaceAsync(PublicMetricsSnapshot snapshot, CancellationToken cancellationToken = default)
+    public async Task<bool> TryReplaceAsync(
+        PublicMetricsSnapshot snapshot,
+        CancellationToken cancellationToken = default,
+        bool allowReconciliationDecrease = false)
     {
         snapshot.Id = PublicMetricsSnapshot.SingletonId;
-        var filter = BuildNonRegressionFilter(snapshot.TotalCompletedSongs, snapshot.SnapshotVersion);
+        var filter = allowReconciliationDecrease
+            ? BuildNewerVersionFilter(snapshot.SnapshotVersion)
+            : BuildNonRegressionFilter(snapshot.TotalCompletedSongs, snapshot.SnapshotVersion);
 
         try
         {
@@ -54,4 +59,9 @@ public class PublicMetricsSnapshotRepository(IMusicShareDbContext context) : IPu
                 Builders<PublicMetricsSnapshot>.Filter.And(
                     Builders<PublicMetricsSnapshot>.Filter.Eq(x => x.TotalCompletedSongs, candidateTotal),
                     Builders<PublicMetricsSnapshot>.Filter.Lt(x => x.SnapshotVersion, candidateVersion))));
+
+    internal static FilterDefinition<PublicMetricsSnapshot> BuildNewerVersionFilter(long candidateVersion) =>
+        Builders<PublicMetricsSnapshot>.Filter.And(
+            Builders<PublicMetricsSnapshot>.Filter.Eq(x => x.Id, PublicMetricsSnapshot.SingletonId),
+            Builders<PublicMetricsSnapshot>.Filter.Lt(x => x.SnapshotVersion, candidateVersion));
 }

@@ -34,7 +34,7 @@ public static class ReconcileDuplicateShares
                 var aliasRevalidated = await revalidation.RevalidateShareAsync(result.AliasShareId!, cancellationToken);
                 if (!canonicalRevalidated || !aliasRevalidated)
                     return Response.From(result with { Success = false, Error = "The reconciliation was saved but one or more share pages could not be revalidated. Retry apply with the same fingerprint." });
-                await publishEndpoint.Publish(new RefreshPublicMetrics(), cancellationToken);
+                await publishEndpoint.Publish(new RefreshPublicMetrics(AllowReconciliationDecrease: true), cancellationToken);
             }
             return Response.From(result);
         }

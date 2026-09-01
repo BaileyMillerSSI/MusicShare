@@ -22,4 +22,17 @@ public class PublicMetricsSnapshotRepositoryTests
         candidates[0].AsBsonDocument["TotalCompletedSongs"].AsBsonDocument["$lt"].ToInt64().Should().Be(42);
         candidates[1].AsBsonDocument["SnapshotVersion"].AsBsonDocument["$lt"].ToInt64().Should().Be(100);
     }
+
+    [Fact]
+    public void ItWillBuildTheAuthorizedFilterFromTheStrictlyNewerVersionOnly()
+    {
+        var rendered = PublicMetricsSnapshotRepository.BuildNewerVersionFilter(100)
+            .Render(new RenderArgs<PublicMetricsSnapshot>(
+                BsonSerializer.SerializerRegistry.GetSerializer<PublicMetricsSnapshot>(),
+                BsonSerializer.SerializerRegistry));
+
+        rendered["_id"].AsString.Should().Be(PublicMetricsSnapshot.SingletonId);
+        rendered["SnapshotVersion"].AsBsonDocument["$lt"].ToInt64().Should().Be(100);
+        rendered.Contains("TotalCompletedSongs").Should().BeFalse();
+    }
 }
