@@ -1,0 +1,79 @@
+name: Reconcile duplicate shares
+
+on:
+  workflow_dispatch:
+    inputs:
+      first_share_id:
+        description: First lowercase share ID
+        required: true
+        type: string
+      second_share_id:
+        description: Second lowercase share ID
+        required: true
+        type: string
+      canonical_share_id:
+        description: Optional canonical share ID
+        required: false
+        type: string
+      mode:
+        description: Reconciliation mode
+        required: true
+        default: dry-run
+        type: choice
+        options: [dry-run, apply]
+      fingerprint:
+        description: Required dry-run fingerprint for apply
+        required: false
+        type: string
+      confirm_apply:
+        description: Enter APPLY to permit an apply run
+        required: false
+        type: string
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+    steps:
+      - name: Validate inputs and reconcile fixed pair
+        env:
+          FIRST: ${{ inputs.first_share_id }}
+          SECOND: ${{ inputs.second_share_id }}
+          CANONICAL: ${{ inputs.canonical_share_id }}
+          MODE: ${{ inputs.mode }}
+          FINGERPRINT: ${{ inputs.fingerprint }}
+          CONFIRM: ${{ inputs.confirm_apply }}
+          MAINTENANCE_SECRET: ${{ secrets.MAINTENANCE_SECRET }}
+        run: |
+          set -euo pipefail
+          pattern='^[a-f0-9]{12}$'
+          [[ "$FIRST" =~ $pattern && "$SECOND" =~ $pattern && "$FIRST" != "$SECOND" ]]
+          [[ -z "$CANONICAL" || "$CANONICAL" =~ $pattern ]]
+          if [[ "$MODE" == apply ]]; then
+            [[ "$FINGERPRINT" =~ ^[a-f0-9]{64}$ && "$CONFIRM" == APPLY ]]
+          else
+            [[ -z "$FINGERPRINT" ]]
+          fi
+          payload=$(jq -n --arg firstShareId "$FIRST" --arg secondShareId "$SECOND" --arg canonicalShareId "$CANONICAL" --arg mode "$MODE" --arg fingerprint "$FINGERPRINT" '{firstShareId:$firstShareId,secondShareId:$secondShareId,mode:$mode} + (if $canonicalShareId == "" then {} else {canonicalShareId:$canonicalShareId} end) + (if $fingerprint == "" then {} else {fingerprint:$fingerprint} end)')
+          http_status=$(curl --silent --show-error --max-time 15 --output reconciliation-result.json --write-out '%{http_code}' \
+            -H 'content-type: application/json' -H "X-MAINTENANCE-KEY: $MAINTENANCE_SECRET" \
+            --data "$payload" https://music.baileymiller.dev/api/maintenance/duplicate-shares || true)
+          if ! jq -e 'type == "object" and (.success | type == "boolean") and (.changed | type == "boolean") and (.affectedShareCount | type == "number")' reconciliation-result.json > /dev/null; then
+            echo 'The maintenance route returned no bounded reconciliation result.' >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          jq '{success,changed,affectedShareCount,operationId,fingerprint,canonicalShareId,aliasShareId,sharedIdentities,error}' reconciliation-result.json | tee reconciliation-evidence.json >> "$GITHUB_STEP_SUMMARY"
+          if [[ ! "$http_status" =~ ^2[0-9][0-9]$ ]] || ! jq -e '.success == true' reconciliation-result.json > /dev/null; then
+            echo "Reconciliation did not complete successfully (HTTP $http_status)." >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reconciliation-result
+          path: |
+            reconciliation-result.json
+            reconciliation-evidence.json
+          if-no-files-found: error

@@ -8,14 +8,9 @@ namespace MusicShare.Services.Services
         private readonly HttpClient _client = client;
         private readonly ILogger<FrontendRevalidateService> _logger = logger;
 
-        public Task RevalidateShareAsync(string shareId) => RevalidateAsync(new { shareId }, $"ShareId={shareId}");
+        public Task<bool> RevalidateShareAsync(string shareId, CancellationToken cancellationToken = default) => RevalidateAsync(new { shareId }, $"ShareId={shareId}", cancellationToken: cancellationToken);
 
         public Task<bool> RevalidateMetricsAsync(CancellationToken cancellationToken = default) => RevalidateAsync(new { target = "metrics" }, "metrics", returnSuccess: true, cancellationToken);
-
-        private async Task RevalidateAsync(object request, string target)
-        {
-            await RevalidateAsync(request, target, returnSuccess: false);
-        }
 
         private async Task<bool> RevalidateAsync(object request, string target, bool returnSuccess = true, CancellationToken cancellationToken = default)
         {

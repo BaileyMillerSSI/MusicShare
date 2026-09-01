@@ -39,7 +39,11 @@ public class ShareRequestService(
 
                 if (existingRequest != null)
                 {
-                    return existingRequest.ShareId;
+                    var canonical = string.IsNullOrWhiteSpace(existingRequest.CanonicalShareId)
+                        ? existingRequest
+                        : await shareRequestRepository.ResolveCanonicalAsync(existingRequest, cancellationToken);
+                    if (canonical is null) return string.Empty;
+                    return canonical.ShareId;
                 }
             }
         }
@@ -47,7 +51,7 @@ public class ShareRequestService(
         var correlationId = Guid.NewGuid();
         var shareId = correlationId.ToString("N")[..12];
 
-        await shareRequestRepository.InsertAsync(new ShareRequest
+        var request = new ShareRequest
         {
             ShareId = shareId,
             SourceUrl = adapter!.NormalizeUrl(sourceUrl),
@@ -55,18 +59,29 @@ public class ShareRequestService(
             ServiceTrackId = serviceTrackId,
             Status = ShareStatus.Pending,
             CorrelationId = correlationId,
-            CreatedAt = DateTime.UtcNow
-        }, cancellationToken);
+            CreatedAt = DateTime.UtcNow,
+            SourceIdentityKey = BuildSourceIdentityKey(serviceType, serviceTrackId)
+        };
+        var reservation = await shareRequestRepository.ReserveBySourceIdentityAsync(request, cancellationToken);
+
+        if (!reservation.Inserted)
+        {
+            var canonical = string.IsNullOrWhiteSpace(reservation.Request.CanonicalShareId)
+                ? reservation.Request
+                : await shareRequestRepository.ResolveCanonicalAsync(reservation.Request, cancellationToken);
+            if (canonical is null) return string.Empty;
+            return canonical.ShareId;
+        }
 
         await publishEndpoint.Publish(new SongShareSubmitted
         {
-            ShareId = shareId,
+            ShareId = reservation.Request.ShareId,
             SourceUrl = adapter!.NormalizeUrl(sourceUrl),
             SourceService = serviceType,
             CorrelationId = correlationId
         }, cancellationToken);
 
-        return shareId;
+        return reservation.Request.ShareId;
     }
 
     public async Task<ShareResultResponse?> GetByShareIdAsync(
@@ -78,6 +93,10 @@ public class ShareRequestService(
         {
             return null;
         }
+        shareRequest = string.IsNullOrWhiteSpace(shareRequest.CanonicalShareId)
+            ? shareRequest
+            : await shareRequestRepository.ResolveCanonicalAsync(shareRequest, cancellationToken);
+        if (shareRequest is null) return null;
 
         var response = new ShareResultResponse
         {
@@ -117,4 +136,9 @@ public class ShareRequestService(
 
         return response;
     }
+
+    internal static string? BuildSourceIdentityKey(ServiceType serviceType, string? serviceTrackId) =>
+        string.IsNullOrWhiteSpace(serviceTrackId) || serviceType == ServiceType.Unknown
+            ? null
+            : $"v1:{(int)serviceType}:{serviceTrackId}";
 }

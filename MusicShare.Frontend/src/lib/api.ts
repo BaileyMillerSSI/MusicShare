@@ -10,6 +10,7 @@ export interface SubmitShareResponse {
 }
 
 export interface ShareResultResponse {
+  /** The terminal canonical share ID; it can differ from the requested alias. */
   shareId: string;
   status: string;
   song?: SongDetails;

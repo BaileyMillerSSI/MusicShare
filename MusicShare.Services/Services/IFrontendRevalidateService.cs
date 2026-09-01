@@ -2,7 +2,7 @@
 {
 public interface IFrontendRevalidateService
 {
-    Task RevalidateShareAsync(string shareId);
+    Task<bool> RevalidateShareAsync(string shareId, CancellationToken cancellationToken = default);
     Task<bool> RevalidateMetricsAsync(CancellationToken cancellationToken = default);
 }
 }

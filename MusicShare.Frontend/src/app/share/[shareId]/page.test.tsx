@@ -10,10 +10,15 @@ vi.mock('../../../components/ResultPoller', () => ({
   ),
 }));
 
+vi.mock('next/navigation', () => ({
+  permanentRedirect: vi.fn(),
+}));
+
 // Mock fetch globally
 global.fetch = vi.fn();
 
 import ShareResultPage, { generateMetadata } from './page';
+import { permanentRedirect } from 'next/navigation';
 
 describe('ShareResultPage', () => {
   beforeEach(() => {
@@ -97,6 +102,38 @@ describe('ShareResultPage', () => {
   });
 
   describe('ResultPoller Integration', () => {
+    it('redirects an alias to its canonical share exactly once', async () => {
+      vi.mocked(global.fetch).mockResolvedValue({ ok: true, json: async () => ({ shareId: 'bbbbbbbbbbbb', status: 'Completed', song: { id: 'song-1', title: 'Canonical Song', artists: ['Artist'], status: 'Resolved', links: [] } }) } as Response);
+
+      const page = await ShareResultPage({ params: Promise.resolve({ shareId: 'aaaaaaaaaaaa' }) });
+
+      expect(permanentRedirect).toHaveBeenCalledTimes(1);
+      expect(permanentRedirect).toHaveBeenCalledWith('/share/bbbbbbbbbbbb');
+      render(page);
+      expect(screen.getByTestId('result-poller')).toHaveAttribute('data-share-id', 'bbbbbbbbbbbb');
+    });
+
+    it('keeps canonical data and metadata on the canonical URL without a redirect loop', async () => {
+      vi.mocked(global.fetch).mockResolvedValue({ ok: true, json: async () => ({ shareId: 'bbbbbbbbbbbb', status: 'Completed', song: { id: 'song-1', title: 'Canonical Song', artists: ['Artist'], status: 'Resolved', links: [] } }) } as Response);
+
+      const page = await ShareResultPage({ params: Promise.resolve({ shareId: 'bbbbbbbbbbbb' }) });
+      const metadata = await generateMetadata({ params: Promise.resolve({ shareId: 'bbbbbbbbbbbb' }) });
+
+      expect(permanentRedirect).not.toHaveBeenCalled();
+      render(page);
+      expect(screen.getByTestId('result-poller')).toHaveAttribute('data-share-id', 'bbbbbbbbbbbb');
+      expect(metadata.alternates).toMatchObject({ canonical: '/share/bbbbbbbbbbbb' });
+    });
+
+    it('uses the API canonical share ID in alias-request metadata', async () => {
+      vi.mocked(global.fetch).mockResolvedValue({ ok: true, json: async () => ({ shareId: 'bbbbbbbbbbbb', status: 'Completed', song: { id: 'song-1', title: 'Canonical Song', artists: ['Artist'], status: 'Resolved', links: [] } }) } as Response);
+
+      const metadata = await generateMetadata({ params: Promise.resolve({ shareId: 'aaaaaaaaaaaa' }) });
+
+      expect(metadata.alternates).toMatchObject({ canonical: '/share/bbbbbbbbbbbb' });
+      expect(metadata.openGraph).toMatchObject({ url: '/share/bbbbbbbbbbbb' });
+    });
+
     it('renders ResultPoller with correct shareId', async () => {
       const params = Promise.resolve({ shareId: 'unique-share-id' });
       const page = await ShareResultPage({ params });

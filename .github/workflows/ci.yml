@@ -132,6 +132,7 @@ jobs:
           AZURE_SPOTIFY_CLIENTSECRET: ${{ secrets.SPOTIFY_CLIENTSECRET }}
           AZURE_YOUTUBE_GEOGRAPHICLOCATION: ${{ vars.YOUTUBE_GEOGRAPHICLOCATION }}
           AZURE_REVALIDATION_SECRET: ${{ secrets.REVALIDATION_SECRET }}
+          AZURE_MAINTENANCE_SECRET: ${{ secrets.MAINTENANCE_SECRET }}
           AZURE_FRONTEND_ORIGIN: https://${{ vars.sub_domain }}.${{ vars.domain }}
           AZURE_RESUME_ORIGIN: https://resume.baileymiller.dev
           AZURE_CUSTOM_DOMAIN: ${{ vars.sub_domain }}.${{ vars.domain }}
@@ -157,6 +158,7 @@ jobs:
           AZURE_SPOTIFY_CLIENTSECRET: ${{ secrets.SPOTIFY_CLIENTSECRET }}
           AZURE_YOUTUBE_GEOGRAPHICLOCATION: ${{ vars.YOUTUBE_GEOGRAPHICLOCATION }}
           AZURE_REVALIDATION_SECRET: ${{ secrets.REVALIDATION_SECRET }}
+          AZURE_MAINTENANCE_SECRET: ${{ secrets.MAINTENANCE_SECRET }}
           AZURE_FRONTEND_ORIGIN: https://${{ vars.sub_domain }}.${{ vars.domain }}
           AZURE_RESUME_ORIGIN: https://resume.baileymiller.dev
           AZURE_CUSTOM_DOMAIN: ${{ vars.sub_domain }}.${{ vars.domain }}

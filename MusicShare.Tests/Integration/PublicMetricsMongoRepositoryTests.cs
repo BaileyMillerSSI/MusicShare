@@ -124,6 +124,40 @@ public class PublicMetricsMongoRepositoryTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ItWillExcludeAReconciledAliasFromTotalRecentDailyAndServiceLinkMetrics()
+    {
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var context = new TestDbContext(_database);
+        var canonicalSong = ObjectId.GenerateNewId().ToString();
+        var aliasSong = ObjectId.GenerateNewId().ToString();
+        var day = new DateTime(2026, 8, 28, 0, 0, 0, DateTimeKind.Utc);
+        await context.Songs.InsertManyAsync([
+            new Song { Id = canonicalSong, Title = "Canonical", Artists = ["Artist"], CreatedAt = day },
+            new Song { Id = aliasSong, Title = "Alias", Artists = ["Artist"], CreatedAt = day }
+        ], cancellationToken: cancellationToken);
+        await _database.GetCollection<BsonDocument>("requests").InsertManyAsync([
+            RequestDocument(canonicalSong, "aaaaaaaaaaaa", ServiceType.Spotify, day),
+            RequestDocument(aliasSong, "bbbbbbbbbbbb", ServiceType.Spotify, day, canonicalShareId: "aaaaaaaaaaaa")
+        ], cancellationToken: cancellationToken);
+        await _database.GetCollection<BsonDocument>("links").InsertManyAsync([
+            LinkDocument(canonicalSong, ServiceType.Spotify),
+            LinkDocument(aliasSong, ServiceType.Spotify),
+            LinkDocument(aliasSong, ServiceType.YouTubeMusic)
+        ], cancellationToken: cancellationToken);
+
+        var requests = new ShareRequestRepository(context);
+        var links = new SongServiceLinkRepository(context);
+
+        (await requests.GetCompletedDistinctSongCountAsync(cancellationToken)).Should().Be(1);
+        (await requests.GetRecentCompletedDistinctAsync(10, cancellationToken)).Should().ContainSingle()
+            .Which.ShareId.Should().Be("aaaaaaaaaaaa");
+        (await requests.GetCompletedDistinctSongCountsByDayAsync(day, day.AddDays(1), cancellationToken))
+            .Should().Equal(new DailyCompletedSongCount(day, 1));
+        (await links.GetCompletedDistinctSongLinkCountsAsync(cancellationToken)).Should().BeEquivalentTo(
+            new Dictionary<ServiceType, long> { [ServiceType.Spotify] = 1 });
+    }
+
+    [Fact]
     public async Task ItWillInsertReplaceAndRejectStaleSnapshotCandidatesIncludingEqualTotals()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
@@ -203,11 +237,16 @@ public class PublicMetricsMongoRepositoryTests : IAsyncLifetime
 
     private static PublicMetricsSnapshot Snapshot(long total, long version) => new() { TotalCompletedSongs = total, SnapshotVersion = version, GeneratedAt = DateTime.UtcNow };
     private static DateTime TruncateToMongoMilliseconds(DateTime value) => new(value.Ticks - value.Ticks % TimeSpan.TicksPerMillisecond, DateTimeKind.Utc);
-    private static BsonDocument RequestDocument(string songId, string shareId, ServiceType service, DateTime createdAt, ShareStatus status = ShareStatus.Completed) => new()
+    private static BsonDocument RequestDocument(string songId, string shareId, ServiceType service, DateTime createdAt, ShareStatus status = ShareStatus.Completed, string? canonicalShareId = null)
     {
-        { "_id", ObjectId.GenerateNewId() }, { "shareId", shareId }, { "sourceUrl", "https://example.test" },
-        { "sourceService", service.ToString() }, { "songId", ObjectId.Parse(songId) }, { "status", status.ToString() }, { "createdAt", createdAt }
-    };
+        var document = new BsonDocument
+        {
+            { "_id", ObjectId.GenerateNewId() }, { "shareId", shareId }, { "sourceUrl", "https://example.test" },
+            { "sourceService", service.ToString() }, { "songId", ObjectId.Parse(songId) }, { "status", status.ToString() }, { "createdAt", createdAt }
+        };
+        if (canonicalShareId is not null) document.Add("canonicalShareId", canonicalShareId);
+        return document;
+    }
 
     private static BsonDocument LinkDocument(string songId, ServiceType service) => new()
     {
@@ -238,6 +277,13 @@ public class PublicMetricsMongoRepositoryTests : IAsyncLifetime
         public Task<ShareRequest?> GetByCorrelationIdAsync(Guid correlationId, CancellationToken cancellationToken = default) => inner.GetByCorrelationIdAsync(correlationId, cancellationToken);
         public Task<ShareRequest?> GetBySongIdAsync(string songId, CancellationToken cancellationToken = default) => inner.GetBySongIdAsync(songId, cancellationToken);
         public Task<ShareRequest?> GetByServiceTrackIdAsync(ServiceType serviceType, string serviceTrackId, CancellationToken cancellationToken = default) => inner.GetByServiceTrackIdAsync(serviceType, serviceTrackId, cancellationToken);
+        public Task<ShareRequest?> GetBySourceIdentityKeyAsync(string sourceIdentityKey, CancellationToken cancellationToken = default) => inner.GetBySourceIdentityKeyAsync(sourceIdentityKey, cancellationToken);
+        public Task<ShareReservation> ReserveBySourceIdentityAsync(ShareRequest request, CancellationToken cancellationToken = default) => inner.ReserveBySourceIdentityAsync(request, cancellationToken);
+        public Task<ShareRequest?> ResolveCanonicalAsync(ShareRequest request, CancellationToken cancellationToken = default) => inner.ResolveCanonicalAsync(request, cancellationToken);
+        public Task<IReadOnlyList<ShareRequest>> GetByShareIdsAsync(IReadOnlyCollection<string> shareIds, CancellationToken cancellationToken = default) => inner.GetByShareIdsAsync(shareIds, cancellationToken);
+        public Task<IReadOnlyList<ShareRequest>> GetAliasesTargetingShareIdsAsync(IReadOnlyCollection<string> shareIds, CancellationToken cancellationToken = default) => inner.GetAliasesTargetingShareIdsAsync(shareIds, cancellationToken);
+        public Task<IReadOnlyList<ShareRequest>> GetBySongIdsAsync(IReadOnlyCollection<string> songIds, CancellationToken cancellationToken = default) => inner.GetBySongIdsAsync(songIds, cancellationToken);
+        public Task<ReconciliationWriteResult> TryReconcileAsync(ReconciliationWrite write, CancellationToken cancellationToken = default) => inner.TryReconcileAsync(write, cancellationToken);
         public Task<ShareRequest> InsertAsync(ShareRequest request, CancellationToken cancellationToken = default) => inner.InsertAsync(request, cancellationToken);
         public Task UpdateAsync(ShareRequest request, CancellationToken cancellationToken = default) => inner.UpdateAsync(request, cancellationToken);
         public Task<long> GetCompletedDistinctSongCountAsync(CancellationToken cancellationToken = default) => inner.GetCompletedDistinctSongCountAsync(cancellationToken);

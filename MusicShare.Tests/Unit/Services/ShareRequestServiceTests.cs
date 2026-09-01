@@ -25,8 +25,8 @@ public class ShareRequestServiceTests
             .Setup(x => x.GetByServiceAndSongIdAsync(serviceType, "abc123", It.IsAny<CancellationToken>()))
             .ReturnsAsync((SongServiceLink?)null);
         mock.Mock<IShareRequestRepository>()
-            .Setup(x => x.InsertAsync(It.IsAny<ShareRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((ShareRequest sr, CancellationToken _) => sr);
+            .Setup(x => x.ReserveBySourceIdentityAsync(It.IsAny<ShareRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ShareRequest sr, CancellationToken _) => new ShareReservation(sr, true));
 
         var sut = mock.Create<ShareRequestService>();
 
@@ -51,8 +51,8 @@ public class ShareRequestServiceTests
             .Setup(x => x.GetByServiceAndSongIdAsync(serviceType, "abc123", It.IsAny<CancellationToken>()))
             .ReturnsAsync((SongServiceLink?)null);
         mock.Mock<IShareRequestRepository>()
-            .Setup(x => x.InsertAsync(It.IsAny<ShareRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((ShareRequest sr, CancellationToken _) => sr);
+            .Setup(x => x.ReserveBySourceIdentityAsync(It.IsAny<ShareRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ShareRequest sr, CancellationToken _) => new ShareReservation(sr, true));
 
         var sut = mock.Create<ShareRequestService>();
 
@@ -61,7 +61,7 @@ public class ShareRequestServiceTests
 
         // Assert
         mock.Mock<IShareRequestRepository>().Verify(
-            x => x.InsertAsync(
+            x => x.ReserveBySourceIdentityAsync(
                 It.Is<ShareRequest>(sr =>
                     sr.SourceUrl == "https://open.spotify.com/track/abc123" &&
                     sr.SourceService == ServiceType.Spotify &&
@@ -85,8 +85,8 @@ public class ShareRequestServiceTests
             .Setup(x => x.GetByServiceAndSongIdAsync(serviceType, "abc123", It.IsAny<CancellationToken>()))
             .ReturnsAsync((SongServiceLink?)null);
         mock.Mock<IShareRequestRepository>()
-            .Setup(x => x.InsertAsync(It.IsAny<ShareRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((ShareRequest sr, CancellationToken _) => sr);
+            .Setup(x => x.ReserveBySourceIdentityAsync(It.IsAny<ShareRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ShareRequest sr, CancellationToken _) => new ShareReservation(sr, true));
 
         var sut = mock.Create<ShareRequestService>();
 
@@ -183,7 +183,7 @@ public class ShareRequestServiceTests
 
         // Assert
         mock.Mock<IShareRequestRepository>().Verify(
-            x => x.InsertAsync(It.IsAny<ShareRequest>(), It.IsAny<CancellationToken>()),
+            x => x.ReserveBySourceIdentityAsync(It.IsAny<ShareRequest>(), It.IsAny<CancellationToken>()),
             Times.Never);
         mock.Mock<IPublishEndpoint>().Verify(
             x => x.Publish(It.IsAny<SongShareSubmitted>(), It.IsAny<CancellationToken>()),
@@ -219,8 +219,8 @@ public class ShareRequestServiceTests
             .ReturnsAsync((ShareRequest?)null);
 
         mock.Mock<IShareRequestRepository>()
-            .Setup(x => x.InsertAsync(It.IsAny<ShareRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((ShareRequest sr, CancellationToken _) => sr);
+            .Setup(x => x.ReserveBySourceIdentityAsync(It.IsAny<ShareRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ShareRequest sr, CancellationToken _) => new ShareReservation(sr, true));
 
         var sut = mock.Create<ShareRequestService>();
 
@@ -230,7 +230,7 @@ public class ShareRequestServiceTests
         // Assert
         result.Should().HaveLength(12);
         mock.Mock<IShareRequestRepository>().Verify(
-            x => x.InsertAsync(It.IsAny<ShareRequest>(), It.IsAny<CancellationToken>()),
+            x => x.ReserveBySourceIdentityAsync(It.IsAny<ShareRequest>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -245,8 +245,8 @@ public class ShareRequestServiceTests
         SetupAdapterForCreate(mock, url, serviceType, null);
 
         mock.Mock<IShareRequestRepository>()
-            .Setup(x => x.InsertAsync(It.IsAny<ShareRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((ShareRequest sr, CancellationToken _) => sr);
+            .Setup(x => x.ReserveBySourceIdentityAsync(It.IsAny<ShareRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ShareRequest sr, CancellationToken _) => new ShareReservation(sr, true));
 
         var sut = mock.Create<ShareRequestService>();
 
@@ -271,8 +271,8 @@ public class ShareRequestServiceTests
         SetupAdapterForCreate(mock, url, serviceType, "");
 
         mock.Mock<IShareRequestRepository>()
-            .Setup(x => x.InsertAsync(It.IsAny<ShareRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((ShareRequest sr, CancellationToken _) => sr);
+            .Setup(x => x.ReserveBySourceIdentityAsync(It.IsAny<ShareRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ShareRequest sr, CancellationToken _) => new ShareReservation(sr, true));
 
         var sut = mock.Create<ShareRequestService>();
 
@@ -305,8 +305,8 @@ public class ShareRequestServiceTests
             .Setup(x => x.GetByServiceAndSongIdAsync(serviceType, "abc123", It.IsAny<CancellationToken>()))
             .ReturnsAsync((SongServiceLink?)null);
         mock.Mock<IShareRequestRepository>()
-            .Setup(x => x.InsertAsync(It.IsAny<ShareRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((ShareRequest sr, CancellationToken _) => sr);
+            .Setup(x => x.ReserveBySourceIdentityAsync(It.IsAny<ShareRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ShareRequest sr, CancellationToken _) => new ShareReservation(sr, true));
 
         var sut = mock.Create<ShareRequestService>();
 
@@ -315,7 +315,7 @@ public class ShareRequestServiceTests
 
         // Assert
         mock.Mock<IShareRequestRepository>().Verify(
-            x => x.InsertAsync(
+            x => x.ReserveBySourceIdentityAsync(
                 It.Is<ShareRequest>(sr => sr.SourceUrl == normalizedUrl),
                 It.IsAny<CancellationToken>()),
             Times.Once);
@@ -334,8 +334,8 @@ public class ShareRequestServiceTests
             .Setup(x => x.GetByServiceAndSongIdAsync(serviceType, "abc123", It.IsAny<CancellationToken>()))
             .ReturnsAsync((SongServiceLink?)null);
         mock.Mock<IShareRequestRepository>()
-            .Setup(x => x.InsertAsync(It.IsAny<ShareRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((ShareRequest sr, CancellationToken _) => sr);
+            .Setup(x => x.ReserveBySourceIdentityAsync(It.IsAny<ShareRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ShareRequest sr, CancellationToken _) => new ShareReservation(sr, true));
 
         var sut = mock.Create<ShareRequestService>();
 
@@ -344,7 +344,7 @@ public class ShareRequestServiceTests
 
         // Assert
         mock.Mock<IShareRequestRepository>().Verify(
-            x => x.InsertAsync(
+            x => x.ReserveBySourceIdentityAsync(
                 It.Is<ShareRequest>(sr => sr.CorrelationId != Guid.Empty),
                 It.IsAny<CancellationToken>()),
             Times.Once);
@@ -709,6 +709,52 @@ public class ShareRequestServiceTests
     }
 
     #endregion
+
+    [Fact]
+    public async Task ItWillResolveAnAliasRequestToItsTerminalCanonicalShare()
+    {
+        using var mock = AutoMock.GetLoose();
+        var alias = new ShareRequest { ShareId = "alias-share", CanonicalShareId = "canonical-share", Status = ShareStatus.Completed };
+        var canonical = new ShareRequest { ShareId = "canonical-share", Status = ShareStatus.Completed };
+        mock.Mock<IShareRequestRepository>().Setup(x => x.GetByShareIdAsync(alias.ShareId, It.IsAny<CancellationToken>())).ReturnsAsync(alias);
+        mock.Mock<IShareRequestRepository>().Setup(x => x.ResolveCanonicalAsync(alias, It.IsAny<CancellationToken>())).ReturnsAsync(canonical);
+
+        var result = await mock.Create<ShareRequestService>().GetByShareIdAsync(alias.ShareId, CancellationToken.None);
+
+        result!.ShareId.Should().Be(canonical.ShareId);
+    }
+
+    [Fact]
+    public async Task ItWillFailClosedWhenAnAliasCanonicalRecordIsMissingOrChained()
+    {
+        using var mock = AutoMock.GetLoose();
+        var alias = new ShareRequest { ShareId = "alias-share", CanonicalShareId = "missing-share", Status = ShareStatus.Completed };
+        mock.Mock<IShareRequestRepository>().Setup(x => x.GetByShareIdAsync(alias.ShareId, It.IsAny<CancellationToken>())).ReturnsAsync(alias);
+        mock.Mock<IShareRequestRepository>().Setup(x => x.ResolveCanonicalAsync(alias, It.IsAny<CancellationToken>())).ReturnsAsync((ShareRequest?)null);
+
+        var result = await mock.Create<ShareRequestService>().GetByShareIdAsync(alias.ShareId, CancellationToken.None);
+
+        result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ItWillReturnTheTerminalCanonicalShareForCompletedLinkReuse()
+    {
+        using var mock = AutoMock.GetLoose();
+        const string url = "https://open.spotify.com/track/abc123";
+        SetupAdapterForCreate(mock, url, ServiceType.Spotify, "abc123");
+        mock.Mock<ISongServiceLinkRepository>().Setup(x => x.GetByServiceAndSongIdAsync(ServiceType.Spotify, "abc123", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new SongServiceLink { SongId = "song" });
+        var alias = new ShareRequest { ShareId = "alias-share", CanonicalShareId = "canonical-share" };
+        mock.Mock<IShareRequestRepository>().Setup(x => x.GetBySongIdAsync("song", It.IsAny<CancellationToken>())).ReturnsAsync(alias);
+        mock.Mock<IShareRequestRepository>().Setup(x => x.ResolveCanonicalAsync(alias, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ShareRequest { ShareId = "canonical-share" });
+
+        var result = await mock.Create<ShareRequestService>().Create(url, ServiceType.Spotify, CancellationToken.None);
+
+        result.Should().Be("canonical-share");
+        mock.Mock<IPublishEndpoint>().Verify(x => x.Publish(It.IsAny<SongShareSubmitted>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 
     #region Helper Methods
 

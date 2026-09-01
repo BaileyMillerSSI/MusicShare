@@ -10,6 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 // Add services to the container
 builder.Services.AddControllers();
+builder.Services.AddOptions<MaintenanceSettings>().Bind(builder.Configuration.GetSection(MaintenanceSettings.SectionName));
 
 // Add MediatR
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
@@ -43,6 +44,7 @@ builder.AddMessageAccess(
     });
 
 builder.Services.AddHostedService<PublicMetricsBootstrapService>();
+builder.Services.AddHostedService<ShareIdentityIndexInitializer>();
 builder.Services.AddHostedService<PublicMetricsDailyRefreshService>();
 builder.Services.AddSingleton<PublicMetricsInvalidationRetryService>();
 builder.Services.AddSingleton<IPublicMetricsInvalidationRetryService>(provider =>

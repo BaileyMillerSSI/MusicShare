@@ -5,10 +5,28 @@ using MusicShare.Persistence.Entities;
 
 namespace MusicShare.Persistence.Repositories;
 
-public class ShareRequestRepository(IMusicShareDbContext context) : IShareRequestRepository
+public class ShareRequestRepository : IShareRequestRepository
 {
-    private readonly IMongoCollection<ShareRequest> _requests = context.ShareRequests;
-    private readonly IMongoCollection<Song> _songs = context.Songs;
+    private readonly IMongoCollection<ShareRequest> _requests;
+    private readonly IMongoCollection<Song> _songs;
+    private readonly IMongoCollection<SongServiceLink> _links;
+    private readonly Func<ReconciliationPinPause, CancellationToken, Task>? _beforeCanonicalPinAsyncForTests;
+    private readonly Func<ReconciliationPinPause, CancellationToken, Task>? _afterCanonicalPinAsyncForTests;
+
+    public ShareRequestRepository(IMusicShareDbContext context) : this(context, null, null) { }
+
+    // Test-only deterministic interleaving seams. The internal constructor keeps them
+    // inaccessible to production/API callers and scoped to one repository instance.
+    internal ShareRequestRepository(IMusicShareDbContext context,
+        Func<ReconciliationPinPause, CancellationToken, Task>? beforeCanonicalPinAsyncForTests,
+        Func<ReconciliationPinPause, CancellationToken, Task>? afterCanonicalPinAsyncForTests)
+    {
+        _requests = context.ShareRequests;
+        _songs = context.Songs;
+        _links = context.SongServiceLinks;
+        _beforeCanonicalPinAsyncForTests = beforeCanonicalPinAsyncForTests;
+        _afterCanonicalPinAsyncForTests = afterCanonicalPinAsyncForTests;
+    }
 
     public async Task<ShareRequest?> GetByIdAsync(string id, CancellationToken cancellationToken = default)
     {
@@ -45,6 +63,211 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
         );
         return await _requests.Find(filter).FirstOrDefaultAsync(cancellationToken);
     }
+
+    public async Task<ShareRequest?> GetBySourceIdentityKeyAsync(string sourceIdentityKey, CancellationToken cancellationToken = default) =>
+        await _requests.Find(Builders<ShareRequest>.Filter.Eq(x => x.SourceIdentityKey, sourceIdentityKey))
+            .FirstOrDefaultAsync(cancellationToken);
+
+    public async Task<ShareReservation> ReserveBySourceIdentityAsync(ShareRequest request, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.SourceIdentityKey))
+        {
+            await InsertAsync(request, cancellationToken);
+            return new ShareReservation(request, true);
+        }
+
+        request.CreatedAt = DateTime.UtcNow;
+        try
+        {
+            await _requests.InsertOneAsync(request, cancellationToken: cancellationToken);
+            return new ShareReservation(request, true);
+        }
+        catch (MongoWriteException exception) when (exception.WriteError?.Category == ServerErrorCategory.DuplicateKey)
+        {
+            var winner = await GetBySourceIdentityKeyAsync(request.SourceIdentityKey, cancellationToken);
+            if (winner is null) throw;
+            return new ShareReservation(winner, false);
+        }
+    }
+
+    public async Task<ShareRequest?> ResolveCanonicalAsync(ShareRequest request, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.CanonicalShareId)) return request;
+        var canonical = await GetByShareIdAsync(request.CanonicalShareId, cancellationToken);
+        return canonical is null || !string.IsNullOrWhiteSpace(canonical.CanonicalShareId) ? null : canonical;
+    }
+
+    public async Task<IReadOnlyList<ShareRequest>> GetByShareIdsAsync(IReadOnlyCollection<string> shareIds, CancellationToken cancellationToken = default)
+    {
+        if (shareIds.Count != 2) return [];
+        return await _requests.Find(Builders<ShareRequest>.Filter.In(x => x.ShareId, shareIds)).ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<ShareRequest>> GetAliasesTargetingShareIdsAsync(IReadOnlyCollection<string> shareIds, CancellationToken cancellationToken = default)
+    {
+        if (shareIds.Count != 2) return [];
+        return await _requests.Find(Builders<ShareRequest>.Filter.In(x => x.CanonicalShareId, shareIds)).ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<ShareRequest>> GetBySongIdsAsync(IReadOnlyCollection<string> songIds, CancellationToken cancellationToken = default)
+    {
+        if (songIds.Count == 0) return [];
+        return await _requests.Find(Builders<ShareRequest>.Filter.In(x => x.SongId, songIds)).ToListAsync(cancellationToken);
+    }
+
+    public async Task<ReconciliationWriteResult> TryReconcileAsync(ReconciliationWrite write, CancellationToken cancellationToken = default)
+    {
+        // This works on standalone Mongo: claims are per share and fenced by a random token.
+        // A claimant takes IDs in ascending order to avoid opposing-pair deadlocks. Every read,
+        // durable write and release below includes that token, preventing stale lease holders
+        // from writing after an expiry/takeover.
+        var token = Guid.NewGuid().ToString("N");
+        var ordered = new[] { write.CanonicalShareId, write.AliasShareId }.OrderBy(x => x, StringComparer.Ordinal).ToArray();
+        var firstExpectedVersion = ordered[0] == write.CanonicalShareId ? write.CanonicalPreClaimVersion : write.AliasPreClaimVersion;
+        var secondExpectedVersion = ordered[1] == write.CanonicalShareId ? write.CanonicalPreClaimVersion : write.AliasPreClaimVersion;
+        var first = await TryClaimAsync(ordered[0], token, firstExpectedVersion, cancellationToken);
+        if (first is null) return new(false, false, "Another duplicate-share reconciliation is in progress. Retry the dry-run.");
+        var second = await TryClaimAsync(ordered[1], token, secondExpectedVersion, cancellationToken);
+        if (second is null)
+        {
+            await ReleaseClaimAsync(ordered[0], token, cancellationToken);
+            return new(false, false, "Another duplicate-share reconciliation is in progress. Retry the dry-run.");
+        }
+        try
+        {
+        var canonical = await GetClaimedAsync(write.CanonicalShareId, token, cancellationToken);
+        var alias = await GetClaimedAsync(write.AliasShareId, token, cancellationToken);
+        if (canonical is null || alias is null || canonical.ShareId == alias.ShareId ||
+            canonical.ReconciliationClaimVersion != write.CanonicalPreClaimVersion + 1 || alias.ReconciliationClaimVersion != write.AliasPreClaimVersion + 1 ||
+            canonical.Status != write.CanonicalStatus || alias.Status != write.AliasStatus ||
+            canonical.Status != ShareStatus.Completed || alias.Status != ShareStatus.Completed ||
+            canonical.SongId != write.CanonicalSongId || alias.SongId != write.AliasSongId ||
+            !string.IsNullOrEmpty(canonical.CanonicalShareId))
+            return new(false, false, "The requested shares are no longer eligible for reconciliation.");
+
+        if (alias.CanonicalShareId == canonical.ShareId && alias.ReconciliationId == write.ReconciliationId && alias.ReconciliationFingerprint == write.Fingerprint)
+            return new(true, false);
+        if (!string.IsNullOrEmpty(alias.CanonicalShareId))
+            return new(false, false, "The alias is already reconciled.");
+        if (canonical.CreatedAt != write.CanonicalCreatedAt || alias.CreatedAt != write.AliasCreatedAt)
+            return new(false, false, "The reconciliation plan is stale.");
+
+        // The dry-run does not authorize a write by itself. Re-read every piece of
+        // evidence after both exact-token claims are held and rebuild the same snapshot
+        // using pre-claim versions, so a mutation between dry-run and apply is rejected.
+        var currentSongs = await _songs.Find(Builders<Song>.Filter.In(x => x.Id, new[] { canonical.SongId, alias.SongId })).ToListAsync(cancellationToken);
+        var currentLinks = await _links.Find(Builders<SongServiceLink>.Filter.In(x => x.SongId, new[] { canonical.SongId, alias.SongId })).ToListAsync(cancellationToken);
+        var incomingAliases = await GetAliasesTargetingShareIdsAsync([canonical.ShareId, alias.ShareId], cancellationToken);
+        var preliminary = ReconciliationSnapshots.TryCreate(canonical, alias, currentSongs, currentLinks, [], incomingAliases, write.CanonicalPreClaimVersion, write.AliasPreClaimVersion);
+        if (preliminary is null) return new(false, false, "The reconciliation evidence changed.");
+        var identityFilter = Builders<SongServiceLink>.Filter.Or(preliminary.SharedIdentities.Select(x => Builders<SongServiceLink>.Filter.And(
+            Builders<SongServiceLink>.Filter.Eq(y => y.ServiceType, (ServiceType)x.ServiceType),
+            Builders<SongServiceLink>.Filter.Eq(y => y.ServiceSongId, x.ServiceSongId))));
+        var ownerLinks = await _links.Find(identityFilter).ToListAsync(cancellationToken);
+        var owners = ownerLinks.Count == 0 ? [] : await _requests.Find(Builders<ShareRequest>.Filter.In(x => x.SongId, ownerLinks.Select(x => x.SongId).Distinct())).ToListAsync(cancellationToken);
+        var snapshot = ReconciliationSnapshots.TryCreate(canonical, alias, currentSongs, currentLinks, owners, incomingAliases, write.CanonicalPreClaimVersion, write.AliasPreClaimVersion);
+        if (snapshot is null || snapshot.Fingerprint != write.Fingerprint) return new(false, false, "The reconciliation plan is stale.");
+
+        // The source identity is part of the operator-approved snapshot. Rebuild it
+        // from the exact-token-held canonical row rather than trusting a caller value.
+        var currentSourceIdentityKey = ReconciliationSnapshots.CanonicalSourceIdentityKey(canonical);
+        if (canonical.SourceService != write.CanonicalSourceService || canonical.ServiceTrackId != write.CanonicalServiceTrackId ||
+            currentSourceIdentityKey != write.CanonicalSourceIdentityKey || snapshot.CanonicalSourceIdentityKey != write.CanonicalSourceIdentityKey)
+            return new(false, false, "The canonical source identity changed.");
+
+        var pause = _beforeCanonicalPinAsyncForTests;
+        if (pause is not null)
+            await pause(new(canonical.ShareId, alias.ShareId, token), cancellationToken);
+
+        // The pin and source-key backfill are one fenced durable step. Its match result is
+        // required: if this holder lost the canonical claim, it must not write its still-held
+        // alias after another operation has pinned/reconciled the canonical record.
+        var sourceKeyFilter = string.IsNullOrWhiteSpace(write.CanonicalSourceIdentityKey)
+            ? Builders<ShareRequest>.Filter.Empty
+            : Builders<ShareRequest>.Filter.Or(
+                Builders<ShareRequest>.Filter.Eq(x => x.SourceIdentityKey, null),
+                Builders<ShareRequest>.Filter.Eq(x => x.SourceIdentityKey, write.CanonicalSourceIdentityKey));
+        var pinFilter = Builders<ShareRequest>.Filter.And(
+            Builders<ShareRequest>.Filter.Eq(x => x.ShareId, canonical.ShareId),
+            Builders<ShareRequest>.Filter.Eq(x => x.ReconciliationClaimToken, token),
+            Builders<ShareRequest>.Filter.Eq(x => x.CanonicalShareId, null),
+            sourceKeyFilter);
+        var pinUpdate = Builders<ShareRequest>.Update.Set(x => x.IsReconciliationCanonical, true);
+        if (!string.IsNullOrWhiteSpace(write.CanonicalSourceIdentityKey))
+            pinUpdate = pinUpdate.Set(x => x.SourceIdentityKey, write.CanonicalSourceIdentityKey);
+        try
+        {
+            var pin = await _requests.UpdateOneAsync(pinFilter, pinUpdate, cancellationToken: cancellationToken);
+            if (pin.MatchedCount != 1)
+                return new(false, false, "The canonical reconciliation claim was lost.");
+        }
+        catch (MongoWriteException exception) when (exception.WriteError?.Category == ServerErrorCategory.DuplicateKey)
+        {
+            return new(false, false, "The canonical source identity is owned by another request.");
+        }
+        var afterPin = _afterCanonicalPinAsyncForTests;
+        if (afterPin is not null)
+            await afterPin(new(canonical.ShareId, alias.ShareId, token), cancellationToken);
+
+        var filter = Builders<ShareRequest>.Filter.And(
+            Builders<ShareRequest>.Filter.Eq(x => x.ShareId, alias.ShareId),
+            Builders<ShareRequest>.Filter.Eq(x => x.ReconciliationClaimToken, token),
+            Builders<ShareRequest>.Filter.Eq(x => x.CanonicalShareId, null),
+            Builders<ShareRequest>.Filter.Or(
+                Builders<ShareRequest>.Filter.Eq(x => x.IsReconciliationCanonical, null),
+                Builders<ShareRequest>.Filter.Eq(x => x.IsReconciliationCanonical, false)),
+            Builders<ShareRequest>.Filter.Eq(x => x.CreatedAt, write.AliasCreatedAt),
+            Builders<ShareRequest>.Filter.Eq(x => x.SongId, write.AliasSongId),
+            Builders<ShareRequest>.Filter.Eq(x => x.Status, write.AliasStatus));
+        var update = Builders<ShareRequest>.Update
+            .Set(x => x.CanonicalShareId, canonical.ShareId)
+            .Set(x => x.ReconciledAt, DateTime.UtcNow)
+            .Set(x => x.ReconciliationId, write.ReconciliationId)
+            .Set(x => x.ReconciliationFingerprint, write.Fingerprint);
+        var result = await _requests.UpdateOneAsync(filter, update, cancellationToken: cancellationToken);
+        if (result.ModifiedCount != 1) return new(false, false, "The reconciliation plan is stale.");
+        return new(true, true);
+        }
+        finally
+        {
+            await ReleaseClaimAsync(ordered[1], token, cancellationToken);
+            await ReleaseClaimAsync(ordered[0], token, cancellationToken);
+        }
+    }
+
+    private async Task<ShareRequest?> TryClaimAsync(string shareId, string token, long expectedVersion, CancellationToken cancellationToken)
+    {
+        var now = DateTime.UtcNow;
+        var claimVersion = expectedVersion == 0
+            ? Builders<ShareRequest>.Filter.Or(
+                Builders<ShareRequest>.Filter.Eq(x => x.ReconciliationClaimVersion, 0),
+                Builders<ShareRequest>.Filter.Exists("reconciliationClaimVersion", false))
+            : Builders<ShareRequest>.Filter.Eq(x => x.ReconciliationClaimVersion, expectedVersion);
+        var filter = Builders<ShareRequest>.Filter.And(
+            Builders<ShareRequest>.Filter.Eq(x => x.ShareId, shareId),
+            claimVersion,
+            Builders<ShareRequest>.Filter.Or(
+                Builders<ShareRequest>.Filter.Eq(x => x.ReconciliationClaimToken, null),
+                Builders<ShareRequest>.Filter.Lte(x => x.ReconciliationClaimExpiresAt, now)));
+        var update = Builders<ShareRequest>.Update
+            .Set(x => x.ReconciliationClaimToken, token)
+            .Set(x => x.ReconciliationClaimExpiresAt, now.AddMinutes(2))
+            .Inc(x => x.ReconciliationClaimVersion, 1);
+        return await _requests.FindOneAndUpdateAsync(filter, update,
+            new FindOneAndUpdateOptions<ShareRequest> { ReturnDocument = ReturnDocument.After }, cancellationToken);
+    }
+
+    private Task<ShareRequest?> GetClaimedAsync(string shareId, string token, CancellationToken cancellationToken) =>
+        _requests.Find(Builders<ShareRequest>.Filter.And(
+            Builders<ShareRequest>.Filter.Eq(x => x.ShareId, shareId),
+            Builders<ShareRequest>.Filter.Eq(x => x.ReconciliationClaimToken, token)))
+            .FirstOrDefaultAsync(cancellationToken);
+
+    private Task ReleaseClaimAsync(string shareId, string token, CancellationToken cancellationToken) =>
+        _requests.UpdateOneAsync(Builders<ShareRequest>.Filter.And(
+                Builders<ShareRequest>.Filter.Eq(x => x.ShareId, shareId),
+                Builders<ShareRequest>.Filter.Eq(x => x.ReconciliationClaimToken, token)),
+            Builders<ShareRequest>.Update.Unset(x => x.ReconciliationClaimToken).Unset(x => x.ReconciliationClaimExpiresAt), cancellationToken: cancellationToken);
 
     public async Task<ShareRequest> InsertAsync(ShareRequest request, CancellationToken cancellationToken = default)
     {
@@ -115,7 +338,8 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
         var stages = new BsonDocument[]
         {
             new("$match", new BsonDocument { { "status", ShareStatus.Completed.ToString() }, { "songId", new BsonDocument("$type", "objectId") },
-                { "sourceService", new BsonDocument("$in", new BsonArray(PublicSourceServices())) } }),
+                { "sourceService", new BsonDocument("$in", new BsonArray(PublicSourceServices())) },
+                { "canonicalShareId", new BsonDocument("$exists", false) } }),
             new("$sort", new BsonDocument { { "createdAt", -1 }, { "shareId", -1 } }),
             new("$group", new BsonDocument { { "_id", "$songId" }, { "songId", new BsonDocument("$first", "$songId") }, { "shareId", new BsonDocument("$first", "$shareId") }, { "sourceService", new BsonDocument("$first", "$sourceService") }, { "createdAt", new BsonDocument("$first", "$createdAt") } })
         };
@@ -172,3 +396,5 @@ public class ShareRequestRepository(IMusicShareDbContext context) : IShareReques
     private static bool IsPublicSourceService(string value, out ServiceType service) =>
         Enum.TryParse(value, out service) && service != ServiceType.Unknown && Enum.IsDefined(service);
 }
+
+internal sealed record ReconciliationPinPause(string CanonicalShareId, string AliasShareId, string ClaimToken);
