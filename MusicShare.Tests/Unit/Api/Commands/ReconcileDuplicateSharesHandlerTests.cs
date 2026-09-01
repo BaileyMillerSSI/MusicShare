@@ -19,6 +19,11 @@ public class ReconcileDuplicateSharesHandlerTests
         revalidation.Setup(x => x.RevalidateShareAsync("bbbbbbbbbbbb", It.IsAny<CancellationToken>())).ReturnsAsync(true);
         var result = await new ReconcileDuplicateShares.Handler(reconciliation.Object, revalidation.Object, publish.Object).Handle(Request(), CancellationToken.None);
         result.Success.Should().BeFalse();
+        result.Changed.Should().BeTrue("the alias was durably written before revalidation failed");
+        result.AffectedShareCount.Should().Be(2);
+        result.OperationId.Should().Be("operation");
+        result.CanonicalShareId.Should().Be("aaaaaaaaaaaa");
+        result.AliasShareId.Should().Be("bbbbbbbbbbbb");
         publish.Verify(x => x.Publish(It.IsAny<RefreshPublicMetrics>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 

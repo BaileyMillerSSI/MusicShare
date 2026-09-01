@@ -38,19 +38,25 @@ public sealed partial class DuplicateShareReconciliationService(
         var alias = pair.Single(x => x.ShareId != canonical.ShareId);
         if (request.CanonicalShareId is not null && canonical.ShareId != request.CanonicalShareId)
             return DuplicateShareReconciliationResult.Failure("The canonical share must be one of the requested shares.");
-        if (existingAlias is not null)
-        {
-            var expectedOperationId = request.Fingerprint is null ? null : $"reconcile-{request.Fingerprint}";
-            if (request.Fingerprint is null || existingAlias.ReconciliationId != expectedOperationId || existingAlias.ReconciliationFingerprint != request.Fingerprint)
-                return DuplicateShareReconciliationResult.Failure("The apply fingerprint does not match the existing reconciliation.");
-            return new(true, false, null, existingAlias.ReconciliationId, request.Fingerprint, canonical.ShareId, alias.ShareId, []);
-        }
         var preliminary = ReconciliationSnapshots.TryCreate(canonical, alias, existingSongs, songLinks, [], canonical.ReconciliationClaimVersion, alias.ReconciliationClaimVersion);
         if (preliminary is null) return DuplicateShareReconciliationResult.Failure("The shares do not have unambiguous resolved provider evidence.");
         var evidenceOwners = await links.GetByIdentitiesAsync(preliminary.SharedIdentities.Select(x => new SongServiceIdentity(x.ServiceType, x.ServiceSongId)).ToArray(), cancellationToken) ?? [];
         var ownerRequests = await requests.GetBySongIdsAsync(evidenceOwners.Select(x => x.SongId).Distinct(StringComparer.Ordinal).ToArray(), cancellationToken) ?? [];
         var snapshot = ReconciliationSnapshots.TryCreate(canonical, alias, existingSongs, songLinks, ownerRequests, canonical.ReconciliationClaimVersion, alias.ReconciliationClaimVersion);
         if (snapshot is null) return DuplicateShareReconciliationResult.Failure("The provider identities are ambiguous or owned by a third canonical share.");
+        if (existingAlias is not null)
+        {
+            // A successful retry must re-check the current pair and all owners, but it
+            // reports the immutable operation/fingerprint persisted by the original CAS.
+            // The canonical source key can legitimately have been backfilled by that CAS,
+            // so recomputing a new fingerprint here would make a safe retry impossible.
+            var expectedOperationId = request.Fingerprint is null ? null : $"reconcile-{request.Fingerprint}";
+            if (request.Mode != DuplicateShareReconciliationMode.Apply || request.Fingerprint is null ||
+                existingAlias.ReconciliationId != expectedOperationId || existingAlias.ReconciliationFingerprint != request.Fingerprint)
+                return DuplicateShareReconciliationResult.Failure("The apply fingerprint does not match the existing reconciliation.");
+            return new(true, false, null, existingAlias.ReconciliationId, existingAlias.ReconciliationFingerprint,
+                canonical.ShareId, alias.ShareId, snapshot.SharedIdentities.Select(x => new DuplicateShareIdentity(x.ServiceType, x.ServiceSongId)).ToArray());
+        }
         var fingerprint = snapshot.Fingerprint;
         var operationId = $"reconcile-{fingerprint}";
         if (request.Mode == DuplicateShareReconciliationMode.DryRun)

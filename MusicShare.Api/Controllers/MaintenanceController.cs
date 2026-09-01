@@ -14,6 +14,9 @@ public sealed class MaintenanceController(IMediator mediator) : ControllerBase
     public async Task<ActionResult<ReconcileDuplicateShares.Response>> Reconcile([FromBody] ReconcileDuplicateShares.Request request, CancellationToken cancellationToken)
     {
         var result = await mediator.Send(request, cancellationToken);
-        return result.Success ? Ok(result) : BadRequest(new { result.Error });
+        // The frontend proxy deliberately accepts the same bounded command contract for
+        // expected domain failures.  Do not collapse stale/ambiguous plans into an
+        // uncorrelated generic error here, and do not introduce any persistence detail.
+        return result.Success ? Ok(result) : BadRequest(result);
     }
 }

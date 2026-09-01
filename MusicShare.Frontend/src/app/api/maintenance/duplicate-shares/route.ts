@@ -15,7 +15,8 @@ function validBody(body: unknown): body is { firstShareId: string; secondShareId
   if (value.canonicalShareId !== undefined && (typeof value.canonicalShareId !== 'string' || !shareId.test(value.canonicalShareId) || (value.canonicalShareId !== value.firstShareId && value.canonicalShareId !== value.secondShareId))) return false;
   if (value.firstShareId === value.secondShareId) return false;
   if (value.mode !== 'dry-run' && value.mode !== 'apply') return false;
-  return value.mode !== 'apply' || typeof value.fingerprint === 'string' && fingerprint.test(value.fingerprint);
+  if (value.mode === 'dry-run') return value.fingerprint === undefined;
+  return typeof value.fingerprint === 'string' && fingerprint.test(value.fingerprint);
 }
 
 function secretsMatch(supplied: string | null, expected: string): boolean {
@@ -29,12 +30,11 @@ function project(payload: unknown): Record<string, unknown> | null {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return null;
   const value = payload as Record<string, unknown>;
   if (typeof value.success !== 'boolean' || typeof value.changed !== 'boolean') return null;
-  if (value.changed && !value.success) return null;
   const countValue = value.affectedShareCount;
   if (!Number.isSafeInteger(countValue) || typeof countValue !== 'number') return null;
   const count = countValue;
-  if (count < 0 || count > 2 || (value.success && count !== 2) || (!value.success && count !== 0)) return null;
-  if (value.success) {
+  if (count < 0 || count > 2 || ((value.success || value.changed) && count !== 2) || (!value.success && !value.changed && count !== 0)) return null;
+  if (value.success || value.changed) {
     if (typeof value.operationId !== 'string' || !operationId.test(value.operationId) ||
         typeof value.fingerprint !== 'string' || !fingerprint.test(value.fingerprint) ||
         typeof value.canonicalShareId !== 'string' || !shareId.test(value.canonicalShareId) ||
@@ -42,14 +42,19 @@ function project(payload: unknown): Record<string, unknown> | null {
         value.canonicalShareId === value.aliasShareId || !Array.isArray(value.sharedIdentities) ||
         value.sharedIdentities.length < 1 || value.sharedIdentities.length > 6 ||
         !value.sharedIdentities.every(identity => validIdentity(identity))) return null;
-    return {
-      success: true, changed: value.changed, affectedShareCount: count, operationId: value.operationId,
+    const projected = {
+      success: value.success, changed: value.changed, affectedShareCount: count, operationId: value.operationId,
       fingerprint: value.fingerprint, canonicalShareId: value.canonicalShareId, aliasShareId: value.aliasShareId,
       sharedIdentities: value.sharedIdentities.map(identity => {
         const item = identity as Record<string, unknown>;
         return { serviceType: item.serviceType, serviceSongId: item.serviceSongId };
       }),
     };
+    if (!value.success) {
+      if (typeof value.error !== 'string' || !validText(value.error, maximumErrorLength)) return null;
+      return { ...projected, error: value.error };
+    }
+    return projected;
   }
   if (typeof value.error !== 'string' || !validText(value.error, maximumErrorLength)) return null;
   return { success: false, changed: false, affectedShareCount: 0, error: value.error };
@@ -84,7 +89,8 @@ export async function POST(request: Request) {
     });
     const payload = await response.json().catch(() => null);
     const result = project(payload);
-    if (!response.ok || !result) return NextResponse.json({ error: 'Reconciliation failed' }, { status: response.status >= 500 ? 502 : 400 });
-    return NextResponse.json(result);
+    if (!result || response.status >= 500 || (response.ok && !result.success) || (!response.ok && result.success))
+      return NextResponse.json({ error: 'Reconciliation failed' }, { status: response.status >= 500 ? 502 : 400 });
+    return NextResponse.json(result, { status: response.ok ? 200 : response.status });
   } catch { return NextResponse.json({ error: 'Maintenance backend unavailable' }, { status: 502 }); }
 }

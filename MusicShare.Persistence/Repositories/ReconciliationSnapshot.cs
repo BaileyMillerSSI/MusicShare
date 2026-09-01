@@ -31,7 +31,7 @@ public static class ReconciliationSnapshots
         var songArray = songs.OrderBy(x => x.Id, StringComparer.Ordinal).ToArray();
         if (songArray.Length != 2 || songArray.Any(x => x.Status != SongStatus.Resolved) ||
             !songArray.Select(x => x.Id).ToHashSet(StringComparer.Ordinal).SetEquals([canonical.SongId, alias.SongId])) return null;
-        var evidence = links.OrderBy(x => x.SongId, StringComparer.Ordinal).ThenBy(x => (int)x.ServiceType).ThenBy(x => x.ServiceSongId, StringComparer.Ordinal).ToArray();
+        var evidence = links.OrderBy(x => x.SongId, StringComparer.Ordinal).ThenBy(x => (int)x.ServiceType).ThenBy(x => x.ServiceSongId, StringComparer.Ordinal).ThenBy(x => x.Id, StringComparer.Ordinal).ToArray();
         if (evidence.Any(x => !Defined(x.ServiceType) || !ProviderId(x.ServiceSongId))) return null;
         var perSong = new[] { canonical.SongId, alias.SongId }.Select(songId => evidence.Where(x => x.SongId == songId)
             .GroupBy(x => x.ServiceType).ToDictionary(x => x.Key, x => x.Select(y => y.ServiceSongId).Distinct(StringComparer.Ordinal).ToArray())).ToArray();
@@ -39,16 +39,24 @@ public static class ReconciliationSnapshots
         var sets = perSong.Select(x => x.SelectMany(y => y.Value.Select(id => new ReconciliationIdentity((int)y.Key, id))).ToHashSet()).ToArray();
         var shared = sets[0].Intersect(sets[1]).OrderBy(x => x.ServiceType).ThenBy(x => x.ServiceSongId, StringComparer.Ordinal).ToArray();
         if (shared.Length == 0 || owners.Any(x => x.ShareId != canonical.ShareId && x.ShareId != alias.ShareId && string.IsNullOrWhiteSpace(x.CanonicalShareId))) return null;
-        var requestLines = new[] { canonical, alias }.OrderBy(x => x.ShareId, StringComparer.Ordinal)
-            .Select(x => $"request:{x.ShareId}:{x.Id}:{x.SongId}:{(int)x.Status}:{x.CreatedAt.Ticks}:{x.SourceIdentityKey}:{x.CanonicalShareId}:{(x.ShareId == canonical.ShareId ? canonicalPreClaimVersion : aliasPreClaimVersion)}");
-        var songLines = songArray.Select(x => $"song:{x.Id}:{(int)x.Status}:{x.CreatedAt.Ticks}:{x.UpdatedAt.Ticks}");
-        var linkLines = evidence.Select(x => $"evidence:{x.Id}:{x.SongId}:{(int)x.ServiceType}:{x.ServiceSongId}:{x.CreatedAt.Ticks}:{x.OriginalUrl}:{x.NormalizedUrl}");
-        var ownerLines = owners.OrderBy(x => x.ShareId, StringComparer.Ordinal).Select(x => $"owner:{x.ShareId}:{x.Id}:{x.SongId}:{(int)x.Status}:{x.CanonicalShareId}:{x.CreatedAt.Ticks}");
-        var sharedLines = shared.Select(x => $"shared:{x.ServiceType}:{x.ServiceSongId}");
-        var fingerprint = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(string.Join('|', requestLines.Concat(songLines).Concat(linkLines).Concat(ownerLines).Concat(sharedLines))))).ToLowerInvariant();
+        // Roles are deliberately explicit: choosing A->B is not the same plan as B->A.
+        var requestLines = new[] {
+            Pack("canonical-request", canonical.ShareId, canonical.Id, canonical.SongId, ((int)canonical.Status).ToString(), canonical.CreatedAt.Ticks.ToString(), canonical.SourceIdentityKey, canonical.CanonicalShareId, canonicalPreClaimVersion.ToString()),
+            Pack("alias-request", alias.ShareId, alias.Id, alias.SongId, ((int)alias.Status).ToString(), alias.CreatedAt.Ticks.ToString(), alias.SourceIdentityKey, alias.CanonicalShareId, aliasPreClaimVersion.ToString()) };
+        var songLines = songArray.Select(x => Pack("song", x.Id, ((int)x.Status).ToString(), x.CreatedAt.Ticks.ToString(), x.UpdatedAt.Ticks.ToString()));
+        var linkLines = evidence.Select(x => Pack("evidence", x.Id, x.SongId, ((int)x.ServiceType).ToString(), x.ServiceSongId, x.CreatedAt.Ticks.ToString(), x.OriginalUrl, x.NormalizedUrl));
+        var ownerLines = owners.OrderBy(x => x.ShareId, StringComparer.Ordinal).ThenBy(x => x.Id, StringComparer.Ordinal).Select(x => Pack("owner", x.ShareId, x.Id, x.SongId, ((int)x.Status).ToString(), x.CanonicalShareId, x.CreatedAt.Ticks.ToString()));
+        var sharedLines = shared.Select(x => Pack("shared", x.ServiceType.ToString(), x.ServiceSongId));
+        var fingerprint = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Pack(requestLines.Concat(songLines).Concat(linkLines).Concat(ownerLines).Concat(sharedLines).ToArray())))).ToLowerInvariant();
         return new(fingerprint, canonicalPreClaimVersion, aliasPreClaimVersion, shared);
     }
 
     public static bool Defined(ServiceType value) => Enum.IsDefined(value) && value != ServiceType.Unknown;
     public static bool ProviderId(string? value) => !string.IsNullOrWhiteSpace(value) && value.Length <= 256 && value.All(x => !char.IsControl(x));
+
+    // Length-prefixing keeps values such as "a|b" and separate fields unambiguous.
+    private static string Pack(params string?[] values) => string.Concat(values.Select(value =>
+    {
+        return value is null ? "-1:" : $"{value.Length}:{value}";
+    }));
 }

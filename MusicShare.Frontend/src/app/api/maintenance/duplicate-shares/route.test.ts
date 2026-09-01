@@ -31,9 +31,27 @@ describe('POST /api/maintenance/duplicate-shares', () => {
     expect((await POST(request({ ...valid, canonicalShareId: 1 }))).status).toBe(400);
     vi.mocked(global.fetch).mockResolvedValue(new Response(JSON.stringify({ success: 'true', changed: false }), { status: 200 }));
     expect((await POST(request(valid))).status).toBe(400);
+    expect((await POST(request({ ...valid, fingerprint: 'a'.repeat(64) }))).status).toBe(400);
+    expect((await POST(request({ ...valid, mode: 'apply' }))).status).toBe(400);
     vi.mocked(global.fetch).mockResolvedValue(new Response(JSON.stringify({ success: true, changed: false, affectedShareCount: 2, operationId: `reconcile-${'a'.repeat(64)}`, fingerprint: 'a'.repeat(64), canonicalShareId: 'aaaaaaaaaaaa', aliasShareId: 'bbbbbbbbbbbb', sharedIdentities: [{ serviceType: 0, serviceSongId: 'spotify-track' }] }), { status: 200 }));
     expect((await POST(request(valid))).status).toBe(400);
     vi.mocked(global.fetch).mockResolvedValue(new Response(JSON.stringify({ success: false, changed: false, affectedShareCount: 1, error: 'bad count' }), { status: 200 }));
+    expect((await POST(request(valid))).status).toBe(400);
+  });
+
+  it('preserves a bounded stale failure and partial durable apply, but rejects mismatched shapes', async () => {
+    vi.mocked(global.fetch).mockResolvedValue(new Response(JSON.stringify({ success: false, changed: false, affectedShareCount: 0, error: 'The reconciliation plan is stale.' }), { status: 400 }));
+    const stale = await POST(request(valid));
+    expect(stale.status).toBe(400);
+    expect(await stale.json()).toEqual({ success: false, changed: false, affectedShareCount: 0, error: 'The reconciliation plan is stale.' });
+
+    const response = { success: false, changed: true, affectedShareCount: 2, error: 'Pages need revalidation.', operationId: `reconcile-${'a'.repeat(64)}`, fingerprint: 'a'.repeat(64), canonicalShareId: 'aaaaaaaaaaaa', aliasShareId: 'bbbbbbbbbbbb', sharedIdentities: [{ serviceType: 1, serviceSongId: 'spotify-track' }] };
+    vi.mocked(global.fetch).mockResolvedValue(new Response(JSON.stringify(response), { status: 400 }));
+    const partial = await POST(request({ ...valid, mode: 'apply', fingerprint: 'a'.repeat(64) }));
+    expect(partial.status).toBe(400);
+    expect(await partial.json()).toEqual(response);
+
+    vi.mocked(global.fetch).mockResolvedValue(new Response(JSON.stringify({ ...response, success: true }), { status: 400 }));
     expect((await POST(request(valid))).status).toBe(400);
   });
 });

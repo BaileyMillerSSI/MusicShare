@@ -22,7 +22,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   try {
     const res = await fetch(`${apiBase}/api/share/${shareId}`);
     const data: ShareResultResponse = await res.json();
-    const canonicalShareId = data.shareId;
+    // Metadata must use the same fail-closed canonical-ID rule as the page; never
+    // emit an arbitrary backend value as a public canonical URL.
+    const canonicalShareId = /^[a-f0-9]{12}$/.test(data.shareId) ? data.shareId : shareId;
 
     if (!data.song) {
       return {

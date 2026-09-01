@@ -3,10 +3,13 @@ using MongoDB.Bson;
 using MongoDB.Bson.Serialization;
 using MongoDB.Bson.Serialization.Serializers;
 using MongoDB.Driver;
+using Microsoft.Extensions.Logging.Abstractions;
+using MusicShare.Api.Services;
 using MusicShare.Contracts;
 using MusicShare.Persistence;
 using MusicShare.Persistence.Entities;
 using MusicShare.Persistence.Repositories;
+using MusicShare.Services.Services;
 
 namespace MusicShare.Tests.Integration;
 
@@ -49,15 +52,27 @@ public sealed class ShareRequestDeduplicationMongoTests : IAsyncLifetime
         var context = new TestDbContext(database);
         var repo = new ShareRequestRepository(context);
         await context.ShareRequests.InsertOneAsync(Request("historic", null));
-        await context.ShareRequests.Indexes.CreateOneAsync(new CreateIndexModel<ShareRequest>(
-            Builders<ShareRequest>.IndexKeys.Ascending(x => x.SourceIdentityKey),
-            new CreateIndexOptions { Name = "share_request_source_identity_unique", Unique = true, Sparse = true }));
+        await new ShareIdentityIndexInitializer(context).StartAsync(CancellationToken.None);
+        var index = (await context.ShareRequests.Indexes.ListAsync()).ToList().Single(x => x["name"] == ShareIdentityIndexInitializer.IndexName);
+        index["unique"].ToBoolean().Should().BeTrue();
+        index["sparse"].ToBoolean().Should().BeTrue();
 
         var reservations = await Task.WhenAll(Enumerable.Range(0, 24).Select(i =>
             repo.ReserveBySourceIdentityAsync(Request($"share{i:x8}"[..12], "v1:1:track"))));
         reservations.Count(x => x.Inserted).Should().Be(1);
         reservations.Select(x => x.Request.ShareId).Distinct().Should().ContainSingle();
         (await context.ShareRequests.CountDocumentsAsync(Builders<ShareRequest>.Filter.Eq(x => x.SourceIdentityKey, "v1:1:track"))).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task ItWillFailStartupWhenExistingKeyedRowsWouldViolateTheCorrectnessIndex()
+    {
+        var context = new TestDbContext(database);
+        await context.ShareRequests.InsertManyAsync([Request("aaaaaaaaaaaa", "v1:1:duplicate"), Request("bbbbbbbbbbbb", "v1:1:duplicate")]);
+
+        var start = () => new ShareIdentityIndexInitializer(context).StartAsync(CancellationToken.None);
+
+        await start.Should().ThrowAsync<MongoCommandException>();
     }
 
     [Fact]
@@ -144,6 +159,137 @@ public sealed class ShareRequestDeduplicationMongoTests : IAsyncLifetime
         var rows = await context.ShareRequests.Find(x => x.ShareId == canonical.ShareId || x.ShareId == alias.ShareId).ToListAsync();
         rows.Should().OnlyContain(x => x.ReconciliationClaimToken == activeClaimToken);
         rows.Should().OnlyContain(x => x.CanonicalShareId == null);
+    }
+
+    [Theory]
+    [InlineData("provider-link")]
+    [InlineData("resolved-song")]
+    [InlineData("third-owner")]
+    [InlineData("share-request")]
+    public async Task ItWillRejectEachPersistedStaleStateBeforeBackfillOrAliasCas(string mutation)
+    {
+        var context = new TestDbContext(database);
+        var repo = new ShareRequestRepository(context);
+        var canonicalSong = ObjectId.GenerateNewId().ToString();
+        var aliasSong = ObjectId.GenerateNewId().ToString();
+        var canonical = Completed("aaaaaaaaaaaa", canonicalSong);
+        var alias = Completed("bbbbbbbbbbbb", aliasSong);
+        await context.ShareRequests.InsertManyAsync([canonical, alias]);
+        await context.Songs.InsertManyAsync([ResolvedSong(canonicalSong), ResolvedSong(aliasSong)]);
+        await context.SongServiceLinks.InsertManyAsync([Link(canonicalSong, "track"), Link(aliasSong, "track")]);
+        var snapshot = ReconciliationSnapshots.TryCreate(canonical, alias,
+            await context.Songs.Find(Builders<Song>.Filter.Empty).ToListAsync(),
+            await context.SongServiceLinks.Find(Builders<SongServiceLink>.Filter.Empty).ToListAsync(), [canonical, alias], 0, 0)!;
+        var write = new ReconciliationWrite(canonical.ShareId, alias.ShareId, $"reconcile-{snapshot.Fingerprint}", snapshot.Fingerprint,
+            canonicalSong, aliasSong, ShareStatus.Completed, ShareStatus.Completed, canonical.CreatedAt, alias.CreatedAt, "v1:1:track", 0, 0);
+
+        switch (mutation)
+        {
+            case "provider-link":
+                await context.SongServiceLinks.InsertOneAsync(Link(aliasSong, "different-track"));
+                break;
+            case "resolved-song":
+                await context.Songs.UpdateOneAsync(x => x.Id == aliasSong, Builders<Song>.Update.Set(x => x.Status, SongStatus.Pending));
+                break;
+            case "third-owner":
+                var thirdSong = ObjectId.GenerateNewId().ToString();
+                await context.Songs.InsertOneAsync(ResolvedSong(thirdSong));
+                await context.ShareRequests.InsertOneAsync(Completed("cccccccccccc", thirdSong));
+                await context.SongServiceLinks.InsertOneAsync(Link(thirdSong, "track"));
+                break;
+            case "share-request":
+                await context.ShareRequests.UpdateOneAsync(x => x.ShareId == alias.ShareId, Builders<ShareRequest>.Update.Inc(x => x.ReconciliationClaimVersion, 1));
+                break;
+        }
+
+        var result = await repo.TryReconcileAsync(write);
+
+        result.Succeeded.Should().BeFalse(mutation);
+        var persistedCanonical = await repo.GetByShareIdAsync(canonical.ShareId);
+        var persistedAlias = await repo.GetByShareIdAsync(alias.ShareId);
+        persistedCanonical!.SourceIdentityKey.Should().BeNull("stale evidence cannot backfill the source key");
+        persistedAlias!.CanonicalShareId.Should().BeNull("stale evidence cannot write an alias");
+    }
+
+    [Fact]
+    public async Task ItWillApplyAndReturnTheStoredBoundedContractOnAnEndToEndRetry()
+    {
+        var context = new TestDbContext(database);
+        var canonical = Completed("aaaaaaaaaaaa", ObjectId.GenerateNewId().ToString());
+        var alias = Completed("bbbbbbbbbbbb", ObjectId.GenerateNewId().ToString());
+        await context.ShareRequests.InsertManyAsync([canonical, alias]);
+        await context.Songs.InsertManyAsync([ResolvedSong(canonical.SongId!), ResolvedSong(alias.SongId!)]);
+        await context.SongServiceLinks.InsertManyAsync([Link(canonical.SongId!, "track"), Link(alias.SongId!, "track")]);
+        var service = new DuplicateShareReconciliationService(new ShareRequestRepository(context), new SongServiceLinkRepository(context), new SongRepository(context), NullLogger<DuplicateShareReconciliationService>.Instance);
+
+        var dryRun = await service.ReconcileAsync(new(canonical.ShareId, alias.ShareId, null, DuplicateShareReconciliationMode.DryRun, null), CancellationToken.None);
+        var apply = await service.ReconcileAsync(new(canonical.ShareId, alias.ShareId, null, DuplicateShareReconciliationMode.Apply, dryRun.Fingerprint), CancellationToken.None);
+        var retry = await service.ReconcileAsync(new(canonical.ShareId, alias.ShareId, null, DuplicateShareReconciliationMode.Apply, dryRun.Fingerprint), CancellationToken.None);
+
+        apply.Success.Should().BeTrue();
+        apply.Changed.Should().BeTrue();
+        retry.Success.Should().BeTrue();
+        retry.Changed.Should().BeFalse();
+        retry.OperationId.Should().Be(apply.OperationId);
+        retry.Fingerprint.Should().Be(dryRun.Fingerprint);
+        retry.CanonicalShareId.Should().Be(canonical.ShareId);
+        retry.AliasShareId.Should().Be(alias.ShareId);
+        retry.SharedIdentities.Should().ContainSingle().Which.ServiceSongId.Should().Be("track");
+    }
+
+    [Fact]
+    public async Task ItWillAllowAtMostOneOpposingReconciliationAndNeverCreateACycle()
+    {
+        var context = new TestDbContext(database);
+        var repo = new ShareRequestRepository(context);
+        var (first, second) = await InsertPairAsync(context);
+        var firstWrite = await WriteAsync(context, first, second);
+        var opposingWrite = await WriteAsync(context, second, first);
+
+        var results = await Task.WhenAll(repo.TryReconcileAsync(firstWrite), repo.TryReconcileAsync(opposingWrite));
+
+        results.Count(x => x.Succeeded && x.Changed).Should().BeLessOrEqualTo(1);
+        var rows = await context.ShareRequests.Find(Builders<ShareRequest>.Filter.In(x => x.ShareId, [first.ShareId, second.ShareId])).ToListAsync();
+        rows.Should().NotContain(x => x.CanonicalShareId == x.ShareId);
+        rows.Count(x => !string.IsNullOrWhiteSpace(x.CanonicalShareId)).Should().BeLessOrEqualTo(1);
+    }
+
+    [Fact]
+    public async Task ItWillAllowAtMostOneOverlappingReconciliationAndNeverCreateAnAliasChain()
+    {
+        var context = new TestDbContext(database);
+        var repo = new ShareRequestRepository(context);
+        var (first, second) = await InsertPairAsync(context);
+        var third = Completed("cccccccccccc", ObjectId.GenerateNewId().ToString());
+        await context.ShareRequests.InsertOneAsync(third);
+        await context.Songs.InsertOneAsync(ResolvedSong(third.SongId!));
+        await context.SongServiceLinks.InsertOneAsync(Link(third.SongId!, "track"));
+        var firstWrite = await WriteAsync(context, first, second);
+        var overlappingWrite = await WriteAsync(context, second, third);
+
+        var results = await Task.WhenAll(repo.TryReconcileAsync(firstWrite), repo.TryReconcileAsync(overlappingWrite));
+
+        results.Count(x => x.Succeeded && x.Changed).Should().BeLessOrEqualTo(1);
+        var rows = await context.ShareRequests.Find(Builders<ShareRequest>.Filter.In(x => x.ShareId, [first.ShareId, second.ShareId, third.ShareId])).ToListAsync();
+        rows.Should().OnlyContain(row => row.CanonicalShareId == null || rows.Single(x => x.ShareId == row.CanonicalShareId).CanonicalShareId == null);
+    }
+
+    private static async Task<(ShareRequest First, ShareRequest Second)> InsertPairAsync(TestDbContext context)
+    {
+        var first = Completed("aaaaaaaaaaaa", ObjectId.GenerateNewId().ToString());
+        var second = Completed("bbbbbbbbbbbb", ObjectId.GenerateNewId().ToString());
+        await context.ShareRequests.InsertManyAsync([first, second]);
+        await context.Songs.InsertManyAsync([ResolvedSong(first.SongId!), ResolvedSong(second.SongId!)]);
+        await context.SongServiceLinks.InsertManyAsync([Link(first.SongId!, "track"), Link(second.SongId!, "track")]);
+        return (first, second);
+    }
+
+    private static async Task<ReconciliationWrite> WriteAsync(TestDbContext context, ShareRequest canonical, ShareRequest alias)
+    {
+        var songs = await context.Songs.Find(Builders<Song>.Filter.In(x => x.Id, [canonical.SongId!, alias.SongId!])).ToListAsync();
+        var links = await context.SongServiceLinks.Find(Builders<SongServiceLink>.Filter.In(x => x.SongId, [canonical.SongId!, alias.SongId!])).ToListAsync();
+        var snapshot = ReconciliationSnapshots.TryCreate(canonical, alias, songs, links, [canonical, alias], 0, 0)!;
+        return new(canonical.ShareId, alias.ShareId, $"reconcile-{snapshot.Fingerprint}", snapshot.Fingerprint, canonical.SongId!, alias.SongId!, ShareStatus.Completed, ShareStatus.Completed, canonical.CreatedAt, alias.CreatedAt, null, 0, 0);
     }
 
     private static ShareRequest Request(string id, string? key) => new()

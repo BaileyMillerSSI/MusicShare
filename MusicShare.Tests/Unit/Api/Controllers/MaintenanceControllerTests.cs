@@ -22,7 +22,7 @@ public sealed class MaintenanceControllerTests
     }
 
     [Fact]
-    public async Task ItWillNotProjectInternalFailureFields()
+    public async Task ItWillReturnTheBoundedDomainFailureContract()
     {
         var mediator = new Mock<IMediator>();
         mediator.Setup(x => x.Send(It.IsAny<ReconcileDuplicateShares.Request>(), It.IsAny<CancellationToken>()))
@@ -30,6 +30,7 @@ public sealed class MaintenanceControllerTests
 
         var result = await new MaintenanceController(mediator.Object).Reconcile(new("aaaaaaaaaaaa", "bbbbbbbbbbbb", null, "invalid", null), CancellationToken.None);
 
-        result.Result.Should().BeOfType<BadRequestObjectResult>();
+        result.Result.Should().BeOfType<BadRequestObjectResult>().Which.Value.Should().BeOfType<ReconcileDuplicateShares.Response>()
+            .Which.Error.Should().Be("fixed failure");
     }
 }

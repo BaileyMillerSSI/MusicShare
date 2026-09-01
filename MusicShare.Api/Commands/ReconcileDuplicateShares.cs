@@ -42,7 +42,7 @@ public static class ReconcileDuplicateShares
 
     public record Response(bool Success, bool Changed, string? Error, string? OperationId, string? Fingerprint, string? CanonicalShareId, string? AliasShareId, IReadOnlyList<DuplicateShareIdentity> SharedIdentities, int AffectedShareCount = 0)
     {
-        public static Response From(DuplicateShareReconciliationResult result) => new(result.Success, result.Changed, result.Error, result.OperationId, result.Fingerprint, result.CanonicalShareId, result.AliasShareId, result.SharedIdentities, result.Success ? 2 : 0);
+        public static Response From(DuplicateShareReconciliationResult result) => new(result.Success, result.Changed, result.Error, result.OperationId, result.Fingerprint, result.CanonicalShareId, result.AliasShareId, result.SharedIdentities, (result.Success || result.Changed) ? 2 : 0);
         public static Response Failure(string error) => new(false, false, error, null, null, null, null, [], 0);
     }
 }
