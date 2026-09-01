@@ -54,24 +54,33 @@ public sealed partial class DuplicateShareReconciliationService(
             if (request.Mode != DuplicateShareReconciliationMode.Apply || request.Fingerprint is null ||
                 existingAlias.ReconciliationId != expectedOperationId || existingAlias.ReconciliationFingerprint != request.Fingerprint)
                 return DuplicateShareReconciliationResult.Failure("The apply fingerprint does not match the existing reconciliation.");
+            LogOutcome(request.Mode, existingAlias.ReconciliationId!, canonical.ShareId, alias.ShareId, snapshot.SharedIdentities, true, false);
             return new(true, false, null, existingAlias.ReconciliationId, existingAlias.ReconciliationFingerprint,
                 canonical.ShareId, alias.ShareId, snapshot.SharedIdentities.Select(x => new DuplicateShareIdentity(x.ServiceType, x.ServiceSongId)).ToArray());
         }
         var fingerprint = snapshot.Fingerprint;
         var operationId = $"reconcile-{fingerprint}";
         if (request.Mode == DuplicateShareReconciliationMode.DryRun)
+        {
+            LogOutcome(request.Mode, operationId, canonical.ShareId, alias.ShareId, snapshot.SharedIdentities, true, false);
             return new(true, false, null, operationId, fingerprint, canonical.ShareId, alias.ShareId, snapshot.SharedIdentities.Select(x => new DuplicateShareIdentity(x.ServiceType, x.ServiceSongId)).ToArray());
+        }
         if (request.Fingerprint != fingerprint) return DuplicateShareReconciliationResult.Failure("The apply fingerprint does not match the current reconciliation plan.");
 
         var write = await requests.TryReconcileAsync(new(canonical.ShareId, alias.ShareId, operationId, fingerprint,
             canonical.SongId!, alias.SongId!, canonical.Status, alias.Status, canonical.CreatedAt, alias.CreatedAt,
             SourceIdentityKey(canonical), snapshot.CanonicalPreClaimVersion, snapshot.AliasPreClaimVersion), cancellationToken);
-        logger.LogInformation("Duplicate share reconciliation {OperationId} apply canonical={CanonicalShareId} alias={AliasShareId} succeeded={Succeeded} changed={Changed}", operationId, canonical.ShareId, alias.ShareId, write.Succeeded, write.Changed);
+        LogOutcome(request.Mode, operationId, canonical.ShareId, alias.ShareId, snapshot.SharedIdentities, write.Succeeded, write.Changed);
         return new(write.Succeeded, write.Changed, write.Error, operationId, fingerprint, canonical.ShareId, alias.ShareId, snapshot.SharedIdentities.Select(x => new DuplicateShareIdentity(x.ServiceType, x.ServiceSongId)).ToArray());
     }
 
     private static string? SourceIdentityKey(ShareRequest request) => ReconciliationSnapshots.Defined(request.SourceService) && ReconciliationSnapshots.ProviderId(request.ServiceTrackId)
         ? $"v1:{(int)request.SourceService}:{request.ServiceTrackId}" : null;
+
+    private void LogOutcome(DuplicateShareReconciliationMode mode, string operationId, string canonicalShareId, string aliasShareId,
+        IReadOnlyList<ReconciliationIdentity> identities, bool success, bool changed) =>
+        logger.LogInformation("Duplicate share reconciliation mode={Mode} operation={OperationId} canonical={CanonicalShareId} alias={AliasShareId} serviceTypes={ServiceTypes} success={Success} affectedShareCount={AffectedShareCount} changed={Changed}",
+            mode, operationId, canonicalShareId, aliasShareId, string.Join(',', identities.Select(x => x.ServiceType).Distinct().Order()), success, success || changed ? 2 : 0, changed);
 
     private static bool IsShareId(string value) => ShareIdPattern().IsMatch(value);
     [GeneratedRegex("^[a-f0-9]{12}$", RegexOptions.CultureInvariant)] private static partial Regex ShareIdPattern();

@@ -248,7 +248,7 @@ public sealed class ShareRequestDeduplicationMongoTests : IAsyncLifetime
 
         var results = await Task.WhenAll(repo.TryReconcileAsync(firstWrite), repo.TryReconcileAsync(opposingWrite));
 
-        results.Count(x => x.Succeeded && x.Changed).Should().BeLessOrEqualTo(1);
+        results.Count(x => x.Succeeded && x.Changed).Should().Be(1);
         var rows = await context.ShareRequests.Find(Builders<ShareRequest>.Filter.In(x => x.ShareId, [first.ShareId, second.ShareId])).ToListAsync();
         rows.Should().NotContain(x => x.CanonicalShareId == x.ShareId);
         rows.Count(x => !string.IsNullOrWhiteSpace(x.CanonicalShareId)).Should().BeLessOrEqualTo(1);
@@ -259,17 +259,23 @@ public sealed class ShareRequestDeduplicationMongoTests : IAsyncLifetime
     {
         var context = new TestDbContext(database);
         var repo = new ShareRequestRepository(context);
-        var (first, second) = await InsertPairAsync(context);
+        var first = Completed("aaaaaaaaaaaa", ObjectId.GenerateNewId().ToString());
+        var second = Completed("bbbbbbbbbbbb", ObjectId.GenerateNewId().ToString());
         var third = Completed("cccccccccccc", ObjectId.GenerateNewId().ToString());
-        await context.ShareRequests.InsertOneAsync(third);
-        await context.Songs.InsertOneAsync(ResolvedSong(third.SongId!));
-        await context.SongServiceLinks.InsertOneAsync(Link(third.SongId!, "track"));
+        await context.ShareRequests.InsertManyAsync([first, second, third]);
+        await context.Songs.InsertManyAsync([ResolvedSong(first.SongId!), ResolvedSong(second.SongId!), ResolvedSong(third.SongId!)]);
+        // A/B and B/C are each independently proven by a different exact identity.
+        await context.SongServiceLinks.InsertManyAsync([
+            Link(first.SongId!, "spotify-x", ServiceType.Spotify),
+            Link(second.SongId!, "spotify-x", ServiceType.Spotify),
+            Link(second.SongId!, "youtube-y", ServiceType.YouTubeMusic),
+            Link(third.SongId!, "youtube-y", ServiceType.YouTubeMusic)]);
         var firstWrite = await WriteAsync(context, first, second);
         var overlappingWrite = await WriteAsync(context, second, third);
 
         var results = await Task.WhenAll(repo.TryReconcileAsync(firstWrite), repo.TryReconcileAsync(overlappingWrite));
 
-        results.Count(x => x.Succeeded && x.Changed).Should().BeLessOrEqualTo(1);
+        results.Count(x => x.Succeeded && x.Changed).Should().Be(1);
         var rows = await context.ShareRequests.Find(Builders<ShareRequest>.Filter.In(x => x.ShareId, [first.ShareId, second.ShareId, third.ShareId])).ToListAsync();
         rows.Should().OnlyContain(row => row.CanonicalShareId == null || rows.Single(x => x.ShareId == row.CanonicalShareId).CanonicalShareId == null);
     }
@@ -286,6 +292,11 @@ public sealed class ShareRequestDeduplicationMongoTests : IAsyncLifetime
 
     private static async Task<ReconciliationWrite> WriteAsync(TestDbContext context, ShareRequest canonical, ShareRequest alias)
     {
+        // Mongo stores DateTime at millisecond precision; build the dry-run equivalent
+        // from persisted requests so the repository's later CAS sees the exact values.
+        var persisted = await context.ShareRequests.Find(Builders<ShareRequest>.Filter.In(x => x.ShareId, [canonical.ShareId, alias.ShareId])).ToListAsync();
+        canonical = persisted.Single(x => x.ShareId == canonical.ShareId);
+        alias = persisted.Single(x => x.ShareId == alias.ShareId);
         var songs = await context.Songs.Find(Builders<Song>.Filter.In(x => x.Id, [canonical.SongId!, alias.SongId!])).ToListAsync();
         var links = await context.SongServiceLinks.Find(Builders<SongServiceLink>.Filter.In(x => x.SongId, [canonical.SongId!, alias.SongId!])).ToListAsync();
         var snapshot = ReconciliationSnapshots.TryCreate(canonical, alias, songs, links, [canonical, alias], 0, 0)!;
@@ -305,7 +316,7 @@ public sealed class ShareRequestDeduplicationMongoTests : IAsyncLifetime
     };
 
     private static Song ResolvedSong(string id) => new() { Id = id, Status = SongStatus.Resolved, CreatedAt = DateTime.UnixEpoch, UpdatedAt = DateTime.UnixEpoch };
-    private static SongServiceLink Link(string songId, string identity) => new() { Id = ObjectId.GenerateNewId().ToString(), SongId = songId, ServiceType = ServiceType.Spotify, ServiceSongId = identity, OriginalUrl = "https://example.test", NormalizedUrl = "https://example.test", CreatedAt = DateTime.UnixEpoch };
+    private static SongServiceLink Link(string songId, string identity, ServiceType serviceType = ServiceType.Spotify) => new() { Id = ObjectId.GenerateNewId().ToString(), SongId = songId, ServiceType = serviceType, ServiceSongId = identity, OriginalUrl = "https://example.test", NormalizedUrl = "https://example.test", CreatedAt = DateTime.UnixEpoch };
 
     private sealed class TestDbContext(IMongoDatabase db) : IMusicShareDbContext
     {
