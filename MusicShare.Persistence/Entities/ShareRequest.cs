@@ -47,6 +47,19 @@ public class ShareRequest
     [BsonIgnoreIfNull]
     public string? ReconciliationFingerprint { get; set; }
 
+    // Ephemeral, per-share fencing state used only by duplicate reconciliation. A takeover
+    // always replaces the token, so an expired worker cannot later perform a durable write.
+    [BsonElement("reconciliationClaimToken")]
+    [BsonIgnoreIfNull]
+    public string? ReconciliationClaimToken { get; set; }
+
+    [BsonElement("reconciliationClaimExpiresAt")]
+    [BsonIgnoreIfNull]
+    public DateTime? ReconciliationClaimExpiresAt { get; set; }
+
+    [BsonElement("reconciliationClaimVersion")]
+    public long ReconciliationClaimVersion { get; set; }
+
     [BsonElement("songId")]
     [BsonRepresentation(BsonType.ObjectId)]
     public string? SongId { get; set; }

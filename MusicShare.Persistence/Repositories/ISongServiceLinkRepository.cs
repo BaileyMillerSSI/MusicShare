@@ -10,7 +10,10 @@ public interface ISongServiceLinkRepository
     Task<SongServiceLink?> GetBySongIdAndServiceAsync(string songId, ServiceType serviceType, CancellationToken cancellationToken = default);
     Task<SongServiceLink?> GetByServiceAndSongIdAsync(ServiceType serviceType, string serviceSongId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<SongServiceLink>> GetBySongIdsAsync(IReadOnlyCollection<string> songIds, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<SongServiceLink>> GetByIdentitiesAsync(IReadOnlyCollection<SongServiceIdentity> identities, CancellationToken cancellationToken = default);
     Task<IReadOnlyDictionary<ServiceType, long>> GetCompletedDistinctSongLinkCountsAsync(CancellationToken cancellationToken = default);
     Task<SongServiceLink> InsertAsync(SongServiceLink link, CancellationToken cancellationToken = default);
     Task<List<SongServiceLink>> InsertManyAsync(List<SongServiceLink> links, CancellationToken cancellationToken = default);
 }
+
+public record SongServiceIdentity(int ServiceType, string ServiceSongId);

@@ -14,6 +14,7 @@ public interface IShareRequestRepository
     Task<ShareReservation> ReserveBySourceIdentityAsync(ShareRequest request, CancellationToken cancellationToken = default);
     Task<ShareRequest?> ResolveCanonicalAsync(ShareRequest request, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<ShareRequest>> GetByShareIdsAsync(IReadOnlyCollection<string> shareIds, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<ShareRequest>> GetBySongIdsAsync(IReadOnlyCollection<string> songIds, CancellationToken cancellationToken = default);
     Task<ReconciliationWriteResult> TryReconcileAsync(ReconciliationWrite write, CancellationToken cancellationToken = default);
     Task<ShareRequest> InsertAsync(ShareRequest request, CancellationToken cancellationToken = default);
     Task UpdateAsync(ShareRequest request, CancellationToken cancellationToken = default);
@@ -35,5 +36,6 @@ public record ReconciliationWrite(
     ShareStatus CanonicalStatus,
     ShareStatus AliasStatus,
     DateTime CanonicalCreatedAt,
-    DateTime AliasCreatedAt);
+    DateTime AliasCreatedAt,
+    string? CanonicalSourceIdentityKey = null);
 public record ReconciliationWriteResult(bool Succeeded, bool Changed, string? Error = null);
