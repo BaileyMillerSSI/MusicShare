@@ -1,0 +1,4 @@
+Contact: https://breadsticklabs.com/#contact
+Expires: 2027-09-03T00:00:00Z
+Canonical: https://music.baileymiller.dev/.well-known/security.txt
+Preferred-Languages: en
