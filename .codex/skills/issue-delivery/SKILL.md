@@ -17,7 +17,7 @@ to every invocation of this skill:
 - The immutable issue branch form is `issue/<issue-number>-<short-kebab-case-slug>`; never substitute another prefix or rename it.
 - Pull requests target `main`, reference `Closes #<issue-number>`, and cannot be merged without a new explicit user approval for the exact ready PR.
 - MusicShare has no authoritative issue/staging page contract. Declare `ISSUE_PAGE: NONE` unless repository guidance later provides an authoritative HTTPS discovery method; never invent a URL.
-- After PR delivery reaches `READY_FOR_APPROVAL`, remove only the exact linked worktree created for the task after verifying its path and branch identity. This cleanup is required for PR-only delivery and is not deferred until merge. Preserve local/remote branches and all existing or unrelated worktrees.
+- After `issue_shipper` returns `READY_FOR_APPROVAL`, `issue_planner` (the top-level coordinator) must independently verify the PR readiness and then remove only the exact linked worktree created for the task after verifying its path and branch identity. This cleanup is required for PR-only delivery and is not deferred until merge. Preserve local/remote branches and all existing or unrelated worktrees; `issue_shipper` only reports readiness and never performs this cleanup.
 - A later approved merge resumes from the PR and remote branch state after cleanup; the removed worktree is not required. If source repair is needed, create a fresh task-owned worktree and route the change through the worker and fresh exact-HEAD review.
 
 ## Top-level dispatch
@@ -36,7 +36,7 @@ Preserve essential user facts that are not stored elsewhere; avoid forwarding co
 
 Retain only the planner agent ID, current phase, issue/PR references, approved HEAD, and pending user decision. Relay concise progress and blockers. On follow-up, resume that planner with only the new user instruction and changed constraints; do not resend the original packet. Pause requests must be forwarded immediately and stop all downstream work.
 
-At `READY_FOR_APPROVAL`, show the PR, checks, reviewed HEAD, and issue page if present, then yield. A new explicit user instruction identifying the ready PR is required to merge. Forward that instruction verbatim with the PR and approved HEAD to the same planner. Neither elapsed time nor the original delivery request is approval.
+At `READY_FOR_APPROVAL`, independently verify the shipper's PR, checks, reviewed HEAD, and issue page if present, perform the exact task-owned worktree cleanup, then show those details and yield. A new explicit user instruction identifying the ready PR is required to merge. Forward that instruction verbatim with the PR and approved HEAD to the same planner. Neither elapsed time nor the original delivery request is approval.
 
 ## Context and agent reuse contract
 
