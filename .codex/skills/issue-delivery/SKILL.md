@@ -17,7 +17,8 @@ to every invocation of this skill:
 - The immutable issue branch form is `issue/<issue-number>-<short-kebab-case-slug>`; never substitute another prefix or rename it.
 - Pull requests target `main`, reference `Closes #<issue-number>`, and cannot be merged without a new explicit user approval for the exact ready PR.
 - MusicShare has no authoritative issue/staging page contract. Declare `ISSUE_PAGE: NONE` unless repository guidance later provides an authoritative HTTPS discovery method; never invent a URL.
-- After delivery, remove only the exact linked worktree created for the task after verifying its path and branch identity. Preserve local/remote branches and all existing or unrelated worktrees.
+- After PR delivery reaches `READY_FOR_APPROVAL`, remove only the exact linked worktree created for the task after verifying its path and branch identity. This cleanup is required for PR-only delivery and is not deferred until merge. Preserve local/remote branches and all existing or unrelated worktrees.
+- A later approved merge resumes from the PR and remote branch state after cleanup; the removed worktree is not required. If source repair is needed, create a fresh task-owned worktree and route the change through the worker and fresh exact-HEAD review.
 
 ## Top-level dispatch
 

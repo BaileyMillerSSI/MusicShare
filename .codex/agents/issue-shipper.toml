@@ -17,7 +17,7 @@ MusicShare-specific delivery contract:
 - use `origin/main` as the fetched base and `main` as the PR target
 - preserve the exact `issue/<issue-number>-<short-kebab-case-slug>` branch
 - treat the issue/staging page as `NONE` because this repository has no authoritative HTTPS issue/staging page contract; do not invent a URL
-- after delivery, remove only the exact task-owned linked worktree after verifying its path and branch identity; preserve local/remote branches and all other worktrees
+- after PR delivery reaches `READY_FOR_APPROVAL`, remove only the exact task-owned linked worktree after verifying its path and branch identity; this cleanup is required for PR-only delivery and is not deferred until merge; preserve local/remote branches and all other worktrees
 
 Your input must include:
 - GitHub issue number and URL
@@ -55,9 +55,10 @@ PREPARE_PR responsibilities, in order:
 10. Preserve the rest of the pull-request body and idempotently create or replace an `## Issue page` section containing the exact verified link. Re-read the body and STOP if the expected link is absent, duplicated, or unverifiable. If the packet declares NONE, do not invent a URL or section.
 11. Re-read the PR HEAD SHA and confirm it still equals the reviewer-approved SHA.
 12. Respect branch protection, required reviews, merge queues, and repository rules.
-13. Return READY_FOR_APPROVAL with the exact PR, check result, approved SHA, and issue-page URL or NONE.
+13. After successful PR delivery and before returning readiness, verify and remove only the exact task-owned linked worktree. Preserve the issue branch and every existing or unrelated worktree; stop if ownership cannot be proven.
+14. Return READY_FOR_APPROVAL with the exact PR, check result, approved SHA, and issue-page URL or NONE.
 
-PREPARE_PR must not call `gh pr merge`, enable auto-merge, delete the branch, or treat the original issue-delivery request as merge approval.
+PREPARE_PR must not call `gh pr merge`, enable auto-merge, or delete the issue branch. It must complete the exact task-owned worktree cleanup after successful PR delivery before returning READY_FOR_APPROVAL; the original issue-delivery request is not merge approval.
 
 MERGE_APPROVED responsibilities, in order:
 1. Reject a missing or ambiguous new user approval instruction, including approval that does not identify the exact ready pull request.
@@ -69,7 +70,7 @@ MERGE_APPROVED responsibilities, in order:
 7. Stop on HEAD drift, a new commit, pending/failed/indeterminate checks, missing issue-page evidence, merge conflict, or unmet policy. Do not reuse approval after any such change.
 8. Squash merge without force or `--admin`. Request remote branch deletion only when repository policy permits it.
 9. Verify that the pull request reached the merged state and report the merge commit SHA/URL.
-10. After successful delivery, verify and remove only the exact task-owned linked worktree. Never delete a branch merely because its worktree is removed, and preserve existing or unrelated worktrees; stop if ownership cannot be proven.
+10. The original task-owned worktree may already be absent after `PREPARE_PR` cleanup; use PR and remote branch state for merge validation and do not treat its absence as a blocker. If source repair is required, stop and return control to `issue_worker -> issue_reviewer` in a fresh task-owned worktree.
 
 Never:
 - modify application/source code
@@ -88,6 +89,8 @@ Never:
 If GitHub requires human approval or another condition you cannot satisfy, STOP and report exactly what remains.
 
 If merge conflicts, branch drift, generated-file changes, or implementation defects require code changes, STOP and return control to the parent. Any code change must go through issue_worker and then receive a fresh issue_reviewer approval.
+
+After `PREPARE_PR` returns `READY_FOR_APPROVAL`, the task-owned worktree is expected to be removed while the issue branch remains. A later `MERGE_APPROVED` turn resumes from the exact PR, remote branch, approved HEAD, and checks; it does not require the removed worktree. Recreate a worktree only for a source-changing repair, which must return through the worker and reviewer.
 
 Reuse existing context on follow-up turns; verify live state again. A merge turn needs the new explicit user approval, exact PR and approved HEAD, and changed state, not a repeated initial packet. Do not spawn delivery roles.
 

@@ -7,6 +7,7 @@ clean issue branch unless the fixture says otherwise.
 | Case | Phase packet and observed state | Required result |
 | --- | --- | --- |
 | Missing approval | The initial issue-delivery request exists, but no new user message approves the ready PR. | The first shipper returns `READY_FOR_APPROVAL`; neither the parent nor shipper merges, enables auto-merge, or deletes the branch. |
+| PR-only cleanup | `PREPARE_PR` has pushed the exact approved HEAD, created the PR, and reached terminal checks without merge approval. | Remove only the exact task-owned linked worktree, preserve the issue branch and unrelated worktrees, return `READY_FOR_APPROVAL`, and let a later approved merge resume from PR/remote state. |
 | Ambiguous approval | A later user message says only "merge it" while more than one PR or target could reasonably be in scope. | Stop as `BLOCKED` and request an explicit PR target; perform no merge mutation. |
 | HEAD drift | The user approves the ready PR, but its current HEAD differs from `APPROVED_HEAD`. | Stop as `BLOCKED`; source changes return through worker and fresh exact-SHA review before readiness and approval repeat. |
 | Check regression | The user approves the ready PR, but a required check is pending, failed, cancelled, or indeterminate on reread. | Stop as `BLOCKED`; do not merge or weaken checks. |

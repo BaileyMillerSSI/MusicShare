@@ -15,7 +15,8 @@ This package is the current delivery contract for `BaileyMillerSSI/MusicShare`:
 - The immutable issue branch is exactly `issue/<issue-number>-<short-kebab-case-slug>`. Never rename it or substitute `codex/`, `feature/`, `fix/`, `feat/`, or another prefix.
 - Open pull requests against `main` with `Closes #<issue-number>`. The original delivery request is not merge approval; merge requires a new explicit approval naming the exact ready PR.
 - No authoritative issue/staging page contract exists in this repository. Packets must declare `ISSUE_PAGE: NONE` and shippers must not invent an issue/staging URL.
-- Cleanup is task-owned and exact: after PR delivery completes, verify the recorded linked worktree path still belongs to this issue, remove only that worktree, and preserve its local/remote branch plus every existing or unrelated worktree. If ownership or identity is uncertain, stop and report the blocker.
+- Cleanup is task-owned and exact: after PR delivery reaches `READY_FOR_APPROVAL`, verify the recorded linked worktree path still belongs to this issue, remove only that worktree, and preserve its local/remote branch plus every existing or unrelated worktree. This cleanup is required for PR-only delivery and is not deferred until merge. If ownership or identity is uncertain, stop and report the blocker.
+- A later `MERGE_APPROVED` turn resumes from the PR and remote branch state after cleanup; the removed worktree is not required. If source repair is needed, create a fresh task-owned worktree and route the change through `issue_worker -> issue_reviewer` before shipping resumes.
 
 ## Required state machine
 
@@ -258,7 +259,8 @@ Require shipper to own Git/GitHub mechanics only for this first phase:
 11. When the packet declares an issue/staging page, resolve its URL only from the repository-defined authoritative source after the related deployment check passes. Require HTTPS, preserve the rest of the PR body, and idempotently create or replace an `## Issue page` section containing the exact link. If the page is expected but missing, unverifiable, or absent from the resulting PR body, return `BLOCKED`. When the packet declares `NONE`, do not invent a URL or section.
 12. Re-read PR HEAD SHA and confirm it still equals the approved SHA.
 13. Respect branch protection, required reviews, merge queues, and repository rules.
-14. Return `READY_FOR_APPROVAL`; do not merge, enable auto-merge, or delete the branch.
+14. After successful PR delivery and before returning readiness, verify and remove only the exact task-owned linked worktree. Preserve the issue branch and every existing or unrelated worktree; do not defer this cleanup until merge.
+15. Return `READY_FOR_APPROVAL`; do not merge, enable auto-merge, or delete the branch.
 
 `issue_shipper` must never modify source/application code. Any source-changing repair routes through `issue_worker -> issue_reviewer` before shipping resumes.
 
@@ -276,15 +278,15 @@ BLOCKER: <one concise line or NONE>
 
 Do not return command transcripts, PR body text, raw check logs, or narrative summaries unless needed to explain a blocker.
 
-When the shipper returns `READY_FOR_APPROVAL`, the planner must independently confirm the PR number/URL, green or accurately absent checks, exact reviewer-approved HEAD, and any declared issue-page URL in the PR description. Then return the compact readiness envelope to the top level so it can yield to the user and wait. Do not call merge tools, enable auto-merge, delete the branch, or keep the turn open to infer approval.
+When the shipper returns `READY_FOR_APPROVAL`, the planner must independently confirm the PR number/URL, green or accurately absent checks, exact reviewer-approved HEAD, any declared issue-page URL in the PR description, and completion of exact task-owned worktree cleanup while the issue branch remains intact. Then return the compact readiness envelope to the top level so it can yield to the user and wait. Do not call merge tools, enable auto-merge, delete the branch, or keep the turn open to infer approval.
 
 ## 7. USER_APPROVES and MERGE — explicit second shipper turn
 
 Only a new explicit user instruction approving the exact ready PR authorizes merge. General requests such as the original issue-delivery invocation, "finish the issue," or approval that ambiguously could refer to another PR are insufficient.
 
-After unambiguous approval relayed verbatim by the top level, resume the same `issue_shipper` for a separate merge turn. Send phase `MERGE_APPROVED`, the exact PR and approved HEAD, the new user approval, and changed state only. If that agent is unavailable, spawn the same role with `fork_turns: "none"` and this reconstruction packet:
+After unambiguous approval relayed verbatim by the top level, resume the same `issue_shipper` for a separate merge turn. The original task-owned worktree may already have been removed after PR readiness; merge validation uses the PR and remote branch state, and the missing worktree is not a blocker. If source repair is needed, stop and route it through `issue_worker -> issue_reviewer` in a fresh task-owned worktree. Send phase `MERGE_APPROVED`, the exact PR and approved HEAD, the new user approval, and changed state only. If that agent is unavailable, spawn the same role with `fork_turns: "none"` and this reconstruction packet:
 
-- repository/worktree absolute path
+- repository/workspace context for GitHub/Git checks; the original task-owned worktree may already be absent after `PREPARE_PR` cleanup
 - issue number and URL
 - default/base branch
 - exact immutable issue branch
@@ -331,7 +333,7 @@ After shipping reports success, independently verify using concise GitHub/Git me
 - PR references `PLAN_PATH`
 - merged PR history corresponds to the reviewer-approved SHA
 - no unexpected local changes remain
-- the exact task-owned linked worktree has been removed; existing worktrees and local/remote branches remain intact
+- PR-only delivery cleanup was completed after readiness; existing worktrees and local/remote branches remain intact
 
 Avoid re-reading implementation source during normal final verification.
 
