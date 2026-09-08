@@ -8,6 +8,16 @@ MusicMatcher resolves shared music URLs across Spotify, Apple Music, and YouTube
 
 Aspire is the hosting and orchestration boundary for the system in local development and production hosting. The frontend is a Next.js App Router PWA with React Query, Tailwind CSS, and Web Share Target support, and it is the only public-facing service. The backend uses MediatR CQRS, MassTransit sagas, and MongoDB repositories, but API, worker, MongoDB, RabbitMQ, and other non-frontend resources must communicate only through Aspire-internal networking. Do not expose backend endpoints directly to the public internet; route public browser traffic through the Next.js frontend.
 
+## Issue Delivery
+
+For GitHub issue implementation work, use the repository-local `$issue-delivery` skill. It owns the delivery contract:
+
+- Fetch `origin/main` and create a fresh task-owned linked worktree from that ref.
+- Use the immutable branch form `issue/<number>-<short-kebab-case-slug>`.
+- Target pull requests at `main`, include `Closes #<number>`, and require a new explicit user approval before merging the exact reviewed PR.
+- Treat issue/staging pages as `NONE` unless repository guidance identifies an authoritative HTTPS page; never invent a URL.
+- After delivery, remove only the exact linked worktree created for the task. Preserve its branches and all existing or unrelated worktrees.
+
 ## Build, Test, and Development Commands
 
 - `dotnet build MusicShare.slnx`: compile all backend projects.
@@ -28,7 +38,7 @@ Backend tests use xUnit v3, FluentAssertions, Moq, Autofac.Extras.Moq, and Aspir
 
 ## Commit & Pull Request Guidelines
 
-Recent history uses short, imperative subjects with Conventional Commit prefixes, such as `feat: add frontend proxy routes for share submission`. Create issue branches as `feat/issue-<number>-<short-name>`. Keep commits focused and avoid unrelated refactors. PRs should target `main`, link issues with `Closes #<number>` when applicable, include test results, and add screenshots for UI/PWA changes.
+Recent history uses short, imperative subjects with Conventional Commit prefixes, such as `feat: add frontend proxy routes for share submission`. For `$issue-delivery`, create issue branches as `issue/<number>-<short-kebab-case-slug>`. Keep commits focused and avoid unrelated refactors. PRs should target `main`, link issues with `Closes #<number>` when applicable, include test results, and add screenshots for UI/PWA changes.
 
 ## Security & Configuration Tips
 
