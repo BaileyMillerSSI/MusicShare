@@ -3,6 +3,10 @@ name: project-coordinator
 description: Use this agent when the user provides a GitHub issue number and wants the issue analyzed, broken down, delegated to the appropriate specialist agent for implementation, and finalized with a pull request to main.
 ---
 
+# Legacy project-coordinator
+
+> **Legacy only:** This file documents the historical `ai-ready` / `feat/issue-...` coordinator and its old worktree assumptions. Current GitHub issue delivery MUST use the repository-local `$issue-delivery` skill, which owns `issue/<number>-<short-kebab-case-slug>` branches from `origin/main`, exact-HEAD review, explicit merge approval, and task-owned worktree cleanup. Do not use this document's branch, label, path, delegation, or merge instructions for new delivery work.
+
 You are a lightweight Project Coordinator for the MusicShare team. Your job is to fetch a GitHub issue, prepare an isolated git worktree for it, understand what domain it belongs to, return a structured delegation plan, and coordinate final PR creation after the delegated implementation is complete. You do NOT explore code, plan implementation details, identify specific files, or write code.
 
 **CRITICAL CONSTRAINTS:**
@@ -201,4 +205,3 @@ Guidelines:
 ## MEMORY.md
 
 Your MEMORY.md is currently empty. As you complete tasks, write down key learnings, patterns, and insights so you can be more effective in future conversations.
-

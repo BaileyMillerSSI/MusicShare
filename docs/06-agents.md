@@ -1,5 +1,9 @@
 # Claude Code Agents — How AI Was Used to Build This
 
+## Current repository-local issue delivery
+
+Current GitHub issue delivery uses the repository-local `.codex/skills/issue-delivery/` package and the project-scoped `.codex/agents/issue-*.toml` roles. Invoke `$issue-delivery` for the gated flow: an approved issue plan, a worker implementation, exact-HEAD independent review, a pull request to `main`, and a separate explicit approval before merge. It creates fresh worktrees from `origin/main` on immutable `issue/<number>-<short-kebab-case-slug>` branches, treats MusicShare issue/staging pages as `NONE` unless an authoritative HTTPS page exists, and removes only the task-owned linked worktree after delivery. The legacy `project-coordinator` skill below is retained for historical context only and does not own current issue delivery.
+
 > **Slide talking points:** This is the "how did you actually use AI?" section. Most interesting for a Copilot-using team.
 
 ---
@@ -27,7 +31,7 @@
 
 ## Specialized Agents Defined in This Repo
 
-Claude Code supports defining **custom agents** in `.claude/agents/` — each with a specialized prompt, tools, and scope. This repo used three:
+Earlier Claude Code workflows used **custom agents** in `.claude/agents/` — each with a specialized prompt, tools, and scope. The repository still preserves those specialist skills, while current issue delivery uses the repository-local package described above.
 
 ### 1. `react-component-expert`
 **Scope:** Frontend work only
@@ -41,11 +45,12 @@ Claude Code supports defining **custom agents** in `.claude/agents/` — each wi
 - Manages environment variables, secrets, Azure configuration
 - Invoked when: "Add a new service", "Fix the CI pipeline", "Configure a new env var"
 
-### 3. `project-coordinator`
+### 3. `project-coordinator` (legacy)
 **Scope:** GitHub issue → implementation plan → delegation
 - Reads GitHub issue details, analyzes requirements, plans the approach
 - Hands off to the right specialist agent (react-component-expert, infra-devops-owner, etc.)
 - Invoked when: "Work on issue #37"
+- Historical router only; current issue delivery delegates through `$issue-delivery` and its project-scoped roles.
 
 ---
 
@@ -84,15 +89,17 @@ This meant the agent was navigating the codebase **the same way a developer woul
 
 ---
 
-## How Issues Were Handled
+## How Issues Were Handled (historical)
 
-The workflow for most features:
+The historical workflow for most features:
 
 1. **Create a GitHub issue** describing the feature
-2. **Invoke project-coordinator agent:** `"Work on issue #37"`
+2. **Invoke the legacy project-coordinator agent:** `"Work on issue #37"`
 3. Agent reads the issue from GitHub, plans the implementation
 4. Agent delegates to the right specialist (e.g., `dotnet-backend-engineer` for confidence scoring)
 5. Agent writes the code, runs the tests, opens a PR referencing the issue
+
+For new issue work, use `$issue-delivery` instead of the historical `project-coordinator` flow. Its planner owns the committed plan and delivery state machine, the worker owns implementation, the reviewer independently approves the exact HEAD, and the shipper prepares the PR without inferring merge approval.
 
 **Commits like `feat: confidence scoring for cross-platform song matching (#37)` were opened as full PRs with descriptions, linked to issues, and ready for review.**
 

@@ -10,13 +10,18 @@ MusicShare is a full-stack web application that allows users to share music URLs
 
 - GitHub repo: https://github.com/BaileyMillerSSI/MusicShare
 - Default base branch: main
-- Create feature branches as: feat/issue-<number>-<short-name>
+- Use the repository-local `$issue-delivery` skill for GitHub issue implementation work.
+- Create issue branches as: issue/<number>-<short-kebab-case-slug>
 - Keep commits small and logical
 - Follow existing coding conventions
 - Do not refactor unrelated code
 - If requirements are unclear, make reasonable assumptions and document them in the PR
 - Always open a PR targeting main
 - When creating a PR from a GitHub issue, reference the issue in the PR description (e.g., "Closes #31") to create an automatic link
+
+## Current Issue Delivery
+
+`$issue-delivery` is the current workflow for GitHub issue work. Fetch `origin/main`, create a fresh task-owned linked worktree from that ref, preserve the exact `issue/<number>-<short-kebab-case-slug>` branch, and keep worker implementation separate from exact-HEAD independent review. Pull requests target `main` and require a new explicit user approval naming the exact ready PR before merge. MusicShare has no authoritative issue/staging page contract, so issue/staging pages are `NONE` unless repository guidance later provides an authoritative HTTPS discovery method. After delivery, remove only the linked worktree created for that issue; preserve local and remote branches and all other worktrees.
 
 ## Architecture
 
