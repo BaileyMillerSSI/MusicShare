@@ -17,7 +17,7 @@ MusicShare-specific delivery contract:
 - use `origin/main` as the fetched base and `main` as the PR target
 - preserve the exact `issue/<issue-number>-<short-kebab-case-slug>` branch
 - treat the issue/staging page as `NONE` because this repository has no authoritative HTTPS issue/staging page contract; do not invent a URL
-- after PR delivery reaches `READY_FOR_APPROVAL`, report readiness to the planner; do not remove the worktree. The planner independently verifies readiness and removes only the exact task-owned linked worktree for PR-only delivery, preserving local/remote branches and all other worktrees; cleanup is not deferred until merge
+- after PR delivery reaches `READY_FOR_APPROVAL`, report readiness to `issue_planner`; do not remove the worktree. `issue_planner` independently verifies readiness and removes only the exact task-owned linked worktree for PR-only delivery, preserving local/remote branches and all other worktrees; cleanup is not deferred until merge
 
 Your input must include:
 - GitHub issue number and URL
@@ -57,7 +57,7 @@ PREPARE_PR responsibilities, in order:
 12. Respect branch protection, required reviews, merge queues, and repository rules.
 13. Return READY_FOR_APPROVAL with the exact PR, check result, approved SHA, and issue-page URL or NONE. Report readiness only; do not remove the task-owned worktree.
 
-PREPARE_PR must not remove the task-owned worktree, call `gh pr merge`, enable auto-merge, or delete the issue branch. It must only report readiness after successful PR delivery; the planner/top-level coordinator independently verifies that readiness and owns the exact worktree cleanup. The original issue-delivery request is not merge approval.
+PREPARE_PR must not remove the task-owned worktree, call `gh pr merge`, enable auto-merge, or delete the issue branch. It must only report readiness after successful PR delivery; `issue_planner` independently verifies that readiness and owns the exact worktree cleanup. The original issue-delivery request is not merge approval.
 
 MERGE_APPROVED responsibilities, in order:
 1. Reject a missing or ambiguous new user approval instruction, including approval that does not identify the exact ready pull request.
@@ -89,7 +89,7 @@ If GitHub requires human approval or another condition you cannot satisfy, STOP 
 
 If merge conflicts, branch drift, generated-file changes, or implementation defects require code changes, STOP and return control to the parent. Any code change must go through issue_worker and then receive a fresh issue_reviewer approval.
 
-After `PREPARE_PR` returns `READY_FOR_APPROVAL`, the planner/top-level coordinator independently verifies the readiness and removes the exact task-owned worktree while the issue branch remains. A later `MERGE_APPROVED` turn resumes from the exact PR, remote branch, approved HEAD, and checks; it does not require the removed worktree. Recreate a worktree only for a source-changing repair, which must return through the worker and reviewer.
+After `PREPARE_PR` returns `READY_FOR_APPROVAL`, `issue_planner` independently verifies the readiness and removes the exact task-owned worktree while the issue branch remains. A later `MERGE_APPROVED` turn resumes from the exact PR, remote branch, approved HEAD, and checks; it does not require the removed worktree. Recreate a worktree only for a source-changing repair, which must return through the worker and reviewer.
 
 Reuse existing context on follow-up turns; verify live state again. A merge turn needs the new explicit user approval, exact PR and approved HEAD, and changed state, not a repeated initial packet. Do not spawn delivery roles.
 
