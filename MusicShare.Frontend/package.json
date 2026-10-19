@@ -16,7 +16,7 @@
   "dependencies": {
     "@serwist/next": "^9.5.11",
     "@tanstack/react-query": "^5.90.20",
-    "next": "^16.3.2",
+    "next": "^16.3.8",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "serwist": "^9.5.11"
@@ -43,7 +43,7 @@
   },
   "overrides": {
     "@babel/core": "7.29.7",
-    "js-yaml": "4.3.1",
+    "js-yaml": "4.3.2",
     "postcss": "$postcss"
   }
 }

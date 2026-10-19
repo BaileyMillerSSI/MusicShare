@@ -49,7 +49,9 @@ jobs:
 
   backend:
     name: Backend Build & Test
-    runs-on: ubuntu-latest
+    # MongoDB 8.0 cannot start on kernel 6.19+ (SERVER-121912).
+    # Ubuntu 22.04 currently uses the compatible 6.8 Azure kernel.
+    runs-on: ubuntu-22.04
     services:
       mongodb:
         image: mongo:8.0
