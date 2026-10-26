@@ -63,6 +63,10 @@ api.WithReference(frontend);
 // Dev tooling only when running locally
 if (builder.ExecutionContext.IsPublishMode)
 {
+    // Runtime-only credential: never passed to the frontend image build or browser bundle.
+    var statusToken = builder.AddParameter("status-token-current", secret: true);
+    frontend.WithEnvironment("STATUS_TOKEN_CURRENT", statusToken);
+
     builder.AddAzureContainerAppEnvironment("aca-env")
         .WithAzdResourceNaming();
 
