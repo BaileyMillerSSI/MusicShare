@@ -105,6 +105,16 @@ jobs:
       - name: Install .NET Aspire workload
         run: dotnet workload install aspire
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validate configured status credential before deployment
+        env:
+          STATUS_TOKEN_CURRENT: ${{ secrets.STATUS_TOKEN_CURRENT }}
+        run: |
+          node -e 'if(!/^[A-Za-z0-9_-]{32,256}$/.test(process.env.STATUS_TOKEN_CURRENT || "")) { console.error("Status credential is missing or invalid"); process.exit(1); }'
+
       - name: Log in to Azure
         uses: azure/login@v2
         with:
@@ -119,6 +129,12 @@ jobs:
             --client-id ${{ secrets.AZURE_CLIENT_ID }} \
             --client-secret ${{ secrets.AZURE_CLIENT_SECRET }} \
             --tenant-id ${{ secrets.AZURE_TENANT_ID }}
+
+      - name: Embed exact deployment commit in server build
+        env:
+          STATUS_BUILD_SHA: ${{ github.sha }}
+        run: |
+          node -e 'const fs=require("fs"); const sha=process.env.STATUS_BUILD_SHA; if(!/^[a-f0-9]{40}$/.test(sha)) process.exit(1); fs.writeFileSync("MusicShare.Frontend/src/lib/server/status-build.json",JSON.stringify({sha})+"\n");'
 
       - name: Provision Infrastructure
         run: azd provision --no-prompt
@@ -135,6 +151,7 @@ jobs:
           AZURE_YOUTUBE_GEOGRAPHICLOCATION: ${{ vars.YOUTUBE_GEOGRAPHICLOCATION }}
           AZURE_REVALIDATION_SECRET: ${{ secrets.REVALIDATION_SECRET }}
           AZURE_MAINTENANCE_SECRET: ${{ secrets.MAINTENANCE_SECRET }}
+          AZURE_STATUS_TOKEN_CURRENT: ${{ secrets.STATUS_TOKEN_CURRENT }}
           AZURE_FRONTEND_ORIGIN: https://${{ vars.sub_domain }}.${{ vars.domain }}
           AZURE_RESUME_ORIGIN: https://resume.baileymiller.dev
           AZURE_CUSTOM_DOMAIN: ${{ vars.sub_domain }}.${{ vars.domain }}
@@ -161,6 +178,7 @@ jobs:
           AZURE_YOUTUBE_GEOGRAPHICLOCATION: ${{ vars.YOUTUBE_GEOGRAPHICLOCATION }}
           AZURE_REVALIDATION_SECRET: ${{ secrets.REVALIDATION_SECRET }}
           AZURE_MAINTENANCE_SECRET: ${{ secrets.MAINTENANCE_SECRET }}
+          AZURE_STATUS_TOKEN_CURRENT: ${{ secrets.STATUS_TOKEN_CURRENT }}
           AZURE_FRONTEND_ORIGIN: https://${{ vars.sub_domain }}.${{ vars.domain }}
           AZURE_RESUME_ORIGIN: https://resume.baileymiller.dev
           AZURE_CUSTOM_DOMAIN: ${{ vars.sub_domain }}.${{ vars.domain }}
