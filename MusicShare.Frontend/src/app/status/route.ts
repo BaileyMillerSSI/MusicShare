@@ -13,13 +13,14 @@ const digest = (value: string) => createHash('sha256').update(value).digest();
 function authentication(request: Request): number {
   const current = process.env.STATUS_TOKEN_CURRENT;
   const previous = process.env.STATUS_TOKEN_PREVIOUS;
-  if (!current || current.length > 4096) return 503;
+  const validToken = (token: string | undefined): token is string => typeof token === 'string' && /^[A-Za-z0-9_-]{32,256}$/.test(token);
+  if (!validToken(current) || (previous && !validToken(previous))) return 503;
   const authorization = request.headers.get('authorization') ?? '';
-  if (authorization.length > 4103 || !/^Bearer [\x21-\x7e]+$/.test(authorization)) return 401;
+  if (authorization.length > 512 || !/^Bearer [A-Za-z0-9_-]{32,256}$/.test(authorization)) return 401;
   const supplied = digest(authorization.slice(7));
   // Evaluate both comparisons without short-circuiting during rotation.
   const matchesCurrent = timingSafeEqual(supplied, digest(current));
-  const matchesPrevious = timingSafeEqual(supplied, digest(previous && previous.length <= 4096 ? previous : current));
+  const matchesPrevious = timingSafeEqual(supplied, digest(previous || current));
   return matchesCurrent || matchesPrevious ? 200 : 401;
 }
 

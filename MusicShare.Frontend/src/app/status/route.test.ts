@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GET, HEAD } from './route';
 
+const current = 'a'.repeat(32);
+const previous = 'b'.repeat(32);
 const request = (token?: string) => new Request('https://example.test/status', {
   headers: token ? { Authorization: token } : {},
 });
@@ -12,7 +14,7 @@ describe('authenticated status', () => {
     expect(GET(request('Bearer old')).status).toBe(503);
   });
   it('rejects missing, wrong, malformed and overlong credentials without dependencies', () => {
-    vi.stubEnv('STATUS_TOKEN_CURRENT', 'current');
+    vi.stubEnv('STATUS_TOKEN_CURRENT', current);
     const fetch = vi.spyOn(globalThis, 'fetch');
     for (const token of [undefined, 'Bearer wrong', 'Basic current', 'Bearer current,old', `Bearer ${'x'.repeat(4097)}`]) {
       const response = GET(request(token));
@@ -24,9 +26,9 @@ describe('authenticated status', () => {
     fetch.mockRestore();
   });
   it('accepts both rotation tokens and reports only the observed web process', async () => {
-    vi.stubEnv('STATUS_TOKEN_CURRENT', 'current');
-    vi.stubEnv('STATUS_TOKEN_PREVIOUS', 'previous');
-    for (const token of ['current', 'previous']) {
+    vi.stubEnv('STATUS_TOKEN_CURRENT', current);
+    vi.stubEnv('STATUS_TOKEN_PREVIOUS', previous);
+    for (const token of [current, previous]) {
       const response = GET(request(`Bearer ${token}`));
       expect(response.status).toBe(200);
       const body = await response.json();
@@ -39,16 +41,27 @@ describe('authenticated status', () => {
       expect(response.headers.get('Cloudflare-CDN-Cache-Control')).toBe('no-store');
     }
     vi.stubEnv('STATUS_TOKEN_PREVIOUS', '');
-    expect(GET(request('Bearer previous')).status).toBe(401);
+    expect(GET(request(`Bearer ${previous}`)).status).toBe(401);
   });
   it('authenticates HEAD and never returns a body', async () => {
-    vi.stubEnv('STATUS_TOKEN_CURRENT', 'current');
+    vi.stubEnv('STATUS_TOKEN_CURRENT', current);
     expect(HEAD(request()).status).toBe(401);
-    expect(await HEAD(request('Bearer current')).text()).toBe('');
+    expect(await HEAD(request(`Bearer ${current}`)).text()).toBe('');
   });
   it('rejects unbounded environment labels', () => {
-    vi.stubEnv('STATUS_TOKEN_CURRENT', 'current');
+    vi.stubEnv('STATUS_TOKEN_CURRENT', current);
     vi.stubEnv('STATUS_ENVIRONMENT', 'x'.repeat(33));
-    expect(GET(request('Bearer current')).status).toBe(503);
+    expect(GET(request(`Bearer ${current}`)).status).toBe(503);
   });
+});
+
+it('rejects invalid configured tokens and headers above 512 characters', () => {
+  for (const token of ['x'.repeat(31), 'x'.repeat(257), 'x'.repeat(506), 'a'.repeat(31) + '+']) {
+    vi.stubEnv('STATUS_TOKEN_CURRENT', token);
+    expect(GET(request(`Bearer ${token}`)).status).toBe(503);
+  }
+  vi.stubEnv('STATUS_TOKEN_CURRENT', current);
+  expect(GET(request(`Bearer ${'x'.repeat(506)}`)).status).toBe(401);
+  vi.stubEnv('STATUS_TOKEN_PREVIOUS', 'short');
+  expect(GET(request(`Bearer ${current}`)).status).toBe(503);
 });
