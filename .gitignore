@@ -426,3 +426,6 @@ nul
 next-env.d.ts
 /MusicShare.Frontend/next-env.d.ts
 /.mcp/mcpserver.settings.json
+
+# Ephemeral scanner outputs (only normalized CI artifact is uploaded)
+.private/security/
