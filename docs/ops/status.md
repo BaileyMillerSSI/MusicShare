@@ -1,0 +1,9 @@
+# Authenticated status draft
+
+The canonical route is HTTPS `GET /status` on the existing Next.js frontend host. It is a Node server route, not browser JavaScript or a public API/backend exposure. Aspire internal API, MongoDB, RabbitMQ and providers remain private. No live URL or successful deployment is asserted by this draft.
+
+Provision the variables in `status.env.example` as frontend runtime secrets only after activation approval. Empty current token fails closed with 503; invalid/missing credentials return 401. Send only `Authorization: Bearer <token>` over HTTPS. Rotation accepts current and previous tokens together; remove previous after the overlap. Never put tokens in URLs, public build variables, logs or source. Existing HTTPS ingress must terminate TLS; the route does not trust client-supplied forwarding headers or redirect credentials. No Azure management access is needed.
+
+Successful responses follow status v1 and report only the responding web process. They do not probe API, workers, database, queues or music providers. Existing Development-only backend health/alive endpoints are not assumed available in production. HEAD uses the same authentication and cache headers with no body or probes. No dependency work occurs before or after authentication; response size is fixed and bounded. Build and deployment metadata stay null because this implementation has no trustworthy embedded build/deployment provenance. Request time is only sampledAt.
+
+All responses disable browser/CDN caching and enable no CORS. The service worker explicitly excludes /status. No real secrets, infrastructure, probes, poller activation or deployment are included. Existing CI deploys only from main; this draft targets a feature branch and must not be merged or manually deployed without approval.

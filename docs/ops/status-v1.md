@@ -1,0 +1,13 @@
+# Authenticated status v1
+
+GET `/status`; HEAD uses the same authentication/headers but returns no body and performs no dependency probes. HTTPS only. `Authorization: Bearer <token>` is the only credential location. Server secrets `STATUS_TOKEN_CURRENT` and optional `STATUS_TOKEN_PREVIOUS` (explicit rotation overlap); no current token => generic 503; missing/invalid credential => generic 401. Compare fixed-length cryptographic digests in constant time before dependency work. Bound the header; never log or return credentials, detailed errors, environment or user data. Tokens are server-only, never frontend/public build variables. No live tokens are created by these drafts.
+
+Responses: `Cache-Control: private, no-store`, `CDN-Cache-Control: no-store`, `Cloudflare-CDN-Cache-Control: no-store`; no CORS. Valid authenticated GET returns 200 with the following exact JSON shape (32 KiB maximum):
+
+```json
+{"schemaVersion":1,"service":"stable-app-slug","environment":"production","build":{"sha":null,"version":null,"builtAt":null},"deployment":{"id":null,"deployedAt":null},"health":{"state":"unknown","coverage":["web-process"],"components":[{"name":"web-process","state":"unknown"}]},"sampledAt":"2026-10-26T00:00:00.000Z"}
+```
+
+`service`: lowercase slug ≤64 chars; `environment`: lowercase slug ≤32 chars, expected production. Build SHA is lowercase 40-hex or null, version ≤128 chars or null, timestamps valid UTC RFC3339 or null. Deployment ID ≤128 chars or null. Build SHA/time come only from actual embedded build metadata; app startup/request time is not build/deployment time. Unknown fields stay null. Health state and each component state are healthy/degraded/unknown; ≤10 unique named components and coverage strings (≤64 chars each). Overall health must not claim healthy with unknown/degraded components. Optional `metrics` is an object with ≤20 reviewed named finite nonnegative counters; no arbitrary payload. `sampledAt` is the current observation time, not a cached response re-stamp. Bound authenticated dependency checks to 2 seconds total, expose coverage precisely, no writes or scans. Static sites may report only Function/web-process health, not pretend to check all dependencies.
+
+Homepage polling binds exact HTTPS URL, service/environment and credential reference in reviewed server configuration. No redirects or credential forwarding; 5-second timeout, 32-KiB response cap, strict schema; older than 15 minutes or materially future timestamp is unknown/stale. Authorization failures are distinct from network/down and invalid/unknown. All live settings remain disabled pending approval.

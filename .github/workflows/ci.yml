@@ -41,6 +41,10 @@ jobs:
       - name: Run linting
         run: npm run lint
 
+      - name: Test security report fixtures (no scans)
+        working-directory: .
+        run: node --test scripts/*.test.mjs
+
       - name: Run tests
         run: npm run test
 
