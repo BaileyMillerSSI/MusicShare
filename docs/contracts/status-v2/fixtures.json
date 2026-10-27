@@ -1,0 +1,820 @@
+{
+  "valid": [
+    {
+      "name": "unknown-build",
+      "value": {
+        "schemaVersion": 2,
+        "service": "example",
+        "environment": "production",
+        "build": {
+          "sha": null,
+          "version": null,
+          "builtAt": null
+        },
+        "deployment": {
+          "id": null,
+          "deployedAt": null
+        },
+        "health": {
+          "state": "healthy",
+          "coverage": [
+            "web-process"
+          ],
+          "components": [
+            {
+              "name": "web-process",
+              "state": "healthy"
+            }
+          ]
+        },
+        "sampledAt": "2026-10-27T00:00:00.000Z"
+      }
+    },
+    {
+      "name": "build-workflow",
+      "value": {
+        "schemaVersion": 2,
+        "service": "example",
+        "environment": "production",
+        "build": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": null,
+          "builtAt": "2026-10-26T23:00:00.000Z",
+          "workflow": {
+            "runId": "123456",
+            "url": "https://github.com/example/app/actions/runs/123456"
+          }
+        },
+        "deployment": {
+          "id": null,
+          "deployedAt": null
+        },
+        "health": {
+          "state": "healthy",
+          "coverage": [
+            "web-process"
+          ],
+          "components": [
+            {
+              "name": "web-process",
+              "state": "healthy"
+            }
+          ]
+        },
+        "sampledAt": "2026-10-27T00:00:00.000Z"
+      }
+    },
+    {
+      "name": "optional-metrics",
+      "value": {
+        "schemaVersion": 2,
+        "service": "example",
+        "environment": "production",
+        "build": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": null,
+          "builtAt": "2026-10-26T23:00:00.000Z",
+          "workflow": {
+            "runId": "123456",
+            "url": "https://github.com/example/app/actions/runs/123456"
+          }
+        },
+        "deployment": {
+          "id": null,
+          "deployedAt": null
+        },
+        "health": {
+          "state": "healthy",
+          "coverage": [
+            "web-process"
+          ],
+          "components": [
+            {
+              "name": "web-process",
+              "state": "healthy"
+            }
+          ]
+        },
+        "sampledAt": "2026-10-27T00:00:00.000Z",
+        "metrics": {
+          "requests": 2
+        }
+      }
+    },
+    {
+      "name": "coverage-permutation",
+      "value": {
+        "schemaVersion": 2,
+        "service": "example",
+        "environment": "production",
+        "build": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": null,
+          "builtAt": "2026-10-26T23:00:00.000Z",
+          "workflow": {
+            "runId": "123456",
+            "url": "https://github.com/example/app/actions/runs/123456"
+          }
+        },
+        "deployment": {
+          "id": null,
+          "deployedAt": null
+        },
+        "health": {
+          "state": "healthy",
+          "coverage": [
+            "database",
+            "web-process"
+          ],
+          "components": [
+            {
+              "name": "web-process",
+              "state": "healthy"
+            },
+            {
+              "name": "database",
+              "state": "healthy"
+            }
+          ]
+        },
+        "sampledAt": "2026-10-27T00:00:00.000Z"
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "unknown-root",
+      "validation": "schema",
+      "value": {
+        "schemaVersion": 2,
+        "service": "example",
+        "environment": "production",
+        "build": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": null,
+          "builtAt": "2026-10-26T23:00:00.000Z",
+          "workflow": {
+            "runId": "123456",
+            "url": "https://github.com/example/app/actions/runs/123456"
+          }
+        },
+        "deployment": {
+          "id": null,
+          "deployedAt": null
+        },
+        "health": {
+          "state": "healthy",
+          "coverage": [
+            "web-process"
+          ],
+          "components": [
+            {
+              "name": "web-process",
+              "state": "healthy"
+            }
+          ]
+        },
+        "sampledAt": "2026-10-27T00:00:00.000Z",
+        "security": {}
+      }
+    },
+    {
+      "name": "wrong-version",
+      "validation": "schema",
+      "value": {
+        "schemaVersion": 3,
+        "service": "example",
+        "environment": "production",
+        "build": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": null,
+          "builtAt": "2026-10-26T23:00:00.000Z",
+          "workflow": {
+            "runId": "123456",
+            "url": "https://github.com/example/app/actions/runs/123456"
+          }
+        },
+        "deployment": {
+          "id": null,
+          "deployedAt": null
+        },
+        "health": {
+          "state": "healthy",
+          "coverage": [
+            "web-process"
+          ],
+          "components": [
+            {
+              "name": "web-process",
+              "state": "healthy"
+            }
+          ]
+        },
+        "sampledAt": "2026-10-27T00:00:00.000Z"
+      }
+    },
+    {
+      "name": "uppercase-sha",
+      "validation": "schema",
+      "value": {
+        "schemaVersion": 2,
+        "service": "example",
+        "environment": "production",
+        "build": {
+          "sha": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+          "version": null,
+          "builtAt": "2026-10-26T23:00:00.000Z",
+          "workflow": {
+            "runId": "123456",
+            "url": "https://github.com/example/app/actions/runs/123456"
+          }
+        },
+        "deployment": {
+          "id": null,
+          "deployedAt": null
+        },
+        "health": {
+          "state": "healthy",
+          "coverage": [
+            "web-process"
+          ],
+          "components": [
+            {
+              "name": "web-process",
+              "state": "healthy"
+            }
+          ]
+        },
+        "sampledAt": "2026-10-27T00:00:00.000Z"
+      }
+    },
+    {
+      "name": "numeric-run-id",
+      "validation": "schema",
+      "value": {
+        "schemaVersion": 2,
+        "service": "example",
+        "environment": "production",
+        "build": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": null,
+          "builtAt": "2026-10-26T23:00:00.000Z",
+          "workflow": {
+            "runId": 123456,
+            "url": "https://github.com/example/app/actions/runs/123456"
+          }
+        },
+        "deployment": {
+          "id": null,
+          "deployedAt": null
+        },
+        "health": {
+          "state": "healthy",
+          "coverage": [
+            "web-process"
+          ],
+          "components": [
+            {
+              "name": "web-process",
+              "state": "healthy"
+            }
+          ]
+        },
+        "sampledAt": "2026-10-27T00:00:00.000Z"
+      }
+    },
+    {
+      "name": "zero-run-id",
+      "validation": "schema",
+      "value": {
+        "schemaVersion": 2,
+        "service": "example",
+        "environment": "production",
+        "build": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": null,
+          "builtAt": "2026-10-26T23:00:00.000Z",
+          "workflow": {
+            "runId": "0",
+            "url": "https://github.com/example/app/actions/runs/123456"
+          }
+        },
+        "deployment": {
+          "id": null,
+          "deployedAt": null
+        },
+        "health": {
+          "state": "healthy",
+          "coverage": [
+            "web-process"
+          ],
+          "components": [
+            {
+              "name": "web-process",
+              "state": "healthy"
+            }
+          ]
+        },
+        "sampledAt": "2026-10-27T00:00:00.000Z"
+      }
+    },
+    {
+      "name": "external-workflow-url",
+      "validation": "schema",
+      "value": {
+        "schemaVersion": 2,
+        "service": "example",
+        "environment": "production",
+        "build": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": null,
+          "builtAt": "2026-10-26T23:00:00.000Z",
+          "workflow": {
+            "runId": "123456",
+            "url": "https://evil.example/actions/runs/123456"
+          }
+        },
+        "deployment": {
+          "id": null,
+          "deployedAt": null
+        },
+        "health": {
+          "state": "healthy",
+          "coverage": [
+            "web-process"
+          ],
+          "components": [
+            {
+              "name": "web-process",
+              "state": "healthy"
+            }
+          ]
+        },
+        "sampledAt": "2026-10-27T00:00:00.000Z"
+      }
+    },
+    {
+      "name": "workflow-url-query",
+      "validation": "schema",
+      "value": {
+        "schemaVersion": 2,
+        "service": "example",
+        "environment": "production",
+        "build": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": null,
+          "builtAt": "2026-10-26T23:00:00.000Z",
+          "workflow": {
+            "runId": "123456",
+            "url": "https://github.com/example/app/actions/runs/123456?token=x"
+          }
+        },
+        "deployment": {
+          "id": null,
+          "deployedAt": null
+        },
+        "health": {
+          "state": "healthy",
+          "coverage": [
+            "web-process"
+          ],
+          "components": [
+            {
+              "name": "web-process",
+              "state": "healthy"
+            }
+          ]
+        },
+        "sampledAt": "2026-10-27T00:00:00.000Z"
+      }
+    },
+    {
+      "name": "workflow-run-mismatch",
+      "validation": "semantic",
+      "value": {
+        "schemaVersion": 2,
+        "service": "example",
+        "environment": "production",
+        "build": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": null,
+          "builtAt": "2026-10-26T23:00:00.000Z",
+          "workflow": {
+            "runId": "123457",
+            "url": "https://github.com/example/app/actions/runs/123456"
+          }
+        },
+        "deployment": {
+          "id": null,
+          "deployedAt": null
+        },
+        "health": {
+          "state": "healthy",
+          "coverage": [
+            "web-process"
+          ],
+          "components": [
+            {
+              "name": "web-process",
+              "state": "healthy"
+            }
+          ]
+        },
+        "sampledAt": "2026-10-27T00:00:00.000Z"
+      }
+    },
+    {
+      "name": "invalid-calendar-date",
+      "validation": "semantic",
+      "value": {
+        "schemaVersion": 2,
+        "service": "example",
+        "environment": "production",
+        "build": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": null,
+          "builtAt": "2026-10-26T23:00:00.000Z",
+          "workflow": {
+            "runId": "123456",
+            "url": "https://github.com/example/app/actions/runs/123456"
+          }
+        },
+        "deployment": {
+          "id": null,
+          "deployedAt": null
+        },
+        "health": {
+          "state": "healthy",
+          "coverage": [
+            "web-process"
+          ],
+          "components": [
+            {
+              "name": "web-process",
+              "state": "healthy"
+            }
+          ]
+        },
+        "sampledAt": "2026-02-30T00:00:00Z"
+      }
+    },
+    {
+      "name": "coverage-mismatch",
+      "validation": "semantic",
+      "value": {
+        "schemaVersion": 2,
+        "service": "example",
+        "environment": "production",
+        "build": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": null,
+          "builtAt": "2026-10-26T23:00:00.000Z",
+          "workflow": {
+            "runId": "123456",
+            "url": "https://github.com/example/app/actions/runs/123456"
+          }
+        },
+        "deployment": {
+          "id": null,
+          "deployedAt": null
+        },
+        "health": {
+          "state": "healthy",
+          "coverage": [
+            "database"
+          ],
+          "components": [
+            {
+              "name": "web-process",
+              "state": "healthy"
+            }
+          ]
+        },
+        "sampledAt": "2026-10-27T00:00:00.000Z"
+      }
+    },
+    {
+      "name": "healthy-with-unknown-component",
+      "validation": "semantic",
+      "value": {
+        "schemaVersion": 2,
+        "service": "example",
+        "environment": "production",
+        "build": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": null,
+          "builtAt": "2026-10-26T23:00:00.000Z",
+          "workflow": {
+            "runId": "123456",
+            "url": "https://github.com/example/app/actions/runs/123456"
+          }
+        },
+        "deployment": {
+          "id": null,
+          "deployedAt": null
+        },
+        "health": {
+          "state": "healthy",
+          "coverage": [
+            "web-process"
+          ],
+          "components": [
+            {
+              "name": "web-process",
+              "state": "unknown"
+            }
+          ]
+        },
+        "sampledAt": "2026-10-27T00:00:00.000Z"
+      }
+    },
+    {
+      "name": "duplicate-component-name",
+      "validation": "semantic",
+      "value": {
+        "schemaVersion": 2,
+        "service": "example",
+        "environment": "production",
+        "build": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": null,
+          "builtAt": "2026-10-26T23:00:00.000Z",
+          "workflow": {
+            "runId": "123456",
+            "url": "https://github.com/example/app/actions/runs/123456"
+          }
+        },
+        "deployment": {
+          "id": null,
+          "deployedAt": null
+        },
+        "health": {
+          "state": "healthy",
+          "coverage": [
+            "web-process"
+          ],
+          "components": [
+            {
+              "name": "web-process",
+              "state": "healthy"
+            },
+            {
+              "name": "web-process",
+              "state": "healthy"
+            }
+          ]
+        },
+        "sampledAt": "2026-10-27T00:00:00.000Z"
+      }
+    },
+    {
+      "name": "negative-metric",
+      "validation": "schema",
+      "value": {
+        "schemaVersion": 2,
+        "service": "example",
+        "environment": "production",
+        "build": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": null,
+          "builtAt": "2026-10-26T23:00:00.000Z",
+          "workflow": {
+            "runId": "123456",
+            "url": "https://github.com/example/app/actions/runs/123456"
+          }
+        },
+        "deployment": {
+          "id": null,
+          "deployedAt": null
+        },
+        "health": {
+          "state": "healthy",
+          "coverage": [
+            "web-process"
+          ],
+          "components": [
+            {
+              "name": "web-process",
+              "state": "healthy"
+            }
+          ]
+        },
+        "sampledAt": "2026-10-27T00:00:00.000Z",
+        "metrics": {
+          "requests": -1
+        }
+      }
+    },
+    {
+      "name": "unknown-build-key",
+      "validation": "schema",
+      "value": {
+        "schemaVersion": 2,
+        "service": "example",
+        "environment": "production",
+        "build": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": null,
+          "builtAt": "2026-10-26T23:00:00.000Z",
+          "workflow": {
+            "runId": "123456",
+            "url": "https://github.com/example/app/actions/runs/123456"
+          },
+          "secret": "no"
+        },
+        "deployment": {
+          "id": null,
+          "deployedAt": null
+        },
+        "health": {
+          "state": "healthy",
+          "coverage": [
+            "web-process"
+          ],
+          "components": [
+            {
+              "name": "web-process",
+              "state": "healthy"
+            }
+          ]
+        },
+        "sampledAt": "2026-10-27T00:00:00.000Z"
+      }
+    },
+    {
+      "name": "service-newline",
+      "validation": "schema",
+      "value": {
+        "schemaVersion": 2,
+        "service": "example\n",
+        "environment": "production",
+        "build": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": null,
+          "builtAt": "2026-10-26T23:00:00.000Z",
+          "workflow": {
+            "runId": "123456",
+            "url": "https://github.com/example/app/actions/runs/123456"
+          }
+        },
+        "deployment": {
+          "id": null,
+          "deployedAt": null
+        },
+        "health": {
+          "state": "healthy",
+          "coverage": [
+            "web-process"
+          ],
+          "components": [
+            {
+              "name": "web-process",
+              "state": "healthy"
+            }
+          ]
+        },
+        "sampledAt": "2026-10-27T00:00:00.000Z"
+      }
+    },
+    {
+      "name": "version-newline",
+      "validation": "schema",
+      "value": {
+        "schemaVersion": 2,
+        "service": "example",
+        "environment": "production",
+        "build": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": "version\n",
+          "builtAt": "2026-10-26T23:00:00.000Z",
+          "workflow": {
+            "runId": "123456",
+            "url": "https://github.com/example/app/actions/runs/123456"
+          }
+        },
+        "deployment": {
+          "id": null,
+          "deployedAt": null
+        },
+        "health": {
+          "state": "healthy",
+          "coverage": [
+            "web-process"
+          ],
+          "components": [
+            {
+              "name": "web-process",
+              "state": "healthy"
+            }
+          ]
+        },
+        "sampledAt": "2026-10-27T00:00:00.000Z"
+      }
+    },
+    {
+      "name": "run-id-newline",
+      "validation": "schema",
+      "value": {
+        "schemaVersion": 2,
+        "service": "example",
+        "environment": "production",
+        "build": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": null,
+          "builtAt": "2026-10-26T23:00:00.000Z",
+          "workflow": {
+            "runId": "123456\n",
+            "url": "https://github.com/example/app/actions/runs/123456"
+          }
+        },
+        "deployment": {
+          "id": null,
+          "deployedAt": null
+        },
+        "health": {
+          "state": "healthy",
+          "coverage": [
+            "web-process"
+          ],
+          "components": [
+            {
+              "name": "web-process",
+              "state": "healthy"
+            }
+          ]
+        },
+        "sampledAt": "2026-10-27T00:00:00.000Z"
+      }
+    },
+    {
+      "name": "workflow-url-newline",
+      "validation": "schema",
+      "value": {
+        "schemaVersion": 2,
+        "service": "example",
+        "environment": "production",
+        "build": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": null,
+          "builtAt": "2026-10-26T23:00:00.000Z",
+          "workflow": {
+            "runId": "123456",
+            "url": "https://github.com/example/app/actions/runs/123456\n"
+          }
+        },
+        "deployment": {
+          "id": null,
+          "deployedAt": null
+        },
+        "health": {
+          "state": "healthy",
+          "coverage": [
+            "web-process"
+          ],
+          "components": [
+            {
+              "name": "web-process",
+              "state": "healthy"
+            }
+          ]
+        },
+        "sampledAt": "2026-10-27T00:00:00.000Z"
+      }
+    },
+    {
+      "name": "timestamp-newline",
+      "validation": "schema",
+      "value": {
+        "schemaVersion": 2,
+        "service": "example",
+        "environment": "production",
+        "build": {
+          "sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "version": null,
+          "builtAt": "2026-10-26T23:00:00.000Z",
+          "workflow": {
+            "runId": "123456",
+            "url": "https://github.com/example/app/actions/runs/123456"
+          }
+        },
+        "deployment": {
+          "id": null,
+          "deployedAt": null
+        },
+        "health": {
+          "state": "healthy",
+          "coverage": [
+            "web-process"
+          ],
+          "components": [
+            {
+              "name": "web-process",
+              "state": "healthy"
+            }
+          ]
+        },
+        "sampledAt": "2026-10-27T00:00:00.000Z\n"
+      }
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import build from '../../lib/server/status-build.json';
+import { statusBuild } from '../../lib/server/status-metadata';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -32,14 +33,14 @@ function respond(request: Request, head: boolean): Response {
   });
   if (head) return new Response(null, { headers });
   const environment = process.env.STATUS_ENVIRONMENT ?? 'production';
-  if (!/^[a-z0-9][a-z0-9-]{0,31}$/.test(environment)) {
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*(?![\s\S])/.test(environment) || environment.length > 32) {
     return new Response('{"error":"Unavailable"}', { status: 503, headers: { ...headers, 'Content-Type': 'application/json' } });
   }
   return Response.json({
-    schemaVersion: 1,
+    schemaVersion: 2,
     service: 'musicshare',
     environment,
-    build: { sha: typeof build.sha === 'string' && /^[a-f0-9]{40}$/.test(build.sha) ? build.sha : null, version: null, builtAt: null },
+    build: statusBuild(build),
     deployment: { id: null, deployedAt: null },
     health: {
       state: 'healthy',
