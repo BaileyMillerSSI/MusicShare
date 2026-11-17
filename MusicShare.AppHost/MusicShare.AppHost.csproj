@@ -1,15 +1,15 @@
-<Project Sdk="Aspire.AppHost.Sdk/13.4.4">
+<Project Sdk="Aspire.AppHost.Sdk/13.6.5">
 
   <ItemGroup>
     <ProjectReference Include="..\MusicShare.Api\MusicShare.Api.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Aspire.Hosting.Azure.AppContainers" Version="13.4.4" />
-    <PackageReference Include="Aspire.Hosting.MongoDB" Version="13.4.4" />
-    <PackageReference Include="Aspire.Hosting.JavaScript" Version="13.4.4" />
-    <PackageReference Include="Aspire.Hosting.RabbitMQ" Version="13.4.4" />
-    <PackageReference Include="MessagePack" Version="2.5.303" />
+    <PackageReference Include="Aspire.Hosting.Azure.AppContainers" Version="13.6.5" />
+    <PackageReference Include="Aspire.Hosting.MongoDB" Version="13.6.5" />
+    <PackageReference Include="Aspire.Hosting.JavaScript" Version="13.6.5" />
+    <PackageReference Include="Aspire.Hosting.RabbitMQ" Version="13.6.5" />
+    <PackageReference Include="MessagePack" Version="2.5.307" />
     <PackageReference Include="MongoDB.Driver" Version="3.9.0" />
   </ItemGroup>
 
